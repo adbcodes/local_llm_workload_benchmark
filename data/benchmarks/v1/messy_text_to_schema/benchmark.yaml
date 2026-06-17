@@ -1,0 +1,17 @@
+id: messy_text_to_schema
+title: Messy Text to Schema
+description: Structured extraction from clean, incomplete, noisy, and nested text.
+items_path: items.jsonl
+current_question_count: 3
+target_question_count: 30
+current_difficulty_distribution:
+  easy: 1
+  medium: 1
+  hard: 1
+difficulty_distribution:
+  easy: 8
+  medium: 15
+  hard: 7
+order_rule: easy_to_hard
+scoring_methods:
+  - json_exact
