@@ -1,0 +1,152 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import platform
+import subprocess
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from llm_workload_benchmark import __version__
+from llm_workload_benchmark.config import BenchmarkConfig
+
+
+def create_run(
+    config: BenchmarkConfig,
+    config_path: Path,
+    *,
+    project_root: Path | None = None,
+    now: datetime | None = None,
+) -> Path:
+    """Create a run directory and write its reproducibility manifest."""
+    root = (project_root or Path.cwd()).resolve()
+    created_at = now or datetime.now(UTC)
+    run_id = _new_run_id(created_at)
+    output_root = _resolve_from_root(root, config.benchmark.output_root)
+    run_directory = output_root / run_id
+    run_directory.mkdir(parents=True, exist_ok=False)
+
+    resolved_config_path = config_path.resolve()
+    manifest = {
+        "schema_version": 1,
+        "run_id": run_id,
+        "created_at_utc": created_at.isoformat(),
+        "project_version": __version__,
+        "config_source": {
+            "path": _display_path(resolved_config_path, root),
+            "sha256": _sha256(resolved_config_path),
+        },
+        "config": config.model_dump(mode="json"),
+        "environment": _environment_details(),
+        "git": _git_details(root),
+    }
+    _write_json_atomically(run_directory / "manifest.json", manifest)
+    return run_directory
+
+
+def _new_run_id(created_at: datetime) -> str:
+    timestamp = created_at.astimezone(UTC).strftime("%Y-%m-%d_%H-%M-%S")
+    return f"{timestamp}-{uuid.uuid4().hex[:8]}"
+
+
+def _resolve_from_root(root: Path, path: Path) -> Path:
+    return path if path.is_absolute() else root / path
+
+
+def _display_path(path: Path, root: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _environment_details() -> dict[str, Any]:
+    uname = platform.uname()
+    memory_bytes = _physical_memory_bytes()
+    return {
+        "operating_system": platform.system(),
+        "operating_system_release": platform.release(),
+        "operating_system_version": platform.version(),
+        "machine": platform.machine(),
+        "machine_model": _sysctl_value("hw.model"),
+        "processor": _sysctl_value("machdep.cpu.brand_string")
+        or uname.processor
+        or None,
+        "physical_memory_bytes": memory_bytes,
+        "python_version": platform.python_version(),
+        "logical_cpu_count": os.cpu_count(),
+    }
+
+
+def _physical_memory_bytes() -> int | None:
+    macos_memory = _sysctl_value("hw.memsize")
+    if macos_memory is not None:
+        try:
+            return int(macos_memory)
+        except ValueError:
+            return None
+
+    try:
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    except (AttributeError, OSError, ValueError):
+        return None
+
+
+def _sysctl_value(name: str) -> str | None:
+    if platform.system() != "Darwin":
+        return None
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", name],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    return result.stdout.strip() or None
+
+
+def _git_details(root: Path) -> dict[str, Any]:
+    commit = _run_git(root, "rev-parse", "HEAD")
+    if commit is None:
+        return {"available": False, "commit": None, "dirty": None}
+
+    status = _run_git(root, "status", "--porcelain")
+    return {
+        "available": True,
+        "commit": commit,
+        "dirty": bool(status),
+    }
+
+
+def _run_git(root: Path, *arguments: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", *arguments],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    return result.stdout.strip()
+
+
+def _write_json_atomically(path: Path, data: dict[str, Any]) -> None:
+    temporary_path = path.with_suffix(".json.tmp")
+    temporary_path.write_text(
+        json.dumps(data, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(path)

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "local-llm-workload-benchmark"
+version = "0.1.0"
+description = "A reproducible workload benchmark for local language models."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "pyyaml>=6.0,<7",
+  "typer>=0.15,<1",
+]
+
+[project.scripts]
+llm-benchmark = "llm_workload_benchmark.cli:app"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llm_workload_benchmark"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

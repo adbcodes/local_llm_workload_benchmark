@@ -1,0 +1,21 @@
+schema_version: 1
+
+benchmark:
+  name: local-model-smoke-test
+  description: Initial configuration for validating the benchmark pipeline.
+  workload_path: data/workloads/smoke.jsonl
+  output_root: runs
+  repetitions: 1
+  seed: 42
+
+models:
+  - id: example-local-model
+    backend: llama_cpp
+    model_path: models/example-model.gguf
+    quantization: q4
+    enabled: false
+    generation:
+      max_output_tokens: 256
+      temperature: 0.0
+      top_p: 1.0
+

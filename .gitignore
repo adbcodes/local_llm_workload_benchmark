@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Local configuration and generated benchmark data
+.env
+models/*
+!models/.gitkeep
+runs/*
+!runs/.gitkeep
+
+# Editors and macOS
+.idea/
+.vscode/
+.DS_Store
+
+# Local planning and learning documents
+docs/
