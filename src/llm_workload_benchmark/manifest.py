@@ -20,14 +20,19 @@ def create_run(
     *,
     project_root: Path | None = None,
     now: datetime | None = None,
+    run_directory: Path | None = None,
 ) -> Path:
     """Create a run directory and write its reproducibility manifest."""
     root = (project_root or Path.cwd()).resolve()
     created_at = now or datetime.now(UTC)
-    run_id = _new_run_id(created_at)
-    output_root = _resolve_from_root(root, config.benchmark.output_root)
-    run_directory = output_root / run_id
-    run_directory.mkdir(parents=True, exist_ok=False)
+    if run_directory is None:
+        run_id = _new_run_id(created_at)
+        output_root = _resolve_from_root(root, config.benchmark.output_root)
+        resolved_run_directory = output_root / run_id
+    else:
+        resolved_run_directory = _resolve_from_root(root, run_directory)
+        run_id = resolved_run_directory.name
+    resolved_run_directory.mkdir(parents=True, exist_ok=False)
 
     resolved_config_path = config_path.resolve()
     manifest = {
@@ -43,8 +48,8 @@ def create_run(
         "environment": _environment_details(),
         "git": _git_details(root),
     }
-    _write_json_atomically(run_directory / "manifest.json", manifest)
-    return run_directory
+    _write_json_atomically(resolved_run_directory / "manifest.json", manifest)
+    return resolved_run_directory
 
 
 def _new_run_id(created_at: datetime) -> str:

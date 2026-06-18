@@ -12,9 +12,11 @@ from llm_workload_benchmark.runner import (
     EvaluationError,
     GenerationOutput,
     LlamaCppBackend,
+    RunProgress,
     _prepare_response_for_scoring,
     _suite_hash,
     run_benchmark,
+    run_matrix,
 )
 
 SUITE_PATH = Path("data/benchmarks/v1/suite.yaml").resolve()
@@ -81,6 +83,35 @@ models:
       max_output_tokens: 64
       temperature: 0.0
       top_p: 1.0
+""".strip(),
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def _write_matrix_config(tmp_path: Path, *, enabled: bool = True) -> Path:
+    model_paths = [tmp_path / "first.gguf", tmp_path / "second.gguf"]
+    for model_path in model_paths:
+        model_path.write_bytes(b"fake model used by the injected test backend")
+    config_path = tmp_path / "matrix.yaml"
+    config_path.write_text(
+        f"""
+schema_version: 1
+benchmark:
+  name: matrix-test
+  workload_path: {SUITE_PATH}
+  output_root: {tmp_path / 'runs'}
+  repetitions: 1
+  seed: 42
+models:
+  - id: first-model
+    backend: llama_cpp
+    model_path: {model_paths[0]}
+    enabled: {str(enabled).lower()}
+  - id: second-model
+    backend: llama_cpp
+    model_path: {model_paths[1]}
+    enabled: {str(enabled).lower()}
 """.strip(),
         encoding="utf-8",
     )
@@ -234,6 +265,95 @@ def test_runner_requires_exactly_one_enabled_model(tmp_path: Path) -> None:
 
     with pytest.raises(EvaluationError, match="exactly one enabled model"):
         run_benchmark(config, config_path, project_root=tmp_path)
+
+    assert not (tmp_path / "runs").exists()
+
+
+def test_matrix_runs_enabled_models_sequentially_and_indexes_artifacts(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_matrix_config(tmp_path)
+    config = load_config(config_path)
+    answers = _correct_answers()
+    lifecycle: list[str] = []
+    progress: list[RunProgress] = []
+
+    class ClosingBackend(AnsweringBackend):
+        def __init__(self, model_id: str):
+            super().__init__(answers)
+            self.model_id = model_id
+            lifecycle.append(f"load:{model_id}")
+
+        def close(self) -> None:
+            lifecycle.append(f"close:{self.model_id}")
+
+    experiment_directory = run_matrix(
+        config,
+        config_path,
+        project_root=tmp_path,
+        backend_factory=lambda model, model_path, seed: ClosingBackend(model.id),
+        progress_callback=progress.append,
+    )
+
+    assert lifecycle == [
+        "load:first-model",
+        "close:first-model",
+        "load:second-model",
+        "close:second-model",
+    ]
+    assert len(progress) == 12
+    assert progress[0].model_number == 1
+    assert progress[-1].model_number == 2
+    assert progress[-1].completed_items == 6
+
+    index = json.loads((experiment_directory / "experiment.json").read_text())
+    assert index["status"] == "completed"
+    assert index["models_total"] == 2
+    assert index["models_completed"] == 2
+    assert index["models_failed"] == 0
+    assert [result["model_id"] for result in index["models"]] == [
+        "first-model",
+        "second-model",
+    ]
+    for result in index["models"]:
+        assert (experiment_directory / result["summary"]).is_file()
+        assert (
+            experiment_directory / result["run_directory"] / "results.jsonl"
+        ).is_file()
+
+
+def test_matrix_isolates_model_load_failure_and_continues(tmp_path: Path) -> None:
+    config_path = _write_matrix_config(tmp_path)
+    config = load_config(config_path)
+    answers = _correct_answers()
+
+    def backend_factory(model, model_path, seed):
+        if model.id == "first-model":
+            raise RuntimeError("first model cannot load")
+        return AnsweringBackend(answers)
+
+    experiment_directory = run_matrix(
+        config,
+        config_path,
+        project_root=tmp_path,
+        backend_factory=backend_factory,
+    )
+
+    index = json.loads((experiment_directory / "experiment.json").read_text())
+    assert index["status"] == "partial_failure"
+    assert index["models_completed"] == 1
+    assert index["models_failed"] == 1
+    assert index["models"][0]["status"] == "failed"
+    assert index["models"][0]["summary"] == "models/first-model/summary.json"
+    assert index["models"][1]["status"] == "completed"
+
+
+def test_matrix_requires_at_least_one_enabled_model(tmp_path: Path) -> None:
+    config_path = _write_matrix_config(tmp_path, enabled=False)
+    config = load_config(config_path)
+
+    with pytest.raises(EvaluationError, match="no enabled models"):
+        run_matrix(config, config_path, project_root=tmp_path)
 
     assert not (tmp_path / "runs").exists()
 

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import re
 import sys
 import time
+import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -33,6 +36,17 @@ class GenerationOutput:
     output_tokens: int | None = None
     time_to_first_token_seconds: float | None = None
     finish_reason: str | None = None
+
+
+@dataclass(frozen=True)
+class RunProgress:
+    model_id: str
+    model_number: int
+    model_count: int
+    benchmark: str
+    completed_items: int
+    total_items: int
+    elapsed_seconds: float
 
 
 class ModelBackend(Protocol):
@@ -141,6 +155,11 @@ class LlamaCppBackend:
             finish_reason=finish_reason,
         )
 
+    def close(self) -> None:
+        close = getattr(self._model, "close", None)
+        if callable(close):
+            close()
+
 
 def run_benchmark(
     config: BenchmarkConfig,
@@ -149,6 +168,10 @@ def run_benchmark(
     project_root: Path | None = None,
     backend_factory: BackendFactory = LlamaCppBackend,
     peak_memory_reader: Callable[[], int | None] | None = None,
+    run_directory: Path | None = None,
+    progress_callback: Callable[[RunProgress], None] | None = None,
+    model_number: int = 1,
+    model_count: int = 1,
 ) -> Path:
     """Evaluate one enabled model and save per-item results plus a summary."""
 
@@ -169,6 +192,7 @@ def run_benchmark(
         config,
         config_path,
         project_root=root,
+        run_directory=run_directory,
     )
     results_path = run_directory / "results.jsonl"
     summary_path = run_directory / "summary.json"
@@ -197,22 +221,42 @@ def run_benchmark(
     peak_memory_after_model_load_bytes = memory_reader()
 
     records: list[dict[str, Any]] = []
-    with results_path.open("w", encoding="utf-8") as results_file:
-        for repetition in range(1, config.benchmark.repetitions + 1):
-            seed = config.benchmark.seed + repetition - 1
-            for benchmark_items in suite.items.values():
-                for item in benchmark_items:
-                    record = _evaluate_item(
-                        item,
-                        model=model,
-                        backend=backend,
-                        repetition=repetition,
-                        seed=seed,
-                        peak_memory_reader=memory_reader,
-                    )
-                    records.append(record)
-                    results_file.write(json.dumps(record, sort_keys=True) + "\n")
-                    results_file.flush()
+    total_items = (
+        sum(len(items) for items in suite.items.values())
+        * config.benchmark.repetitions
+    )
+    run_started = time.perf_counter()
+    try:
+        with results_path.open("w", encoding="utf-8") as results_file:
+            for repetition in range(1, config.benchmark.repetitions + 1):
+                seed = config.benchmark.seed + repetition - 1
+                for benchmark_items in suite.items.values():
+                    for item in benchmark_items:
+                        record = _evaluate_item(
+                            item,
+                            model=model,
+                            backend=backend,
+                            repetition=repetition,
+                            seed=seed,
+                            peak_memory_reader=memory_reader,
+                        )
+                        records.append(record)
+                        results_file.write(json.dumps(record, sort_keys=True) + "\n")
+                        results_file.flush()
+                        if progress_callback is not None:
+                            progress_callback(
+                                RunProgress(
+                                    model_id=model.id,
+                                    model_number=model_number,
+                                    model_count=model_count,
+                                    benchmark=item.benchmark,
+                                    completed_items=len(records),
+                                    total_items=total_items,
+                                    elapsed_seconds=time.perf_counter() - run_started,
+                                )
+                            )
+    finally:
+        _release_backend(backend)
 
     _write_json(
         summary_path,
@@ -226,6 +270,119 @@ def run_benchmark(
         ),
     )
     return run_directory
+
+
+def run_matrix(
+    config: BenchmarkConfig,
+    config_path: Path,
+    *,
+    project_root: Path | None = None,
+    backend_factory: BackendFactory = LlamaCppBackend,
+    peak_memory_reader: Callable[[], int | None] | None = None,
+    progress_callback: Callable[[RunProgress], None] | None = None,
+) -> Path:
+    """Run all enabled models sequentially under one experiment directory."""
+
+    root = (project_root or Path.cwd()).resolve()
+    enabled_models = [model for model in config.models if model.enabled]
+    if not enabled_models:
+        raise EvaluationError("the model matrix has no enabled models")
+
+    load_suite(_resolve_from_root(root, config.benchmark.workload_path))
+    output_root = _resolve_from_root(root, config.benchmark.output_root)
+    experiment_id = _new_experiment_id()
+    experiment_directory = output_root / experiment_id
+    experiment_directory.mkdir(parents=True, exist_ok=False)
+    index_path = experiment_directory / "experiment.json"
+    started = time.perf_counter()
+    model_results: list[dict[str, Any]] = []
+
+    def write_index(status: str) -> None:
+        completed = sum(result["status"] == "completed" for result in model_results)
+        _write_json(
+            index_path,
+            {
+                "schema_version": 1,
+                "experiment_id": experiment_id,
+                "status": status,
+                "config_source": str(config_path.resolve()),
+                "dataset": str(
+                    _resolve_from_root(root, config.benchmark.workload_path)
+                ),
+                "elapsed_seconds": time.perf_counter() - started,
+                "models_total": len(enabled_models),
+                "models_completed": completed,
+                "models_failed": len(model_results) - completed,
+                "models": model_results,
+            },
+        )
+
+    write_index("running")
+    for model_number, model in enumerate(enabled_models, start=1):
+        child_directory = experiment_directory / "models" / model.id
+        single_model_config = config.model_copy(
+            update={"models": [model.model_copy(update={"enabled": True})]},
+            deep=True,
+        )
+        try:
+            run_directory = run_benchmark(
+                single_model_config,
+                config_path,
+                project_root=root,
+                backend_factory=backend_factory,
+                peak_memory_reader=peak_memory_reader,
+                run_directory=child_directory,
+                progress_callback=progress_callback,
+                model_number=model_number,
+                model_count=len(enabled_models),
+            )
+            model_results.append(
+                {
+                    "model_id": model.id,
+                    "status": "completed",
+                    "run_directory": str(
+                        run_directory.relative_to(experiment_directory)
+                    ),
+                    "summary": str(
+                        (run_directory / "summary.json").relative_to(
+                            experiment_directory
+                        )
+                    ),
+                    "error": None,
+                }
+            )
+        except Exception as error:
+            model_results.append(
+                {
+                    "model_id": model.id,
+                    "status": "failed",
+                    "run_directory": str(
+                        child_directory.relative_to(experiment_directory)
+                    ),
+                    "summary": (
+                        str(
+                            (child_directory / "summary.json").relative_to(
+                                experiment_directory
+                            )
+                        )
+                        if (child_directory / "summary.json").is_file()
+                        else None
+                    ),
+                    "error": {"type": type(error).__name__, "message": str(error)},
+                }
+            )
+        write_index("running")
+
+    completed = sum(result["status"] == "completed" for result in model_results)
+    final_status = (
+        "completed"
+        if completed == len(enabled_models)
+        else "partial_failure"
+        if completed
+        else "failed"
+    )
+    write_index(final_status)
+    return experiment_directory
 
 
 def _evaluate_item(
@@ -461,6 +618,21 @@ def _suite_hash(suite_path: Path) -> str:
 
 def _resolve_from_root(root: Path, path: Path) -> Path:
     return path if path.is_absolute() else root / path
+
+
+def _new_experiment_id() -> str:
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
+    return f"{timestamp}-matrix-{uuid.uuid4().hex[:8]}"
+
+
+def _release_backend(backend: ModelBackend) -> None:
+    close = getattr(backend, "close", None)
+    try:
+        if callable(close):
+            close()
+    finally:
+        del backend
+        gc.collect()
 
 
 def _optional_int(value: Any) -> int | None:
