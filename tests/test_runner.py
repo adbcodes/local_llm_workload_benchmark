@@ -30,6 +30,7 @@ class AnsweringBackend:
             text=answer,
             prompt_tokens=20,
             output_tokens=max(1, len(answer.split())),
+            time_to_first_token_seconds=0.05,
             finish_reason="stop",
         )
 
@@ -89,6 +90,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
         config_path,
         project_root=tmp_path,
         backend_factory=lambda model, model_path, seed: AnsweringBackend(answers),
+        peak_memory_reader=lambda: 4_000_000_000,
     )
 
     assert (run_directory / "manifest.json").is_file()
@@ -98,6 +100,9 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert all(record["status"] == "completed" for record in records)
     assert all(record["passed"] for record in records)
     assert all(record["prompt_tokens"] == 20 for record in records)
+    assert all(record["time_to_first_token_seconds"] == 0.05 for record in records)
+    assert all(record["output_characters"] > 0 for record in records)
+    assert all(record["peak_process_memory_bytes"] == 4_000_000_000 for record in records)
     assert {record["difficulty"] for record in records} == {
         "easy",
         "medium",
@@ -109,6 +114,9 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert summary["totals"]["attempted"] == 9
     assert summary["totals"]["passed"] == 9
     assert summary["totals"]["pass_rate"] == 1.0
+    assert summary["totals"]["mean_time_to_first_token_seconds"] == 0.05
+    assert summary["totals"]["peak_process_memory_bytes"] == 4_000_000_000
+    assert summary["peak_process_memory_after_model_load_bytes"] == 4_000_000_000
     assert summary["total_prompt_tokens"] == 180
     assert len(summary["dataset"]["sha256"]) == 64
 
@@ -183,7 +191,7 @@ def test_runner_preserves_model_load_failure_summary(tmp_path: Path) -> None:
     assert not (run_directories[0] / "results.jsonl").exists()
 
 
-def test_llama_cpp_adapter_uses_config_and_extracts_usage(
+def test_llama_cpp_adapter_streams_and_extracts_performance_metrics(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -192,20 +200,52 @@ def test_llama_cpp_adapter_uses_config_and_extracts_usage(
     class FakeLlama:
         def __init__(self, **arguments):
             captured["load"] = arguments
+            self.n_tokens = 17
 
         def create_chat_completion(self, **arguments):
             captured["generation"] = arguments
-            return {
-                "choices": [
+            return iter(
+                [
                     {
-                        "message": {"content": "120"},
-                        "finish_reason": "stop",
-                    }
-                ],
-                "usage": {"prompt_tokens": 17, "completion_tokens": 1},
+                        "choices": [
+                            {
+                                "delta": {"role": "assistant"},
+                                "finish_reason": None,
+                            }
+                        ]
+                    },
+                    {
+                        "choices": [
+                            {"delta": {"content": "1"}, "finish_reason": None}
+                        ]
+                    },
+                    {
+                        "choices": [
+                            {"delta": {"content": "20"}, "finish_reason": None}
+                        ]
+                    },
+                    {
+                        "choices": [
+                            {"delta": {}, "finish_reason": "stop"}
+                        ]
+                    },
+                ]
+            )
+
+        def tokenize(self, text, *, add_bos, special):
+            captured["tokenize"] = {
+                "text": text,
+                "add_bos": add_bos,
+                "special": special,
             }
+            return [120]
 
     monkeypatch.setitem(sys.modules, "llama_cpp", SimpleNamespace(Llama=FakeLlama))
+    clock_values = iter([10.0, 10.25])
+    monkeypatch.setattr(
+        "llm_workload_benchmark.runner.time.perf_counter",
+        lambda: next(clock_values),
+    )
     config_path = _write_config(tmp_path)
     model = load_config(config_path).models[0]
     backend = LlamaCppBackend(model, model.model_path, seed=42)
@@ -216,6 +256,7 @@ def test_llama_cpp_adapter_uses_config_and_extracts_usage(
         text="120",
         prompt_tokens=17,
         output_tokens=1,
+        time_to_first_token_seconds=0.25,
         finish_reason="stop",
     )
     assert captured["load"] == {
@@ -227,7 +268,13 @@ def test_llama_cpp_adapter_uses_config_and_extracts_usage(
     }
     generation = captured["generation"]
     assert generation["seed"] == 43
+    assert generation["stream"] is True
     assert generation["messages"][1] == {
         "role": "user",
         "content": "What is 15% of 800?",
+    }
+    assert captured["tokenize"] == {
+        "text": b"120",
+        "add_bos": False,
+        "special": True,
     }

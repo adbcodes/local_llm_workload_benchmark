@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -27,6 +28,7 @@ class GenerationOutput:
     text: str
     prompt_tokens: int | None = None
     output_tokens: int | None = None
+    time_to_first_token_seconds: float | None = None
     finish_reason: str | None = None
 
 
@@ -78,6 +80,7 @@ class LlamaCppBackend:
         *,
         seed: int,
     ) -> GenerationOutput:
+        started = time.perf_counter()
         response = self._model.create_chat_completion(
             messages=[
                 {"role": "system", "content": self._system_prompt},
@@ -87,21 +90,52 @@ class LlamaCppBackend:
             temperature=generation.temperature,
             top_p=generation.top_p,
             seed=seed,
+            stream=True,
         )
-        choices = response.get("choices", [])
-        if not choices:
+        if isinstance(response, dict):
+            raise EvaluationError("llama.cpp did not return a completion stream")
+
+        content_parts: list[str] = []
+        prompt_tokens: int | None = None
+        time_to_first_token_seconds: float | None = None
+        finish_reason: str | None = None
+        saw_choice = False
+
+        for chunk in response:
+            choices = chunk.get("choices", [])
+            if not choices:
+                continue
+            saw_choice = True
+            if prompt_tokens is None:
+                prompt_tokens = _optional_int(getattr(self._model, "n_tokens", None))
+            choice = choices[0]
+            delta = choice.get("delta", {})
+            content = delta.get("content")
+            if isinstance(content, str) and content:
+                if time_to_first_token_seconds is None:
+                    time_to_first_token_seconds = time.perf_counter() - started
+                content_parts.append(content)
+            chunk_finish_reason = choice.get("finish_reason")
+            if isinstance(chunk_finish_reason, str):
+                finish_reason = chunk_finish_reason
+
+        if not saw_choice:
             raise EvaluationError("llama.cpp returned no completion choices")
-        choice = choices[0]
-        message = choice.get("message", {})
-        content = message.get("content")
-        if not isinstance(content, str):
-            raise EvaluationError("llama.cpp returned a completion without text")
-        usage = response.get("usage", {})
+
+        text = "".join(content_parts)
+        output_tokens = len(
+            self._model.tokenize(
+                text.encode("utf-8"),
+                add_bos=False,
+                special=True,
+            )
+        )
         return GenerationOutput(
-            text=content,
-            prompt_tokens=_optional_int(usage.get("prompt_tokens")),
-            output_tokens=_optional_int(usage.get("completion_tokens")),
-            finish_reason=choice.get("finish_reason"),
+            text=text,
+            prompt_tokens=prompt_tokens,
+            output_tokens=output_tokens,
+            time_to_first_token_seconds=time_to_first_token_seconds,
+            finish_reason=finish_reason,
         )
 
 
@@ -111,10 +145,12 @@ def run_benchmark(
     *,
     project_root: Path | None = None,
     backend_factory: BackendFactory = LlamaCppBackend,
+    peak_memory_reader: Callable[[], int | None] | None = None,
 ) -> Path:
     """Evaluate one enabled model and save per-item results plus a summary."""
 
     root = (project_root or Path.cwd()).resolve()
+    memory_reader = peak_memory_reader or _process_peak_memory_bytes
     suite_path = _resolve_from_root(root, config.benchmark.workload_path)
     suite = load_suite(suite_path)
     enabled_models = [model for model in config.models if model.enabled]
@@ -146,6 +182,7 @@ def run_benchmark(
                 model_path=model_path,
                 suite_path=suite_path,
                 load_seconds=load_seconds,
+                peak_memory_after_model_load_bytes=memory_reader(),
                 error=error,
             ),
         )
@@ -154,6 +191,7 @@ def run_benchmark(
             f"{summary_path}"
         ) from error
     load_seconds = time.perf_counter() - load_started
+    peak_memory_after_model_load_bytes = memory_reader()
 
     records: list[dict[str, Any]] = []
     with results_path.open("w", encoding="utf-8") as results_file:
@@ -167,6 +205,7 @@ def run_benchmark(
                         backend=backend,
                         repetition=repetition,
                         seed=seed,
+                        peak_memory_reader=memory_reader,
                     )
                     records.append(record)
                     results_file.write(json.dumps(record, sort_keys=True) + "\n")
@@ -180,6 +219,7 @@ def run_benchmark(
             model_path=model_path,
             suite_path=suite_path,
             load_seconds=load_seconds,
+            peak_memory_after_model_load_bytes=peak_memory_after_model_load_bytes,
         ),
     )
     return run_directory
@@ -192,11 +232,13 @@ def _evaluate_item(
     backend: ModelBackend,
     repetition: int,
     seed: int,
+    peak_memory_reader: Callable[[], int | None],
 ) -> dict[str, Any]:
     started = time.perf_counter()
     try:
         output = backend.generate(item.prompt, model.generation, seed=seed)
         latency_seconds = time.perf_counter() - started
+        peak_process_memory_bytes = peak_memory_reader()
         score = score_answer(item, output.text)
         output_tokens_per_second = (
             output.output_tokens / latency_seconds
@@ -219,9 +261,12 @@ def _evaluate_item(
             "score": score.score,
             "score_details": score.details,
             "latency_seconds": latency_seconds,
+            "time_to_first_token_seconds": output.time_to_first_token_seconds,
             "prompt_tokens": output.prompt_tokens,
             "output_tokens": output.output_tokens,
+            "output_characters": len(output.text),
             "output_tokens_per_second_end_to_end": output_tokens_per_second,
+            "peak_process_memory_bytes": peak_process_memory_bytes,
             "finish_reason": output.finish_reason,
             "error": None,
         }
@@ -242,9 +287,12 @@ def _evaluate_item(
             "score": None,
             "score_details": None,
             "latency_seconds": time.perf_counter() - started,
+            "time_to_first_token_seconds": None,
             "prompt_tokens": None,
             "output_tokens": None,
+            "output_characters": None,
             "output_tokens_per_second_end_to_end": None,
+            "peak_process_memory_bytes": peak_memory_reader(),
             "finish_reason": None,
             "error": {
                 "type": type(error).__name__,
@@ -260,6 +308,7 @@ def _build_summary(
     model_path: Path,
     suite_path: Path,
     load_seconds: float,
+    peak_memory_after_model_load_bytes: int | None,
 ) -> dict[str, Any]:
     completed = [record for record in records if record["status"] == "completed"]
     groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -290,6 +339,9 @@ def _build_summary(
             "sha256": _suite_hash(suite_path),
         },
         "model_load_seconds": load_seconds,
+        "peak_process_memory_after_model_load_bytes": (
+            peak_memory_after_model_load_bytes
+        ),
         "totals": _aggregate(records),
         "total_prompt_tokens": sum(
             record["prompt_tokens"] or 0 for record in completed
@@ -307,6 +359,7 @@ def _failed_summary(
     model_path: Path,
     suite_path: Path,
     load_seconds: float,
+    peak_memory_after_model_load_bytes: int | None,
     error: Exception,
 ) -> dict[str, Any]:
     return {
@@ -318,6 +371,9 @@ def _failed_summary(
             "sha256": _suite_hash(suite_path),
         },
         "model_load_seconds": load_seconds,
+        "peak_process_memory_after_model_load_bytes": (
+            peak_memory_after_model_load_bytes
+        ),
         "error": {"type": type(error).__name__, "message": str(error)},
     }
 
@@ -325,6 +381,22 @@ def _failed_summary(
 def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     completed = [record for record in records if record["status"] == "completed"]
     scores = [record["score"] for record in completed]
+    latencies = [record["latency_seconds"] for record in completed]
+    time_to_first_token_values = [
+        record["time_to_first_token_seconds"]
+        for record in completed
+        if record["time_to_first_token_seconds"] is not None
+    ]
+    output_rates = [
+        record["output_tokens_per_second_end_to_end"]
+        for record in completed
+        if record["output_tokens_per_second_end_to_end"] is not None
+    ]
+    peak_memory_values = [
+        record["peak_process_memory_bytes"]
+        for record in records
+        if record["peak_process_memory_bytes"] is not None
+    ]
     passed = sum(record["passed"] is True for record in completed)
     return {
         "attempted": len(records),
@@ -334,6 +406,10 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         "pass_rate": passed / len(completed) if completed else None,
         "mean_score": sum(scores) / len(scores) if scores else None,
         "latency_seconds": sum(record["latency_seconds"] for record in records),
+        "mean_latency_seconds": _mean(latencies),
+        "mean_time_to_first_token_seconds": _mean(time_to_first_token_values),
+        "mean_output_tokens_per_second_end_to_end": _mean(output_rates),
+        "peak_process_memory_bytes": max(peak_memory_values, default=None),
     }
 
 
@@ -369,6 +445,24 @@ def _resolve_from_root(root: Path, path: Path) -> Path:
 
 def _optional_int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _mean(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def _process_peak_memory_bytes() -> int | None:
+    """Return this process's lifetime peak resident memory when available."""
+    try:
+        import resource
+
+        peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    except (ImportError, OSError, ValueError):
+        return None
+    if not isinstance(peak_rss, int | float) or peak_rss < 0:
+        return None
+    multiplier = 1 if sys.platform == "darwin" else 1024
+    return int(peak_rss * multiplier)
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
