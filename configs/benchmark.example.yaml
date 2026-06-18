@@ -16,6 +16,7 @@ models:
     enabled: false
     context_window: 4096
     gpu_layers: -1
+    response_cleanup: none
     verbose: false
     generation:
       max_output_tokens: 256

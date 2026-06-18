@@ -15,4 +15,5 @@ difficulty_distribution:
 order_rule: easy_to_hard
 scoring_methods:
   - numeric_tolerance
+  - date_value
   - exact_match

@@ -5,4 +5,3 @@ status: pilot
 benchmark_files:
   - applied_reasoning/benchmark.yaml
   - messy_text_to_schema/benchmark.yaml
-  - constraint_load_curve/benchmark.yaml

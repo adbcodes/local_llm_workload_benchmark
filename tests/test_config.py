@@ -28,6 +28,7 @@ models:
     assert config.benchmark.repetitions == 1
     assert config.models[0].context_window == 4096
     assert config.models[0].gpu_layers == -1
+    assert config.models[0].response_cleanup == "none"
     assert config.models[0].generation.temperature == 0.0
 
 

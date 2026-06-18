@@ -1,4 +1,5 @@
 import json
+import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +12,8 @@ from llm_workload_benchmark.runner import (
     EvaluationError,
     GenerationOutput,
     LlamaCppBackend,
+    _prepare_response_for_scoring,
+    _suite_hash,
     run_benchmark,
 )
 
@@ -47,7 +50,12 @@ def _correct_answers() -> dict[str, str]:
     return answers
 
 
-def _write_config(tmp_path: Path, *, enabled: bool = True) -> Path:
+def _write_config(
+    tmp_path: Path,
+    *,
+    enabled: bool = True,
+    response_cleanup: str = "none",
+) -> Path:
     model_path = tmp_path / "model.gguf"
     model_path.write_bytes(b"fake model used by the injected test backend")
     config_path = tmp_path / "benchmark.yaml"
@@ -68,6 +76,7 @@ models:
     enabled: {str(enabled).lower()}
     context_window: 2048
     gpu_layers: 0
+    response_cleanup: {response_cleanup}
     generation:
       max_output_tokens: 64
       temperature: 0.0
@@ -95,7 +104,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
 
     assert (run_directory / "manifest.json").is_file()
     result_lines = (run_directory / "results.jsonl").read_text().splitlines()
-    assert len(result_lines) == 9
+    assert len(result_lines) == 6
     records = [json.loads(line) for line in result_lines]
     assert all(record["status"] == "completed" for record in records)
     assert all(record["passed"] for record in records)
@@ -111,13 +120,13 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
 
     summary = json.loads((run_directory / "summary.json").read_text())
     assert summary["status"] == "completed"
-    assert summary["totals"]["attempted"] == 9
-    assert summary["totals"]["passed"] == 9
+    assert summary["totals"]["attempted"] == 6
+    assert summary["totals"]["passed"] == 6
     assert summary["totals"]["pass_rate"] == 1.0
-    assert summary["totals"]["mean_time_to_first_token_seconds"] == 0.05
+    assert summary["totals"]["mean_time_to_first_token_seconds"] == pytest.approx(0.05)
     assert summary["totals"]["peak_process_memory_bytes"] == 4_000_000_000
     assert summary["peak_process_memory_after_model_load_bytes"] == 4_000_000_000
-    assert summary["total_prompt_tokens"] == 180
+    assert summary["total_prompt_tokens"] == 120
     assert len(summary["dataset"]["sha256"]) == 64
 
 
@@ -142,7 +151,7 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
         for line in (run_directory / "results.jsonl").read_text().splitlines()
     ]
     errors = [record for record in records if record["status"] == "error"]
-    assert len(records) == 9
+    assert len(records) == 6
     assert len(errors) == 1
     assert errors[0]["error"] == {
         "type": "RuntimeError",
@@ -150,9 +159,73 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
     }
 
     summary = json.loads((run_directory / "summary.json").read_text())
-    assert summary["totals"]["completed"] == 8
+    assert summary["totals"]["completed"] == 5
     assert summary["totals"]["errors"] == 1
-    assert summary["totals"]["passed"] == 8
+    assert summary["totals"]["passed"] == 5
+
+
+def test_runner_applies_only_configured_empty_think_cleanup(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        response_cleanup="strip_empty_think",
+    )
+    config = load_config(config_path)
+    answers = _correct_answers()
+
+    class EmptyThinkBackend(AnsweringBackend):
+        def generate(self, prompt, generation, *, seed):
+            output = super().generate(prompt, generation, seed=seed)
+            return GenerationOutput(
+                text=f"<think>\n\n</think>\n\n{output.text}",
+                prompt_tokens=output.prompt_tokens,
+                output_tokens=output.output_tokens,
+                time_to_first_token_seconds=output.time_to_first_token_seconds,
+                finish_reason=output.finish_reason,
+            )
+
+    run_directory = run_benchmark(
+        config,
+        config_path,
+        project_root=tmp_path,
+        backend_factory=lambda model, model_path, seed: EmptyThinkBackend(answers),
+        peak_memory_reader=lambda: 4_000_000_000,
+    )
+    records = [
+        json.loads(line)
+        for line in (run_directory / "results.jsonl").read_text().splitlines()
+    ]
+
+    assert all(record["passed"] for record in records)
+    assert all(record["raw_response"].startswith("<think>") for record in records)
+    assert all(not record["evaluated_response"].startswith("<think>") for record in records)
+    assert all(record["response_cleanup"] == "strip_empty_think" for record in records)
+
+    nonempty = "<think>real reasoning</think>\n120"
+    assert _prepare_response_for_scoring(nonempty, "strip_empty_think") == (
+        nonempty,
+        None,
+    )
+
+
+def test_suite_hash_includes_only_active_benchmark_files(tmp_path: Path) -> None:
+    suite_root = tmp_path / "v1"
+    shutil.copytree(Path("data/benchmarks/v1"), suite_root)
+    suite_path = suite_root / "suite.yaml"
+    original_hash = _suite_hash(suite_path)
+
+    inactive_items = suite_root / "constraint_load_curve" / "items.jsonl"
+    inactive_items.write_text(
+        inactive_items.read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+    assert _suite_hash(suite_path) == original_hash
+
+    active_items = suite_root / "applied_reasoning" / "items.jsonl"
+    active_items.write_text(
+        active_items.read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+    assert _suite_hash(suite_path) != original_hash
 
 
 def test_runner_requires_exactly_one_enabled_model(tmp_path: Path) -> None:

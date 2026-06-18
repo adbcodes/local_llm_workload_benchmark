@@ -31,6 +31,7 @@ class ModelConfig(BaseModel):
     gpu_layers: int = Field(default=-1, ge=-1)
     threads: int | None = Field(default=None, ge=1)
     chat_format: str | None = None
+    response_cleanup: Literal["none", "strip_empty_think"] = "none"
     verbose: bool = False
     system_prompt: str = Field(
         default=(

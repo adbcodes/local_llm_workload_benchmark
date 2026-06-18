@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 import time
 from collections import defaultdict
@@ -9,6 +10,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+
+import yaml
 
 from llm_workload_benchmark.config import (
     BenchmarkConfig,
@@ -239,7 +242,11 @@ def _evaluate_item(
         output = backend.generate(item.prompt, model.generation, seed=seed)
         latency_seconds = time.perf_counter() - started
         peak_process_memory_bytes = peak_memory_reader()
-        score = score_answer(item, output.text)
+        evaluated_response, cleanup_applied = _prepare_response_for_scoring(
+            output.text,
+            model.response_cleanup,
+        )
+        score = score_answer(item, evaluated_response)
         output_tokens_per_second = (
             output.output_tokens / latency_seconds
             if output.output_tokens is not None and latency_seconds > 0
@@ -257,6 +264,8 @@ def _evaluate_item(
             "repetition": repetition,
             "seed": seed,
             "raw_response": output.text,
+            "evaluated_response": evaluated_response,
+            "response_cleanup": cleanup_applied,
             "passed": score.passed,
             "score": score.score,
             "score_details": score.details,
@@ -283,6 +292,8 @@ def _evaluate_item(
             "repetition": repetition,
             "seed": seed,
             "raw_response": None,
+            "evaluated_response": None,
+            "response_cleanup": None,
             "passed": None,
             "score": None,
             "score_details": None,
@@ -423,19 +434,28 @@ def _model_summary(model: ModelConfig, model_path: Path) -> dict[str, Any]:
         "gpu_layers": model.gpu_layers,
         "threads": model.threads,
         "chat_format": model.chat_format,
+        "response_cleanup": model.response_cleanup,
         "generation": model.generation.model_dump(mode="json"),
     }
 
 
 def _suite_hash(suite_path: Path) -> str:
     digest = hashlib.sha256()
-    for path in sorted(suite_path.parent.rglob("*")):
-        if path.is_file() and path.suffix in {".yaml", ".jsonl"}:
-            relative_path = path.relative_to(suite_path.parent)
-            digest.update(str(relative_path).encode("utf-8"))
-            digest.update(b"\0")
-            digest.update(path.read_bytes())
-            digest.update(b"\0")
+    suite_root = suite_path.parent
+    manifest = yaml.safe_load(suite_path.read_text(encoding="utf-8"))
+    active_paths = [suite_path]
+    for relative_definition_path in manifest["benchmark_files"]:
+        definition_path = suite_root / relative_definition_path
+        active_paths.append(definition_path)
+        definition = yaml.safe_load(definition_path.read_text(encoding="utf-8"))
+        active_paths.append(definition_path.parent / definition["items_path"])
+
+    for path in sorted(active_paths, key=lambda value: str(value.relative_to(suite_root))):
+        relative_path = path.relative_to(suite_root)
+        digest.update(str(relative_path).encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
     return digest.hexdigest()
 
 
@@ -445,6 +465,23 @@ def _resolve_from_root(root: Path, path: Path) -> Path:
 
 def _optional_int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _prepare_response_for_scoring(
+    response: str,
+    cleanup: str,
+) -> tuple[str, str | None]:
+    if cleanup == "strip_empty_think":
+        cleaned = re.sub(
+            r"^\s*<think>\s*</think>\s*",
+            "",
+            response,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if cleaned != response:
+            return cleaned, "strip_empty_think"
+    return response, None
 
 
 def _mean(values: list[float]) -> float | None:

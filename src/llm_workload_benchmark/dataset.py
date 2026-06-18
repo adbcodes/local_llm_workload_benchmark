@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections import Counter
 from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal, Self
 
@@ -14,6 +16,7 @@ Difficulty = Literal["easy", "medium", "hard"]
 Split = Literal["dev", "test"]
 ScoringMethod = Literal[
     "numeric_tolerance",
+    "date_value",
     "exact_match",
     "json_exact",
     "constraint_rules",
@@ -93,6 +96,11 @@ class DatasetItem(BaseModel):
                 raise ValueError("absolute_tolerance must be numeric")
             if tolerance < 0:
                 raise ValueError("absolute_tolerance cannot be negative")
+        elif method == "date_value":
+            if contract_type != "date":
+                raise ValueError("date_value requires a date contract")
+            if not isinstance(value, str):
+                raise ValueError("date_value requires a string expected value")
         elif method == "json_exact":
             if contract_type != "json":
                 raise ValueError("json_exact requires a json contract")
@@ -106,6 +114,7 @@ class DatasetItem(BaseModel):
                 raise ValueError("constraint_rules requires a non-empty rules object")
         elif not isinstance(value, (str, int, float, bool)):
             raise ValueError("exact_match requires a scalar expected value")
+        _validate_scoring_parameters(method, self.scoring.parameters)
         return self
 
 
@@ -177,6 +186,114 @@ class ScoreResult(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
+def _validate_scoring_parameters(
+    method: ScoringMethod,
+    parameters: dict[str, Any],
+) -> None:
+    allowed_parameters: dict[ScoringMethod, set[str]] = {
+        "numeric_tolerance": {"absolute_tolerance", "allow_surrounding_text"},
+        "date_value": set(),
+        "exact_match": {
+            "strip",
+            "case_sensitive",
+            "allow_surrounding_text",
+            "answer_format",
+        },
+        "json_exact": {"allow_diagnostic_normalization"},
+        "constraint_rules": {"rules", "content_requirements"},
+    }
+    unknown = set(parameters) - allowed_parameters[method]
+    if unknown:
+        raise ValueError(f"unknown {method} parameters: {sorted(unknown)}")
+
+    for name in ("allow_surrounding_text", "strip", "case_sensitive"):
+        if name in parameters and not isinstance(parameters[name], bool):
+            raise ValueError(f"{name} must be a boolean")
+
+    if method == "numeric_tolerance":
+        return
+    if method == "date_value":
+        return
+    if method == "exact_match":
+        answer_format = parameters.get("answer_format")
+        if answer_format not in {None, "comma_separated_labels"}:
+            raise ValueError("answer_format must be comma_separated_labels")
+        return
+    if method == "json_exact":
+        diagnostic = parameters.get("allow_diagnostic_normalization", True)
+        if not isinstance(diagnostic, bool):
+            raise ValueError("allow_diagnostic_normalization must be a boolean")
+        return
+
+    rules = parameters["rules"]
+    allowed_rules = {
+        "max_words",
+        "exact_words",
+        "exact_sentences",
+        "required_terms",
+        "forbidden_terms",
+        "prefix",
+        "suffix",
+        "forbidden_punctuation",
+    }
+    unknown_rules = set(rules) - allowed_rules
+    if unknown_rules:
+        raise ValueError(f"unknown constraint rules: {sorted(unknown_rules)}")
+    for name in ("max_words", "exact_words", "exact_sentences"):
+        if name in rules:
+            value = rules[name]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(f"{name} must be a positive integer")
+    if "max_words" in rules and "exact_words" in rules:
+        if rules["exact_words"] > rules["max_words"]:
+            raise ValueError("exact_words cannot exceed max_words")
+    for name in ("required_terms", "forbidden_terms", "forbidden_punctuation"):
+        if name in rules:
+            _validate_nonempty_strings(rules[name], name)
+    if "forbidden_punctuation" in rules and any(
+        len(value) != 1 for value in rules["forbidden_punctuation"]
+    ):
+        raise ValueError("forbidden_punctuation entries must be single characters")
+    for name in ("prefix", "suffix"):
+        if name in rules and (
+            not isinstance(rules[name], str) or not rules[name].strip()
+        ):
+            raise ValueError(f"{name} must be a non-empty string")
+    required = {term.casefold() for term in rules.get("required_terms", [])}
+    forbidden = {term.casefold() for term in rules.get("forbidden_terms", [])}
+    if required & forbidden:
+        raise ValueError("the same term cannot be both required and forbidden")
+
+    content = parameters.get("content_requirements")
+    if not isinstance(content, dict) or set(content) != {"required_facts"}:
+        raise ValueError(
+            "constraint_rules requires content_requirements.required_facts"
+        )
+    facts = content["required_facts"]
+    if not isinstance(facts, list) or not facts:
+        raise ValueError("required_facts must be a non-empty list")
+    seen_names: set[str] = set()
+    for fact in facts:
+        if not isinstance(fact, dict) or set(fact) != {"name", "any_of"}:
+            raise ValueError("each required fact needs exactly name and any_of")
+        name = fact["name"]
+        if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+            raise ValueError("required fact names must use snake_case")
+        if name in seen_names:
+            raise ValueError(f"duplicate required fact name {name!r}")
+        seen_names.add(name)
+        _validate_nonempty_strings(fact["any_of"], f"required fact {name}")
+
+
+def _validate_nonempty_strings(value: Any, name: str) -> None:
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(not isinstance(item, str) or not item.strip() for item in value)
+    ):
+        raise ValueError(f"{name} must be a non-empty list of non-empty strings")
+
+
 def load_dataset(path: Path) -> list[DatasetItem]:
     """Load a JSONL dataset and enforce stable IDs and easy-to-hard ordering."""
 
@@ -204,6 +321,15 @@ def load_dataset(path: Path) -> list[DatasetItem]:
             raise DatasetError(
                 f"invalid dataset item in {path} on line {line_number}:\n{error}"
             ) from error
+        gold_answer = (
+            json.dumps(item.expected["value"], separators=(",", ":"))
+            if item.response_contract.type == "json"
+            else str(item.expected["value"])
+        )
+        if not score_answer(item, gold_answer).passed:
+            raise DatasetError(
+                f"expected answer for item {item.id!r} does not satisfy its scorer"
+            )
         if item.id in seen_ids:
             raise DatasetError(f"duplicate item id {item.id!r} in {path}")
         seen_ids.add(item.id)
@@ -273,6 +399,8 @@ def score_answer(item: DatasetItem, answer: str) -> ScoreResult:
     method = item.scoring.method
     if method == "numeric_tolerance":
         return _score_numeric(item, answer)
+    if method == "date_value":
+        return _score_date(item, answer)
     if method == "exact_match":
         return _score_exact(item, answer)
     if method == "json_exact":
@@ -304,10 +432,37 @@ def _load_yaml_model(path: Path, model_type: type[BaseModel]) -> Any:
 
 
 def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
-    try:
-        actual = float(answer.strip().replace(",", ""))
-    except ValueError:
-        return ScoreResult(passed=False, score=0, details={"reason": "not_numeric"})
+    if item.scoring.parameters.get("allow_surrounding_text", False):
+        matches = re.findall(
+            r"(?<![\w.])[-+]?(?:\d[\d,]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
+            answer,
+        )
+        candidates = []
+        for match in matches:
+            try:
+                value = float(match.replace(",", ""))
+            except ValueError:
+                continue
+            if math.isfinite(value):
+                candidates.append(value)
+        unique_candidates = set(candidates)
+        if len(unique_candidates) != 1:
+            return ScoreResult(
+                passed=False,
+                score=0,
+                details={
+                    "reason": "missing_or_ambiguous_numeric_answer",
+                    "candidates": candidates,
+                },
+            )
+        actual = unique_candidates.pop()
+    else:
+        try:
+            actual = float(answer.strip().replace(",", ""))
+        except ValueError:
+            return ScoreResult(passed=False, score=0, details={"reason": "not_numeric"})
+        if not math.isfinite(actual):
+            return ScoreResult(passed=False, score=0, details={"reason": "not_finite"})
 
     expected = float(item.expected["value"])
     tolerance = float(item.scoring.parameters.get("absolute_tolerance", 0))
@@ -323,6 +478,27 @@ def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
 def _score_exact(item: DatasetItem, answer: str) -> ScoreResult:
     expected = str(item.expected["value"])
     actual = answer.strip() if item.scoring.parameters.get("strip", True) else answer
+    candidates: list[str] | None = None
+    if item.scoring.parameters.get("allow_surrounding_text", False):
+        answer_format = item.scoring.parameters.get("answer_format")
+        if answer_format == "comma_separated_labels":
+            label_count = len(expected.split(","))
+            pattern = rf"(?<![\w])(?:[A-Za-z0-9]+\s*,\s*){{{label_count - 1}}}[A-Za-z0-9]+(?![\w])"
+            candidates = re.findall(pattern, actual)
+            candidates = [re.sub(r"\s*,\s*", ",", value) for value in candidates]
+        if candidates is not None:
+            unique_candidates = list(dict.fromkeys(candidates))
+            if len(unique_candidates) != 1:
+                return ScoreResult(
+                    passed=False,
+                    score=0,
+                    details={
+                        "reason": "missing_or_ambiguous_exact_answer",
+                        "candidates": unique_candidates,
+                        "expected": expected,
+                    },
+                )
+            actual = unique_candidates[0]
     if not item.scoring.parameters.get("case_sensitive", True):
         actual = actual.casefold()
         expected = expected.casefold()
@@ -330,15 +506,139 @@ def _score_exact(item: DatasetItem, answer: str) -> ScoreResult:
     return ScoreResult(
         passed=passed,
         score=float(passed),
-        details={"actual": actual, "expected": expected},
+        details={"actual": actual, "expected": expected, "candidates": candidates},
+    )
+
+
+def _score_date(item: DatasetItem, answer: str) -> ScoreResult:
+    expected_candidates = _extract_dates(str(item.expected["value"]))
+    candidates = _extract_dates(answer)
+    if len(expected_candidates) != 1:
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={"reason": "invalid_expected_date"},
+        )
+    if len(candidates) != 1:
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={
+                "reason": "missing_or_ambiguous_date_answer",
+                "candidates": [value.isoformat() for value in candidates],
+                "expected": expected_candidates[0].isoformat(),
+            },
+        )
+
+    actual = candidates[0]
+    expected = expected_candidates[0]
+    passed = actual == expected
+    return ScoreResult(
+        passed=passed,
+        score=float(passed),
+        details={"actual": actual.isoformat(), "expected": expected.isoformat()},
+    )
+
+
+def _extract_dates(answer: str) -> list[date]:
+    candidates: list[date] = []
+
+    for value in re.findall(r"(?<!\d)\d{4}-\d{2}-\d{2}(?!\d)", answer):
+        _append_parsed_date(candidates, value, "%Y-%m-%d")
+
+    numeric_pattern = r"(?<!\d)(\d{1,2})([-/])(\d{1,2})\2(\d{4})(?!\d)"
+    for first, _, second, year in re.findall(numeric_pattern, answer):
+        first_number = int(first)
+        second_number = int(second)
+        if first_number > 12 >= second_number:
+            _append_date_parts(candidates, int(year), second_number, first_number)
+        elif second_number > 12 >= first_number:
+            _append_date_parts(candidates, int(year), first_number, second_number)
+
+    months = (
+        "January|February|March|April|May|June|July|August|September|October|"
+        "November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec"
+    )
+    month_first_pattern = rf"(?i:\b({months})\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s+(\d{{4}})\b)"
+    for month, day_value, year in re.findall(month_first_pattern, answer):
+        _append_text_date(candidates, day_value, month, year)
+
+    day_first_pattern = rf"(?i:\b(\d{{1,2}})(?:st|nd|rd|th)?\s+({months})\s+(\d{{4}})\b)"
+    for day_value, month, year in re.findall(day_first_pattern, answer):
+        _append_text_date(candidates, day_value, month, year)
+
+    return list(dict.fromkeys(candidates))
+
+
+def _append_parsed_date(candidates: list[date], value: str, date_format: str) -> None:
+    try:
+        candidates.append(datetime.strptime(value, date_format).date())
+    except ValueError:
+        return
+
+
+def _append_date_parts(
+    candidates: list[date],
+    year: int,
+    month: int,
+    day_value: int,
+) -> None:
+    try:
+        candidates.append(date(year, month, day_value))
+    except ValueError:
+        return
+
+
+def _append_text_date(
+    candidates: list[date],
+    day_value: str,
+    month: str,
+    year: str,
+) -> None:
+    normalized_month = month.title()
+    if normalized_month == "Sept":
+        normalized_month = "Sep"
+    full_months = {
+        "January",
+        "February",
+        "March",
+        "April",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    }
+    month_format = "%B" if normalized_month in full_months else "%b"
+    _append_parsed_date(
+        candidates,
+        f"{day_value} {normalized_month} {year}",
+        f"%d {month_format} %Y",
     )
 
 
 def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
+    protocol_compliant = True
+    wrapper: str | None = None
     try:
         actual = json.loads(answer)
     except json.JSONDecodeError:
-        return ScoreResult(passed=False, score=0, details={"reason": "invalid_json"})
+        protocol_compliant = False
+        actual = None
+        if item.scoring.parameters.get("allow_diagnostic_normalization", True):
+            actual, wrapper = _extract_diagnostic_json(answer)
+        if actual is None:
+            return ScoreResult(
+                passed=False,
+                score=0,
+                details={
+                    "reason": "invalid_json",
+                    "protocol_compliant": False,
+                    "diagnostic_json_valid": False,
+                },
+            )
 
     expected = item.expected["value"]
     expected_leaves = _flatten_json(expected)
@@ -349,20 +649,65 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
         for path in all_paths
         if path in expected_leaves
         and path in actual_leaves
-        and expected_leaves[path] == actual_leaves[path]
+        and _json_values_equal(expected_leaves[path], actual_leaves[path])
     }
     score = len(matched_paths) / len(all_paths) if all_paths else 1.0
-    passed = actual == expected
+    content_exact = _json_values_equal(actual, expected)
+    passed = protocol_compliant and content_exact
     return ScoreResult(
         passed=passed,
         score=score,
         details={
-            "valid_json": True,
+            "protocol_compliant": protocol_compliant,
+            "content_exact": content_exact,
+            "diagnostic_wrapper": wrapper,
             "leaf_accuracy": score,
             "missing_paths": sorted(set(expected_leaves) - set(actual_leaves)),
             "extra_paths": sorted(set(actual_leaves) - set(expected_leaves)),
         },
     )
+
+
+def _extract_diagnostic_json(answer: str) -> tuple[Any | None, str | None]:
+    stripped = answer.strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL)
+    if fenced:
+        try:
+            return json.loads(fenced.group(1)), "markdown_fence"
+        except json.JSONDecodeError:
+            return None, None
+
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(stripped):
+        if character not in "[{":
+            continue
+        try:
+            value, end = decoder.raw_decode(stripped[index:])
+        except json.JSONDecodeError:
+            continue
+        trailing = stripped[index + end :].strip()
+        if index > 0 or trailing:
+            return value, "surrounding_text"
+    return None, None
+
+
+def _json_values_equal(left: Any, right: Any) -> bool:
+    if isinstance(left, bool) or isinstance(right, bool):
+        return type(left) is type(right) and left == right
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return left == right
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return set(left) == set(right) and all(
+            _json_values_equal(left[key], right[key]) for key in left
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _json_values_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right)
+        )
+    return left == right
 
 
 def _flatten_json(value: Any, path: str = "$") -> dict[str, Any]:
@@ -392,24 +737,51 @@ def _score_constraints(item: DatasetItem, answer: str) -> ScoreResult:
         sentence_count = len(re.findall(r"[.!?]+(?:\s|$)", answer.strip()))
         checks["exact_sentences"] = sentence_count == rules["exact_sentences"]
     if "required_terms" in rules:
-        folded_answer = answer.casefold()
         checks["required_terms"] = all(
-            term.casefold() in folded_answer for term in rules["required_terms"]
+            _contains_term(answer, term) for term in rules["required_terms"]
         )
     if "forbidden_terms" in rules:
-        folded_answer = answer.casefold()
         checks["forbidden_terms"] = all(
-            term.casefold() not in folded_answer for term in rules["forbidden_terms"]
+            not _contains_term(answer, term) for term in rules["forbidden_terms"]
         )
     if "prefix" in rules:
         checks["prefix"] = answer.startswith(rules["prefix"])
     if "suffix" in rules:
         checks["suffix"] = answer.endswith(rules["suffix"])
+    if "forbidden_punctuation" in rules:
+        checks["forbidden_punctuation"] = all(
+            punctuation not in answer for punctuation in rules["forbidden_punctuation"]
+        )
 
     passed_count = sum(checks.values())
-    score = passed_count / len(checks) if checks else 0
+    constraint_score = passed_count / len(checks) if checks else 0
+    fact_checks = {
+        fact["name"]: any(_contains_term(answer, phrase) for phrase in fact["any_of"])
+        for fact in item.scoring.parameters["content_requirements"]["required_facts"]
+    }
+    content_score = sum(fact_checks.values()) / len(fact_checks)
+    content_preserved = all(fact_checks.values())
     return ScoreResult(
-        passed=bool(checks) and passed_count == len(checks),
-        score=score,
-        details={"checks": checks, "word_count": len(words)},
+        passed=(
+            content_preserved
+            and bool(checks)
+            and passed_count == len(checks)
+        ),
+        score=content_score * constraint_score,
+        details={
+            "content_preserved": content_preserved,
+            "content_score": content_score,
+            "fact_checks": fact_checks,
+            "constraint_score": constraint_score,
+            "checks": checks,
+            "word_count": len(words),
+        },
     )
+
+
+def _contains_term(answer: str, term: str) -> bool:
+    return re.search(
+        rf"(?<!\w){re.escape(term)}(?!\w)",
+        answer,
+        flags=re.IGNORECASE,
+    ) is not None
