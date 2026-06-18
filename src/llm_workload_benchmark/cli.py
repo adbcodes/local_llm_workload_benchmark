@@ -6,7 +6,8 @@ import typer
 
 from llm_workload_benchmark import __version__
 from llm_workload_benchmark.config import ConfigError, load_config
-from llm_workload_benchmark.manifest import create_run
+from llm_workload_benchmark.dataset import DatasetError
+from llm_workload_benchmark.runner import EvaluationError, run_benchmark
 
 app = typer.Typer(
     name="llm-benchmark",
@@ -34,8 +35,8 @@ def main(
     """Local LLM workload benchmark commands."""
 
 
-@app.command("create-run")
-def create_run_command(
+@app.command("run")
+def run_command(
     config_path: Path = typer.Option(
         ...,
         "--config",
@@ -45,14 +46,14 @@ def create_run_command(
         dir_okay=False,
         readable=True,
         resolve_path=True,
-        help="YAML benchmark configuration to record.",
+        help="YAML benchmark configuration to execute.",
     ),
 ) -> None:
-    """Create a run directory and write its manifest."""
+    """Run the schema-pilot workload on one enabled local model."""
     try:
         config = load_config(config_path)
-        run_directory = create_run(config, config_path)
-    except (ConfigError, OSError) as error:
+        run_directory = run_benchmark(config, config_path)
+    except (ConfigError, DatasetError, EvaluationError, OSError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
 

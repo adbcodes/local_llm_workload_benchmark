@@ -27,6 +27,18 @@ class ModelConfig(BaseModel):
     model_path: Path
     quantization: str | None = None
     enabled: bool = True
+    context_window: int = Field(default=4096, ge=512)
+    gpu_layers: int = Field(default=-1, ge=-1)
+    threads: int | None = Field(default=None, ge=1)
+    chat_format: str | None = None
+    verbose: bool = False
+    system_prompt: str = Field(
+        default=(
+            "Follow the user's instructions precisely. Return only the requested "
+            "answer without commentary."
+        ),
+        min_length=1,
+    )
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
 
 
@@ -75,4 +87,3 @@ def load_config(path: Path) -> BenchmarkConfig:
         return BenchmarkConfig.model_validate(raw_config)
     except ValidationError as error:
         raise ConfigError(f"config validation failed:\n{error}") from error
-

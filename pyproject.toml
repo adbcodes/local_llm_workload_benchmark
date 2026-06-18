@@ -14,6 +14,11 @@ dependencies = [
   "typer>=0.15,<1",
 ]
 
+[project.optional-dependencies]
+llama-cpp = [
+  "llama-cpp-python>=0.3,<1",
+]
+
 [project.scripts]
 llm-benchmark = "llm_workload_benchmark.cli:app"
 
