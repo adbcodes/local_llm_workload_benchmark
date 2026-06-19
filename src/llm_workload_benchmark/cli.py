@@ -7,6 +7,7 @@ import typer
 from llm_workload_benchmark import __version__
 from llm_workload_benchmark.config import ConfigError, load_config
 from llm_workload_benchmark.dataset import DatasetError
+from llm_workload_benchmark.report import ReportError, generate_comparison_report
 from llm_workload_benchmark.runner import (
     EvaluationError,
     RunProgress,
@@ -101,3 +102,39 @@ def benchmark_command(
         raise typer.Exit(code=1) from error
 
     typer.echo(experiment_directory)
+
+
+@app.command("report")
+def report_command(
+    experiment_directory: Path = typer.Option(
+        ...,
+        "--experiment",
+        "-e",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+        help="Saved matrix experiment directory to summarize.",
+    ),
+    output_path: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+        help="Markdown destination; defaults to <experiment>/comparison.md.",
+    ),
+) -> None:
+    """Generate a Markdown comparison from a saved matrix experiment."""
+    try:
+        report_path = generate_comparison_report(
+            experiment_directory,
+            output_path=output_path,
+        )
+    except (ReportError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    typer.echo(report_path)

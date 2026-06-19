@@ -1,4 +1,5 @@
 import json
+import shutil
 from datetime import date, timedelta
 from itertools import permutations
 from pathlib import Path
@@ -16,25 +17,41 @@ SUITE_PATH = Path("data/benchmarks/v1/suite.yaml")
 CONSTRAINT_PATH = Path("data/benchmarks/v1/constraint_load_curve/items.jsonl")
 
 
-def test_pilot_suite_loads_three_benchmarks_with_difficulty_progression() -> None:
+def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
     suite = load_suite(SUITE_PATH)
 
     assert set(suite.items) == {
         "applied_reasoning",
         "messy_text_to_schema",
     }
-    assert sum(len(items) for items in suite.items.values()) == 6
+    assert sum(len(items) for items in suite.items.values()) == 7
+    assert [item.difficulty for item in suite.items["applied_reasoning"]] == [
+        "easy",
+        "medium",
+        "medium",
+        "hard",
+    ]
+    assert [item.difficulty for item in suite.items["messy_text_to_schema"]] == [
+        "easy",
+        "medium",
+        "hard",
+    ]
     for items in suite.items.values():
-        assert [item.difficulty for item in items] == ["easy", "medium", "hard"]
         assert all(item.split == "dev" for item in items)
 
 
 def test_numeric_and_exact_answer_verifiers() -> None:
     suite = load_suite(SUITE_PATH)
-    percentage, calendar, ordering = suite.items["applied_reasoning"]
+    percentage, calendar, calendar_variant, ordering = suite.items[
+        "applied_reasoning"
+    ]
 
     assert calendar.scoring.method == "date_value"
-    assert score_answer(percentage, "120").passed
+    percentage_result = score_answer(percentage, "120")
+    assert percentage_result.passed
+    assert percentage_result.type == "deterministic"
+    assert percentage_result.evaluator == "numeric_tolerance"
+    assert percentage_result.version == 1
     assert score_answer(percentage, "120.0").passed
     assert score_answer(percentage, '"120"').passed
     assert score_answer(percentage, "The answer is 120.").passed
@@ -48,6 +65,8 @@ def test_numeric_and_exact_answer_verifiers() -> None:
     assert score_answer(calendar, "The answer is 05/26/2026.").passed
     assert not score_answer(calendar, "The answer is 05/06/2026.").passed
     assert not score_answer(calendar, "Either 2026-05-26 or 2026-06-02.").passed
+    assert calendar_variant.variant_of == calendar.id
+    assert score_answer(calendar_variant, "May 26, 2026").passed
     assert score_answer(ordering, "D,C,A,B").passed
     assert score_answer(ordering, "Therefore the order is D, C, A, B.").passed
     assert not score_answer(ordering, "A,B,D,C").passed
@@ -55,10 +74,11 @@ def test_numeric_and_exact_answer_verifiers() -> None:
 
 def test_reasoning_and_order_gold_answers_are_independently_derived() -> None:
     suite = load_suite(SUITE_PATH)
-    _, calendar, ordering = suite.items["applied_reasoning"]
+    _, calendar, calendar_variant, ordering = suite.items["applied_reasoning"]
 
     seventh_occurrence = date(2026, 3, 3) + timedelta(weeks=2 * 6)
     assert seventh_occurrence.isoformat() == calendar.expected["value"]
+    assert calendar_variant.expected == calendar.expected
 
     valid_orders: list[str] = []
     for candidate in permutations("ABCD"):
@@ -70,6 +90,39 @@ def test_reasoning_and_order_gold_answers_are_independently_derived() -> None:
         ):
             valid_orders.append(",".join(candidate))
     assert valid_orders == [ordering.expected["value"]]
+
+
+@pytest.mark.parametrize(
+    ("invalid_lineage", "message"),
+    [
+        ("missing", "references unknown base item"),
+        ("cross_benchmark", "same benchmark"),
+        ("chained", "not another variant"),
+    ],
+)
+def test_suite_rejects_invalid_variant_lineage(
+    tmp_path: Path,
+    invalid_lineage: str,
+    message: str,
+) -> None:
+    suite_root = tmp_path / "v1"
+    shutil.copytree(Path("data/benchmarks/v1"), suite_root)
+    items_path = suite_root / "applied_reasoning" / "items.jsonl"
+    items = items_path.read_text(encoding="utf-8").splitlines()
+    variant = json.loads(items[2])
+    if invalid_lineage == "missing":
+        variant["variant_of"] = "missing_base_item"
+    elif invalid_lineage == "cross_benchmark":
+        variant["variant_of"] = "schema_invoice_001"
+    else:
+        parent = json.loads(items[1])
+        parent["variant_of"] = "reason_percentage_001"
+        items[1] = json.dumps(parent)
+    items[2] = json.dumps(variant)
+    items_path.write_text("\n".join(items) + "\n", encoding="utf-8")
+
+    with pytest.raises(DatasetError, match=message):
+        load_suite(suite_root / "suite.yaml")
 
 
 def test_json_verifier_reports_partial_leaf_accuracy() -> None:

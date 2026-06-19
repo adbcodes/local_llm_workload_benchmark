@@ -12,6 +12,8 @@ from typing import Any, Literal, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from llm_workload_benchmark.evaluation import EvaluationResult
+
 Difficulty = Literal["easy", "medium", "hard"]
 Split = Literal["dev", "test"]
 ScoringMethod = Literal[
@@ -347,7 +349,7 @@ def load_suite(path: Path) -> BenchmarkSuite:
     manifest = _load_yaml_model(path, SuiteManifest)
     definitions: dict[str, BenchmarkDefinition] = {}
     items_by_benchmark: dict[str, list[DatasetItem]] = {}
-    all_item_ids: set[str] = set()
+    all_items: dict[str, DatasetItem] = {}
 
     for relative_definition_path in manifest.benchmark_files:
         definition_path = path.parent / relative_definition_path
@@ -379,12 +381,14 @@ def load_suite(path: Path) -> BenchmarkSuite:
                     f"item {item.id!r} uses undeclared scoring method "
                     f"{item.scoring.method!r}"
                 )
-            if item.id in all_item_ids:
+            if item.id in all_items:
                 raise DatasetError(f"duplicate item id across suite: {item.id!r}")
-            all_item_ids.add(item.id)
+            all_items[item.id] = item
 
         definitions[definition.id] = definition
         items_by_benchmark[definition.id] = items
+
+    _validate_variant_lineage(all_items)
 
     return BenchmarkSuite(
         manifest=manifest,
@@ -393,19 +397,48 @@ def load_suite(path: Path) -> BenchmarkSuite:
     )
 
 
-def score_answer(item: DatasetItem, answer: str) -> ScoreResult:
+def _validate_variant_lineage(items: dict[str, DatasetItem]) -> None:
+    for item in items.values():
+        if item.variant_of is None:
+            continue
+        parent = items.get(item.variant_of)
+        if parent is None:
+            raise DatasetError(
+                f"variant item {item.id!r} references unknown base item "
+                f"{item.variant_of!r}"
+            )
+        if parent.benchmark != item.benchmark:
+            raise DatasetError(
+                f"variant item {item.id!r} must use a base item from the same benchmark"
+            )
+        if parent.variant_of is not None:
+            raise DatasetError(
+                f"variant item {item.id!r} must reference a base item, not another variant"
+            )
+
+
+def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
     """Score one raw model answer using the verifier declared by its item."""
 
     method = item.scoring.method
     if method == "numeric_tolerance":
-        return _score_numeric(item, answer)
-    if method == "date_value":
-        return _score_date(item, answer)
-    if method == "exact_match":
-        return _score_exact(item, answer)
-    if method == "json_exact":
-        return _score_json(item, answer)
-    return _score_constraints(item, answer)
+        score = _score_numeric(item, answer)
+    elif method == "date_value":
+        score = _score_date(item, answer)
+    elif method == "exact_match":
+        score = _score_exact(item, answer)
+    elif method == "json_exact":
+        score = _score_json(item, answer)
+    else:
+        score = _score_constraints(item, answer)
+    return EvaluationResult(
+        type="deterministic",
+        evaluator=method,
+        version=1,
+        passed=score.passed,
+        score=score.score,
+        details=score.details,
+    )
 
 
 def _validate_difficulty_progression(items: list[DatasetItem], path: Path) -> None:

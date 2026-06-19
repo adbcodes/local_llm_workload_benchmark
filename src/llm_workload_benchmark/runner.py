@@ -403,14 +403,14 @@ def _evaluate_item(
             output.text,
             model.response_cleanup,
         )
-        score = score_answer(item, evaluated_response)
+        evaluation = score_answer(item, evaluated_response)
         output_tokens_per_second = (
             output.output_tokens / latency_seconds
             if output.output_tokens is not None and latency_seconds > 0
             else None
         )
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "status": "completed",
             "model_id": model.id,
             "benchmark": item.benchmark,
@@ -423,9 +423,7 @@ def _evaluate_item(
             "raw_response": output.text,
             "evaluated_response": evaluated_response,
             "response_cleanup": cleanup_applied,
-            "passed": score.passed,
-            "score": score.score,
-            "score_details": score.details,
+            "evaluation": evaluation.model_dump(mode="json"),
             "latency_seconds": latency_seconds,
             "time_to_first_token_seconds": output.time_to_first_token_seconds,
             "prompt_tokens": output.prompt_tokens,
@@ -438,7 +436,7 @@ def _evaluate_item(
         }
     except Exception as error:
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "status": "error",
             "model_id": model.id,
             "benchmark": item.benchmark,
@@ -451,9 +449,7 @@ def _evaluate_item(
             "raw_response": None,
             "evaluated_response": None,
             "response_cleanup": None,
-            "passed": None,
-            "score": None,
-            "score_details": None,
+            "evaluation": None,
             "latency_seconds": time.perf_counter() - started,
             "time_to_first_token_seconds": None,
             "prompt_tokens": None,
@@ -548,7 +544,7 @@ def _failed_summary(
 
 def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     completed = [record for record in records if record["status"] == "completed"]
-    scores = [record["score"] for record in completed]
+    scores = [record["evaluation"]["score"] for record in completed]
     latencies = [record["latency_seconds"] for record in completed]
     time_to_first_token_values = [
         record["time_to_first_token_seconds"]
@@ -565,7 +561,7 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         for record in records
         if record["peak_process_memory_bytes"] is not None
     ]
-    passed = sum(record["passed"] is True for record in completed)
+    passed = sum(record["evaluation"]["passed"] is True for record in completed)
     return {
         "attempted": len(records),
         "completed": len(completed),

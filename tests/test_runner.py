@@ -135,10 +135,13 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
 
     assert (run_directory / "manifest.json").is_file()
     result_lines = (run_directory / "results.jsonl").read_text().splitlines()
-    assert len(result_lines) == 6
+    assert len(result_lines) == 7
     records = [json.loads(line) for line in result_lines]
     assert all(record["status"] == "completed" for record in records)
-    assert all(record["passed"] for record in records)
+    assert all(record["schema_version"] == 2 for record in records)
+    assert all(record["evaluation"]["passed"] for record in records)
+    assert all(record["evaluation"]["type"] == "deterministic" for record in records)
+    assert all(record["evaluation"]["version"] == 1 for record in records)
     assert all(record["prompt_tokens"] == 20 for record in records)
     assert all(record["time_to_first_token_seconds"] == 0.05 for record in records)
     assert all(record["output_characters"] > 0 for record in records)
@@ -151,13 +154,13 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
 
     summary = json.loads((run_directory / "summary.json").read_text())
     assert summary["status"] == "completed"
-    assert summary["totals"]["attempted"] == 6
-    assert summary["totals"]["passed"] == 6
+    assert summary["totals"]["attempted"] == 7
+    assert summary["totals"]["passed"] == 7
     assert summary["totals"]["pass_rate"] == 1.0
     assert summary["totals"]["mean_time_to_first_token_seconds"] == pytest.approx(0.05)
     assert summary["totals"]["peak_process_memory_bytes"] == 4_000_000_000
     assert summary["peak_process_memory_after_model_load_bytes"] == 4_000_000_000
-    assert summary["total_prompt_tokens"] == 120
+    assert summary["total_prompt_tokens"] == 140
     assert len(summary["dataset"]["sha256"]) == 64
 
 
@@ -182,17 +185,19 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
         for line in (run_directory / "results.jsonl").read_text().splitlines()
     ]
     errors = [record for record in records if record["status"] == "error"]
-    assert len(records) == 6
+    assert len(records) == 7
     assert len(errors) == 1
     assert errors[0]["error"] == {
         "type": "RuntimeError",
         "message": "simulated generation failure",
     }
+    assert errors[0]["schema_version"] == 2
+    assert errors[0]["evaluation"] is None
 
     summary = json.loads((run_directory / "summary.json").read_text())
-    assert summary["totals"]["completed"] == 5
+    assert summary["totals"]["completed"] == 6
     assert summary["totals"]["errors"] == 1
-    assert summary["totals"]["passed"] == 5
+    assert summary["totals"]["passed"] == 6
 
 
 def test_runner_applies_only_configured_empty_think_cleanup(tmp_path: Path) -> None:
@@ -226,7 +231,7 @@ def test_runner_applies_only_configured_empty_think_cleanup(tmp_path: Path) -> N
         for line in (run_directory / "results.jsonl").read_text().splitlines()
     ]
 
-    assert all(record["passed"] for record in records)
+    assert all(record["evaluation"]["passed"] for record in records)
     assert all(record["raw_response"].startswith("<think>") for record in records)
     assert all(not record["evaluated_response"].startswith("<think>") for record in records)
     assert all(record["response_cleanup"] == "strip_empty_think" for record in records)
@@ -301,10 +306,10 @@ def test_matrix_runs_enabled_models_sequentially_and_indexes_artifacts(
         "load:second-model",
         "close:second-model",
     ]
-    assert len(progress) == 12
+    assert len(progress) == 14
     assert progress[0].model_number == 1
     assert progress[-1].model_number == 2
-    assert progress[-1].completed_items == 6
+    assert progress[-1].completed_items == 7
 
     index = json.loads((experiment_directory / "experiment.json").read_text())
     assert index["status"] == "completed"
