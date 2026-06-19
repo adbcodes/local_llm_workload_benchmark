@@ -1,0 +1,17 @@
+id: code_debug_repair
+title: Code, Debug, and Repair
+description: Small Python functions evaluated by restricted execution against unit tests.
+items_path: items.jsonl
+current_question_count: 1
+target_question_count: 20
+current_difficulty_distribution:
+  easy: 1
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 7
+  medium: 8
+  hard: 5
+order_rule: easy_to_hard
+scoring_methods:
+  - executable_python

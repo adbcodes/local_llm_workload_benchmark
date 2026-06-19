@@ -28,6 +28,7 @@ from llm_workload_benchmark.dataset import (
     load_suite,
     score_answer,
 )
+from llm_workload_benchmark.executable import evaluate_python
 from llm_workload_benchmark.judge import (
     GroqJudgeBackend,
     JudgeBackend,
@@ -469,6 +470,8 @@ def _evaluate_item(
                 config=judge_config,
                 seed=seed,
             )
+        elif item.scoring.method == "executable_python":
+            evaluation = evaluate_python(item, evaluated_response)
         else:
             evaluation = score_answer(item, evaluated_response)
         output_tokens_per_second = (

@@ -22,6 +22,7 @@ ScoringMethod = Literal[
     "exact_match",
     "json_exact",
     "constraint_rules",
+    "executable_python",
     "llm_judge",
 ]
 
@@ -39,7 +40,7 @@ class DatasetError(ValueError):
 class ResponseContract(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    type: Literal["number", "date", "text", "json"]
+    type: Literal["number", "date", "text", "json", "code"]
     format: str | None = None
 
 
@@ -115,6 +116,15 @@ class DatasetItem(BaseModel):
             rules = self.scoring.parameters.get("rules")
             if not isinstance(rules, dict) or not rules:
                 raise ValueError("constraint_rules requires a non-empty rules object")
+        elif method == "executable_python":
+            if (
+                contract_type != "code"
+                or self.response_contract.format != "python_function"
+            ):
+                raise ValueError(
+                    "executable_python requires a python_function code contract"
+                )
+            _validate_python_specification(value)
         elif method == "llm_judge":
             if contract_type != "text":
                 raise ValueError("llm_judge requires a text contract")
@@ -209,6 +219,11 @@ def _validate_scoring_parameters(
         },
         "json_exact": {"allow_diagnostic_normalization"},
         "constraint_rules": {"rules", "content_requirements"},
+        "executable_python": {
+            "timeout_seconds",
+            "memory_limit_mb",
+            "max_output_characters",
+        },
         "llm_judge": {
             "rubric",
             "pass_threshold",
@@ -237,6 +252,31 @@ def _validate_scoring_parameters(
         diagnostic = parameters.get("allow_diagnostic_normalization", True)
         if not isinstance(diagnostic, bool):
             raise ValueError("allow_diagnostic_normalization must be a boolean")
+        return
+    if method == "executable_python":
+        timeout = parameters.get("timeout_seconds")
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not 0.05 <= timeout <= 10
+        ):
+            raise ValueError("timeout_seconds must be between 0.05 and 10")
+        memory = parameters.get("memory_limit_mb")
+        if (
+            isinstance(memory, bool)
+            or not isinstance(memory, int)
+            or not 32 <= memory <= 1024
+        ):
+            raise ValueError("memory_limit_mb must be an integer from 32 to 1024")
+        output = parameters.get("max_output_characters")
+        if (
+            isinstance(output, bool)
+            or not isinstance(output, int)
+            or not 256 <= output <= 100_000
+        ):
+            raise ValueError(
+                "max_output_characters must be an integer from 256 to 100000"
+            )
         return
     if method == "llm_judge":
         if parameters.get("rubric") != "grounded_summary_v1":
@@ -322,6 +362,32 @@ def _validate_scoring_parameters(
         _validate_nonempty_strings(fact["any_of"], f"required fact {name}")
 
 
+def _validate_python_specification(value: Any) -> None:
+    if not isinstance(value, dict) or set(value) != {"entry_point", "tests"}:
+        raise ValueError("executable_python expected value needs entry_point and tests")
+    entry_point = value["entry_point"]
+    if not isinstance(entry_point, str) or not re.fullmatch(
+        r"[a-z][a-z0-9_]*", entry_point
+    ):
+        raise ValueError("entry_point must use snake_case")
+    tests = value["tests"]
+    if not isinstance(tests, list) or not tests:
+        raise ValueError("executable_python requires at least one test")
+    for test in tests:
+        if not isinstance(test, dict) or set(test) - {"args", "kwargs", "expected"}:
+            raise ValueError("each Python test may contain args, kwargs, and expected")
+        if "expected" not in test:
+            raise ValueError("each Python test requires expected")
+        if not isinstance(test.get("args", []), list):
+            raise ValueError("Python test args must be a list")
+        if not isinstance(test.get("kwargs", {}), dict):
+            raise ValueError("Python test kwargs must be an object")
+        try:
+            json.dumps(test)
+        except (TypeError, ValueError) as error:
+            raise ValueError("Python tests must be JSON serializable") from error
+
+
 def _validate_nonempty_strings(value: Any, name: str) -> None:
     if (
         not isinstance(value, list)
@@ -358,7 +424,7 @@ def load_dataset(path: Path) -> list[DatasetItem]:
             raise DatasetError(
                 f"invalid dataset item in {path} on line {line_number}:\n{error}"
             ) from error
-        if item.scoring.method != "llm_judge":
+        if item.scoring.method not in {"llm_judge", "executable_python"}:
             gold_answer = (
                 json.dumps(item.expected["value"], separators=(",", ":"))
                 if item.response_contract.type == "json"
@@ -464,6 +530,10 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
     if method == "llm_judge":
         raise DatasetError(
             f"item {item.id!r} requires an external LLM judge, not score_answer"
+        )
+    if method == "executable_python":
+        raise DatasetError(
+            f"item {item.id!r} requires restricted Python execution, not score_answer"
         )
     if method == "numeric_tolerance":
         score = _score_numeric(item, answer)

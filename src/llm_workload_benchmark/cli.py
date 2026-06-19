@@ -7,6 +7,11 @@ import typer
 from llm_workload_benchmark import __version__
 from llm_workload_benchmark.config import ConfigError, load_config
 from llm_workload_benchmark.dataset import DatasetError
+from llm_workload_benchmark.preference import (
+    PreferenceError,
+    completed_model_ids,
+)
+from llm_workload_benchmark.preference_terminal import run_terminal_preferences
 from llm_workload_benchmark.report import ReportError, generate_comparison_report
 from llm_workload_benchmark.runner import (
     EvaluationError,
@@ -79,8 +84,18 @@ def benchmark_command(
         resolve_path=True,
         help="YAML model-matrix configuration to execute.",
     ),
+    human_eval: bool = typer.Option(
+        True,
+        "--human-eval/--skip-human-eval",
+        help="Run blind multi-model terminal voting after model generation.",
+    ),
+    color: bool = typer.Option(
+        True,
+        "--color/--no-color",
+        help="Enable Python syntax colours in the human ballot.",
+    ),
 ) -> None:
-    """Run every enabled model sequentially in one experiment bundle."""
+    """Run the model matrix, then collect blind terminal preferences."""
 
     def show_progress(progress: RunProgress) -> None:
         typer.echo(
@@ -101,7 +116,30 @@ def benchmark_command(
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
 
-    typer.echo(experiment_directory)
+    if human_eval:
+        try:
+            model_ids = completed_model_ids(experiment_directory)
+            if len(model_ids) >= 2:
+                typer.echo(
+                    f"\nHUMAN PREFERENCE  {len(model_ids)} anonymous answers"
+                )
+                result = run_terminal_preferences(
+                    experiment_directory,
+                    model_ids=model_ids,
+                    seed=config.benchmark.seed,
+                    input_fn=typer.prompt,
+                    output_fn=lambda value: typer.echo(value, color=color),
+                    color=color,
+                )
+                if not result.is_complete:
+                    typer.echo("Human evaluation paused. Run `prefer` to resume.")
+                else:
+                    typer.echo("Ballot complete. Vote saved.")
+        except (PreferenceError, OSError) as error:
+            typer.echo(f"Error: {error}", err=True)
+            raise typer.Exit(code=1) from error
+
+    typer.echo(f"\nExperiment saved to {experiment_directory}")
 
 
 @app.command("report")
@@ -138,3 +176,62 @@ def report_command(
         raise typer.Exit(code=1) from error
 
     typer.echo(report_path)
+
+
+@app.command("prefer")
+def prefer_command(
+    experiment_directory: Path = typer.Option(
+        ...,
+        "--experiment",
+        "-e",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+        help="Saved matrix experiment containing completed model answers.",
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        help="Seed for stable anonymous answer ordering.",
+    ),
+    output_path: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+        help="Vote destination; defaults to the experiment arena artifact.",
+    ),
+    color: bool = typer.Option(
+        True,
+        "--color/--no-color",
+        help="Enable Python syntax colours in the terminal ballot.",
+    ),
+) -> None:
+    """Run one blind terminal ballot for all completed model answers."""
+
+    try:
+        model_ids = completed_model_ids(experiment_directory)
+        typer.echo(f"HUMAN PREFERENCE  {len(model_ids)} anonymous answers")
+        result = run_terminal_preferences(
+            experiment_directory,
+            model_ids=model_ids,
+            seed=seed,
+            output_path=output_path,
+            input_fn=typer.prompt,
+            output_fn=lambda value: typer.echo(value, color=color),
+            color=color,
+        )
+        if not result.output_path.exists():
+            typer.echo("\nVoting stopped before a vote was cast.")
+            return
+        if not result.is_complete:
+            typer.echo("\nVoting progress saved.")
+            return
+        typer.echo("Ballot complete. Vote saved.")
+    except (PreferenceError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
