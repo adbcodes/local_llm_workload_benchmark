@@ -19,9 +19,20 @@ import yaml
 from llm_workload_benchmark.config import (
     BenchmarkConfig,
     GenerationConfig,
+    JudgeConfig,
     ModelConfig,
 )
-from llm_workload_benchmark.dataset import DatasetItem, load_suite, score_answer
+from llm_workload_benchmark.dataset import (
+    BenchmarkSuite,
+    DatasetItem,
+    load_suite,
+    score_answer,
+)
+from llm_workload_benchmark.judge import (
+    GroqJudgeBackend,
+    JudgeBackend,
+    evaluate_summary,
+)
 from llm_workload_benchmark.manifest import create_run
 
 
@@ -60,6 +71,11 @@ class ModelBackend(Protocol):
 
 
 BackendFactory = Callable[[ModelConfig, Path, int], ModelBackend]
+JudgeBackendFactory = Callable[[JudgeConfig], JudgeBackend]
+
+
+def _default_judge_backend_factory(config: JudgeConfig) -> JudgeBackend:
+    return GroqJudgeBackend(config)
 
 
 class LlamaCppBackend:
@@ -167,6 +183,7 @@ def run_benchmark(
     *,
     project_root: Path | None = None,
     backend_factory: BackendFactory = LlamaCppBackend,
+    judge_backend_factory: JudgeBackendFactory = _default_judge_backend_factory,
     peak_memory_reader: Callable[[], int | None] | None = None,
     run_directory: Path | None = None,
     progress_callback: Callable[[RunProgress], None] | None = None,
@@ -185,6 +202,17 @@ def run_benchmark(
             "the schema pilot requires exactly one enabled model; found "
             f"{len(enabled_models)}"
         )
+    requires_judge = _suite_requires_judge(suite)
+    if requires_judge and config.judge is None:
+        raise EvaluationError(
+            "the workload contains llm_judge items but no judge is configured"
+        )
+    judge_backend: JudgeBackend | None = None
+    if requires_judge:
+        try:
+            judge_backend = judge_backend_factory(config.judge)
+        except Exception as error:
+            raise EvaluationError(f"could not initialize LLM judge: {error}") from error
     model = enabled_models[0]
     model_path = _resolve_from_root(root, model.model_path)
 
@@ -238,6 +266,8 @@ def run_benchmark(
                             backend=backend,
                             repetition=repetition,
                             seed=seed,
+                            judge_config=config.judge,
+                            judge_backend=judge_backend,
                             peak_memory_reader=memory_reader,
                         )
                         records.append(record)
@@ -278,6 +308,7 @@ def run_matrix(
     *,
     project_root: Path | None = None,
     backend_factory: BackendFactory = LlamaCppBackend,
+    judge_backend_factory: JudgeBackendFactory = _default_judge_backend_factory,
     peak_memory_reader: Callable[[], int | None] | None = None,
     progress_callback: Callable[[RunProgress], None] | None = None,
 ) -> Path:
@@ -288,7 +319,22 @@ def run_matrix(
     if not enabled_models:
         raise EvaluationError("the model matrix has no enabled models")
 
-    load_suite(_resolve_from_root(root, config.benchmark.workload_path))
+    suite = load_suite(_resolve_from_root(root, config.benchmark.workload_path))
+    effective_judge_backend_factory = judge_backend_factory
+    if _suite_requires_judge(suite):
+        if config.judge is None:
+            raise EvaluationError(
+                "the workload contains llm_judge items but no judge is configured"
+            )
+        try:
+            shared_judge_backend = judge_backend_factory(config.judge)
+        except Exception as error:
+            raise EvaluationError(f"could not initialize LLM judge: {error}") from error
+
+        def use_shared_judge_backend(_: JudgeConfig) -> JudgeBackend:
+            return shared_judge_backend
+
+        effective_judge_backend_factory = use_shared_judge_backend
     output_root = _resolve_from_root(root, config.benchmark.output_root)
     experiment_id = _new_experiment_id()
     experiment_directory = output_root / experiment_id
@@ -330,6 +376,7 @@ def run_matrix(
                 config_path,
                 project_root=root,
                 backend_factory=backend_factory,
+                judge_backend_factory=effective_judge_backend_factory,
                 peak_memory_reader=peak_memory_reader,
                 run_directory=child_directory,
                 progress_callback=progress_callback,
@@ -392,9 +439,16 @@ def _evaluate_item(
     backend: ModelBackend,
     repetition: int,
     seed: int,
+    judge_config: JudgeConfig | None,
+    judge_backend: JudgeBackend | None,
     peak_memory_reader: Callable[[], int | None],
 ) -> dict[str, Any]:
     started = time.perf_counter()
+    output: GenerationOutput | None = None
+    latency_seconds: float | None = None
+    peak_process_memory_bytes: int | None = None
+    evaluated_response: str | None = None
+    cleanup_applied: str | None = None
     try:
         output = backend.generate(item.prompt, model.generation, seed=seed)
         latency_seconds = time.perf_counter() - started
@@ -403,7 +457,20 @@ def _evaluate_item(
             output.text,
             model.response_cleanup,
         )
-        evaluation = score_answer(item, evaluated_response)
+        if item.scoring.method == "llm_judge":
+            if judge_config is None or judge_backend is None:
+                raise EvaluationError(
+                    f"item {item.id!r} requires a configured LLM judge"
+                )
+            evaluation = evaluate_summary(
+                item,
+                evaluated_response,
+                backend=judge_backend,
+                config=judge_config,
+                seed=seed,
+            )
+        else:
+            evaluation = score_answer(item, evaluated_response)
         output_tokens_per_second = (
             output.output_tokens / latency_seconds
             if output.output_tokens is not None and latency_seconds > 0
@@ -446,18 +513,35 @@ def _evaluate_item(
             "split": item.split,
             "repetition": repetition,
             "seed": seed,
-            "raw_response": None,
-            "evaluated_response": None,
-            "response_cleanup": None,
+            "raw_response": output.text if output is not None else None,
+            "evaluated_response": evaluated_response,
+            "response_cleanup": cleanup_applied,
             "evaluation": None,
-            "latency_seconds": time.perf_counter() - started,
-            "time_to_first_token_seconds": None,
-            "prompt_tokens": None,
-            "output_tokens": None,
-            "output_characters": None,
-            "output_tokens_per_second_end_to_end": None,
-            "peak_process_memory_bytes": peak_memory_reader(),
-            "finish_reason": None,
+            "latency_seconds": (
+                latency_seconds
+                if latency_seconds is not None
+                else time.perf_counter() - started
+            ),
+            "time_to_first_token_seconds": (
+                output.time_to_first_token_seconds if output is not None else None
+            ),
+            "prompt_tokens": output.prompt_tokens if output is not None else None,
+            "output_tokens": output.output_tokens if output is not None else None,
+            "output_characters": len(output.text) if output is not None else None,
+            "output_tokens_per_second_end_to_end": (
+                output.output_tokens / latency_seconds
+                if output is not None
+                and output.output_tokens is not None
+                and latency_seconds is not None
+                and latency_seconds > 0
+                else None
+            ),
+            "peak_process_memory_bytes": (
+                peak_process_memory_bytes
+                if peak_process_memory_bytes is not None
+                else peak_memory_reader()
+            ),
+            "finish_reason": output.finish_reason if output is not None else None,
             "error": {
                 "type": type(error).__name__,
                 "message": str(error),
@@ -513,6 +597,7 @@ def _build_summary(
         "total_output_tokens": sum(
             record["output_tokens"] or 0 for record in completed
         ),
+        "judge": _aggregate_judge_usage(completed),
         "benchmarks": benchmark_groups,
     }
 
@@ -575,6 +660,44 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         "mean_output_tokens_per_second_end_to_end": _mean(output_rates),
         "peak_process_memory_bytes": max(peak_memory_values, default=None),
     }
+
+
+def _aggregate_judge_usage(records: list[dict[str, Any]]) -> dict[str, Any] | None:
+    judge_details = [
+        record["evaluation"]["details"]["judge"]
+        for record in records
+        if record["evaluation"]["type"] == "llm_judge"
+    ]
+    if not judge_details:
+        return None
+    costs = [
+        details["estimated_cost_usd"]
+        for details in judge_details
+        if details["estimated_cost_usd"] is not None
+    ]
+    return {
+        "evaluations": len(judge_details),
+        "prompt_tokens": sum(details["prompt_tokens"] or 0 for details in judge_details),
+        "cached_prompt_tokens": sum(
+            details["cached_prompt_tokens"] or 0 for details in judge_details
+        ),
+        "output_tokens": sum(details["output_tokens"] or 0 for details in judge_details),
+        "reasoning_tokens": sum(
+            details["reasoning_tokens"] or 0 for details in judge_details
+        ),
+        "latency_seconds": sum(
+            details["latency_seconds"] for details in judge_details
+        ),
+        "estimated_cost_usd": sum(costs) if costs else None,
+    }
+
+
+def _suite_requires_judge(suite: BenchmarkSuite) -> bool:
+    return any(
+        item.scoring.method == "llm_judge"
+        for benchmark_items in suite.items.values()
+        for item in benchmark_items
+    )
 
 
 def _model_summary(model: ModelConfig, model_path: Path) -> dict[str, Any]:

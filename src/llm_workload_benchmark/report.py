@@ -52,6 +52,7 @@ def _build_row(experiment_root: Path, entry: Any) -> dict[str, Any]:
     totals = summary.get("totals")
     if not isinstance(totals, dict):
         return row
+    judge = summary.get("judge")
     row.update(
         {
             "attempted": totals.get("attempted"),
@@ -64,6 +65,9 @@ def _build_row(experiment_root: Path, entry: Any) -> dict[str, Any]:
                 "mean_output_tokens_per_second_end_to_end"
             ),
             "peak_memory_bytes": totals.get("peak_process_memory_bytes"),
+            "judge_cost_usd": (
+                judge.get("estimated_cost_usd") if isinstance(judge, dict) else None
+            ),
         }
     )
     return row
@@ -80,8 +84,8 @@ def _render_markdown(index: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         f"- Status: `{status}`",
         f"- Dataset: `{dataset}`",
         "",
-        "| Model | Status | Passes | Pass rate | Mean score | Mean latency | Mean TTFT | Output tok/s | Peak RSS |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| Model | Status | Passes | Pass rate | Mean score | Mean latency | Mean TTFT | Output tok/s | Peak RSS | Judge cost |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
@@ -97,6 +101,7 @@ def _render_markdown(index: dict[str, Any], rows: list[dict[str, Any]]) -> str:
                     _format_seconds(row.get("mean_ttft_seconds")),
                     _format_number(row.get("mean_output_rate")),
                     _format_memory(row.get("peak_memory_bytes")),
+                    _format_cost(row.get("judge_cost_usd")),
                 ]
             )
             + " |"
@@ -147,3 +152,7 @@ def _format_number(value: Any) -> str:
 
 def _format_memory(value: Any) -> str:
     return f"{value / (1024**3):.2f} GiB" if isinstance(value, int | float) else "—"
+
+
+def _format_cost(value: Any) -> str:
+    return f"${value:.6f}" if isinstance(value, int | float) else "—"

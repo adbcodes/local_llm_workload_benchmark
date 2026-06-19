@@ -22,6 +22,7 @@ ScoringMethod = Literal[
     "exact_match",
     "json_exact",
     "constraint_rules",
+    "llm_judge",
 ]
 
 DIFFICULTY_ORDER: dict[Difficulty, int] = {
@@ -114,6 +115,11 @@ class DatasetItem(BaseModel):
             rules = self.scoring.parameters.get("rules")
             if not isinstance(rules, dict) or not rules:
                 raise ValueError("constraint_rules requires a non-empty rules object")
+        elif method == "llm_judge":
+            if contract_type != "text":
+                raise ValueError("llm_judge requires a text contract")
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError("llm_judge requires a non-empty reference summary")
         elif not isinstance(value, (str, int, float, bool)):
             raise ValueError("exact_match requires a scalar expected value")
         _validate_scoring_parameters(method, self.scoring.parameters)
@@ -142,8 +148,8 @@ class BenchmarkDefinition(BaseModel):
             raise ValueError(
                 "current_difficulty_distribution requires easy, medium, and hard"
             )
-        if any(count < 1 for count in self.current_difficulty_distribution.values()):
-            raise ValueError("current dataset must include every difficulty level")
+        if any(count < 0 for count in self.current_difficulty_distribution.values()):
+            raise ValueError("current difficulty counts cannot be negative")
         if (
             sum(self.current_difficulty_distribution.values())
             != self.current_question_count
@@ -203,6 +209,12 @@ def _validate_scoring_parameters(
         },
         "json_exact": {"allow_diagnostic_normalization"},
         "constraint_rules": {"rules", "content_requirements"},
+        "llm_judge": {
+            "rubric",
+            "pass_threshold",
+            "minimum_faithfulness",
+            "max_words",
+        },
     }
     unknown = set(parameters) - allowed_parameters[method]
     if unknown:
@@ -225,6 +237,29 @@ def _validate_scoring_parameters(
         diagnostic = parameters.get("allow_diagnostic_normalization", True)
         if not isinstance(diagnostic, bool):
             raise ValueError("allow_diagnostic_normalization must be a boolean")
+        return
+    if method == "llm_judge":
+        if parameters.get("rubric") != "grounded_summary_v1":
+            raise ValueError("llm_judge rubric must be grounded_summary_v1")
+        pass_threshold = parameters.get("pass_threshold")
+        if (
+            isinstance(pass_threshold, bool)
+            or not isinstance(pass_threshold, (int, float))
+            or not 0 <= pass_threshold <= 1
+        ):
+            raise ValueError("llm_judge pass_threshold must be between 0 and 1")
+        minimum_faithfulness = parameters.get("minimum_faithfulness")
+        if (
+            isinstance(minimum_faithfulness, bool)
+            or not isinstance(minimum_faithfulness, int)
+            or not 0 <= minimum_faithfulness <= 4
+        ):
+            raise ValueError(
+                "llm_judge minimum_faithfulness must be an integer from 0 to 4"
+            )
+        max_words = parameters.get("max_words")
+        if isinstance(max_words, bool) or not isinstance(max_words, int) or max_words < 1:
+            raise ValueError("llm_judge max_words must be a positive integer")
         return
 
     rules = parameters["rules"]
@@ -323,15 +358,16 @@ def load_dataset(path: Path) -> list[DatasetItem]:
             raise DatasetError(
                 f"invalid dataset item in {path} on line {line_number}:\n{error}"
             ) from error
-        gold_answer = (
-            json.dumps(item.expected["value"], separators=(",", ":"))
-            if item.response_contract.type == "json"
-            else str(item.expected["value"])
-        )
-        if not score_answer(item, gold_answer).passed:
-            raise DatasetError(
-                f"expected answer for item {item.id!r} does not satisfy its scorer"
+        if item.scoring.method != "llm_judge":
+            gold_answer = (
+                json.dumps(item.expected["value"], separators=(",", ":"))
+                if item.response_contract.type == "json"
+                else str(item.expected["value"])
             )
+            if not score_answer(item, gold_answer).passed:
+                raise DatasetError(
+                    f"expected answer for item {item.id!r} does not satisfy its scorer"
+                )
         if item.id in seen_ids:
             raise DatasetError(f"duplicate item id {item.id!r} in {path}")
         seen_ids.add(item.id)
@@ -364,8 +400,12 @@ def load_suite(path: Path) -> BenchmarkSuite:
                 f"{definition.id} expected {definition.current_question_count} current "
                 f"items but loaded {len(items)}"
             )
-        actual_difficulties = Counter(item.difficulty for item in items)
-        if dict(actual_difficulties) != definition.current_difficulty_distribution:
+        difficulty_counts = Counter(item.difficulty for item in items)
+        actual_difficulties = {
+            difficulty: difficulty_counts[difficulty]
+            for difficulty in DIFFICULTY_ORDER
+        }
+        if actual_difficulties != definition.current_difficulty_distribution:
             raise DatasetError(
                 f"{definition.id} difficulty counts do not match "
                 "current_difficulty_distribution"
@@ -421,6 +461,10 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
     """Score one raw model answer using the verifier declared by its item."""
 
     method = item.scoring.method
+    if method == "llm_judge":
+        raise DatasetError(
+            f"item {item.id!r} requires an external LLM judge, not score_answer"
+        )
     if method == "numeric_tolerance":
         score = _score_numeric(item, answer)
     elif method == "date_value":

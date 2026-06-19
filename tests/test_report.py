@@ -24,6 +24,9 @@ def _write_experiment(tmp_path: Path) -> Path:
                     "mean_output_tokens_per_second_end_to_end": 24.5,
                     "peak_process_memory_bytes": 2 * 1024**3,
                 },
+                "judge": {
+                    "estimated_cost_usd": 0.001234,
+                },
             }
         ),
         encoding="utf-8",
@@ -64,6 +67,7 @@ def test_generate_comparison_report_from_saved_summaries(tmp_path: Path) -> None
     assert "| model-a | completed | 5/7 | 71.4% | 80.0% |" in report
     assert "| model-b | failed | — | — | — |" in report
     assert "2.00 GiB" in report
+    assert "$0.001234" in report
     assert "not model rankings" in report
 
 

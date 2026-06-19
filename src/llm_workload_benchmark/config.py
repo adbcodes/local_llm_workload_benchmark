@@ -43,6 +43,27 @@ class ModelConfig(BaseModel):
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
 
 
+class JudgeConfig(BaseModel):
+    """Configuration for an external model that evaluates generated answers."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["groq"] = "groq"
+    model: str = Field(default="openai/gpt-oss-120b", min_length=1)
+    api_key_env: str = Field(
+        default="GROQ_API_KEY",
+        pattern=r"^[A-Z][A-Z0-9_]*$",
+    )
+    reasoning_effort: Literal["low", "medium", "high"] = "medium"
+    max_completion_tokens: int = Field(default=4096, ge=1, le=8192)
+    timeout_seconds: float = Field(default=60.0, gt=0)
+    max_retries: int = Field(default=3, ge=0, le=10)
+    max_candidate_characters: int = Field(default=12_000, ge=1)
+    input_price_per_million_tokens: float = Field(default=0.15, ge=0)
+    cached_input_price_per_million_tokens: float = Field(default=0.075, ge=0)
+    output_price_per_million_tokens: float = Field(default=0.60, ge=0)
+
+
 class BenchmarkSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -60,6 +81,7 @@ class BenchmarkConfig(BaseModel):
     schema_version: Literal[1]
     benchmark: BenchmarkSettings
     models: list[ModelConfig] = Field(min_length=1)
+    judge: JudgeConfig | None = None
 
     @field_validator("models")
     @classmethod
