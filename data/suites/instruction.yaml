@@ -1,0 +1,6 @@
+schema_version: 1
+name: local-llm-instruction-following
+version: 1
+status: pilot
+benchmark_files:
+  - ../constraint_load_curve/benchmark.yaml

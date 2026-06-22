@@ -6,6 +6,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, Literal, Self
 
@@ -18,6 +19,7 @@ Difficulty = Literal["easy", "medium", "hard"]
 Split = Literal["dev", "test"]
 ScoringMethod = Literal[
     "numeric_tolerance",
+    "rational_value",
     "date_value",
     "exact_match",
     "json_exact",
@@ -51,6 +53,16 @@ class ScoringSpec(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
+class SourceReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset: str = Field(min_length=1)
+    record_id: str = Field(min_length=1)
+    url: str = Field(min_length=1)
+    license: str = Field(min_length=1)
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class Provenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -58,6 +70,7 @@ class Provenance(BaseModel):
     review_status: Literal["draft", "human_checked"]
     generator: str | None = None
     seed: int | None = None
+    source: SourceReference | None = None
 
 
 class DatasetItem(BaseModel):
@@ -96,6 +109,17 @@ class DatasetItem(BaseModel):
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ValueError("numeric_tolerance requires a numeric expected value")
             tolerance = self.scoring.parameters.get("absolute_tolerance", 0)
+            if isinstance(tolerance, bool) or not isinstance(tolerance, (int, float)):
+                raise ValueError("absolute_tolerance must be numeric")
+            if tolerance < 0:
+                raise ValueError("absolute_tolerance cannot be negative")
+        elif method == "rational_value":
+            if contract_type != "number":
+                raise ValueError("rational_value requires a number contract")
+            if not isinstance(value, str):
+                raise ValueError("rational_value requires a string expected value")
+            _parse_rational(value)
+            tolerance = self.scoring.parameters.get("absolute_tolerance", 1e-9)
             if isinstance(tolerance, bool) or not isinstance(tolerance, (int, float)):
                 raise ValueError("absolute_tolerance must be numeric")
             if tolerance < 0:
@@ -238,6 +262,7 @@ def _validate_scoring_parameters(
 ) -> None:
     allowed_parameters: dict[ScoringMethod, set[str]] = {
         "numeric_tolerance": {"absolute_tolerance", "allow_surrounding_text"},
+        "rational_value": {"absolute_tolerance", "allow_surrounding_text"},
         "date_value": set(),
         "exact_match": {
             "strip",
@@ -267,7 +292,7 @@ def _validate_scoring_parameters(
         if name in parameters and not isinstance(parameters[name], bool):
             raise ValueError(f"{name} must be a boolean")
 
-    if method == "numeric_tolerance":
+    if method in {"numeric_tolerance", "rational_value"}:
         return
     if method == "date_value":
         return
@@ -611,6 +636,8 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
         )
     if method == "numeric_tolerance":
         score = _score_numeric(item, answer)
+    elif method == "rational_value":
+        score = _score_rational(item, answer)
     elif method == "date_value":
         score = _score_date(item, answer)
     elif method == "exact_match":
@@ -694,6 +721,68 @@ def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
         score=float(passed),
         details={"actual": actual, "difference": difference, "tolerance": tolerance},
     )
+
+
+def _score_rational(item: DatasetItem, answer: str) -> ScoreResult:
+    expected = _parse_rational(str(item.expected["value"]))
+    candidates = _extract_rationals(answer)
+    unique_candidates = list(dict.fromkeys(candidates))
+    if len(unique_candidates) != 1:
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={
+                "reason": "missing_or_ambiguous_rational_answer",
+                "candidates": [str(value) for value in unique_candidates],
+                "expected": str(expected),
+            },
+        )
+    actual = unique_candidates[0]
+    difference = abs(float(actual - expected))
+    tolerance = float(item.scoring.parameters.get("absolute_tolerance", 1e-9))
+    passed = actual == expected or difference <= tolerance
+    return ScoreResult(
+        passed=passed,
+        score=float(passed),
+        details={
+            "actual": str(actual),
+            "expected": str(expected),
+            "difference": difference,
+            "tolerance": tolerance,
+        },
+    )
+
+
+def _parse_rational(value: str) -> Fraction:
+    stripped = value.strip()
+    latex_match = re.fullmatch(
+        r"\\(?:d)?frac\{(-?\d+)\}\{([1-9]\d*)\}",
+        stripped,
+    )
+    if latex_match:
+        return Fraction(int(latex_match.group(1)), int(latex_match.group(2)))
+    try:
+        return Fraction(stripped)
+    except (ValueError, ZeroDivisionError) as error:
+        raise ValueError("rational value must be an integer, decimal, or fraction") from error
+
+
+def _extract_rationals(answer: str) -> list[Fraction]:
+    candidates: list[Fraction] = []
+    remaining = answer
+    patterns = (
+        r"\\(?:d)?frac\{(-?\d+)\}\{([1-9]\d*)\}",
+        r"(?<![\d/])(-?\d+)\s*/\s*([1-9]\d*)(?![\d/])",
+    )
+    for pattern in patterns:
+        matches = list(re.finditer(pattern, remaining))
+        for match in matches:
+            candidates.append(Fraction(int(match.group(1)), int(match.group(2))))
+        for match in reversed(matches):
+            remaining = remaining[: match.start()] + " " + remaining[match.end() :]
+    for value in re.findall(r"(?<![\w.])[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?![\w.])", remaining):
+        candidates.append(Fraction(value))
+    return candidates
 
 
 def _score_exact(item: DatasetItem, answer: str) -> ScoreResult:

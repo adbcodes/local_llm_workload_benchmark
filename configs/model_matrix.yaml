@@ -3,7 +3,7 @@ schema_version: 1
 benchmark:
   name: three-model-pilot
   description: Compare all available local GGUF models on the fixed pilot suite.
-  workload_path: data/benchmarks/v1/suite.yaml
+  workload_path: data/suites/core.yaml
   output_root: runs
   repetitions: 1
   seed: 42

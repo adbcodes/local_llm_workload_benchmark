@@ -7,25 +7,25 @@ from llm_workload_benchmark.authoring import build_authoring_suite
 from llm_workload_benchmark.dataset import DatasetError, load_suite
 
 
-SOURCE_ROOT = Path("data/benchmarks/v1")
+SOURCE_ROOT = Path("data")
 
 
 def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
     tmp_path: Path,
 ) -> None:
-    suite_root = tmp_path / "v1"
-    shutil.copytree(SOURCE_ROOT, suite_root)
-    suite_path = suite_root / "all_suite.yaml"
+    data_root = tmp_path / "data"
+    shutil.copytree(SOURCE_ROOT, data_root)
+    suite_path = data_root / "suites" / "all.yaml"
 
     first = build_authoring_suite(suite_path)
     assert not first.written
     assert len(first.unchanged) == 5
 
     source_path = (
-        suite_root / "applied_reasoning" / "authoring" / "arithmetic.yaml"
+        data_root / "applied_reasoning" / "generated.yaml"
     )
     source_path.write_text(
-        source_path.read_text(encoding="utf-8").replace("15% of 800", "20% of 600"),
+        source_path.read_text(encoding="utf-8").replace("25% of 480", "20% of 600"),
         encoding="utf-8",
     )
 
@@ -33,13 +33,13 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
         build_authoring_suite(suite_path, check=True)
 
     rebuilt = build_authoring_suite(suite_path)
-    assert rebuilt.written == (suite_root / "applied_reasoning" / "items.jsonl",)
+    assert rebuilt.written == (data_root / "applied_reasoning" / "items.jsonl",)
     assert len(rebuilt.unchanged) == 4
     assert "20% of 600" in rebuilt.written[0].read_text(encoding="utf-8")
 
 
 def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
-    suite = load_suite(SOURCE_ROOT / "smoke_suite.yaml")
+    suite = load_suite(SOURCE_ROOT / "suites" / "smoke.yaml")
 
     selected_ids = {
         item.id for benchmark_items in suite.items.values() for item in benchmark_items
@@ -54,9 +54,9 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
 
 
 def test_suite_filters_reject_unknown_item_ids(tmp_path: Path) -> None:
-    suite_root = tmp_path / "v1"
-    shutil.copytree(SOURCE_ROOT, suite_root)
-    suite_path = suite_root / "smoke_suite.yaml"
+    data_root = tmp_path / "data"
+    shutil.copytree(SOURCE_ROOT, data_root)
+    suite_path = data_root / "suites" / "smoke.yaml"
     suite_path.write_text(
         suite_path.read_text(encoding="utf-8").replace(
             "reason_percentage_001", "missing_question"

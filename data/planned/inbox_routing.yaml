@@ -1,0 +1,22 @@
+schema_version: 1
+id: inbox_routing
+title: Inbox Routing
+kind: question_set
+status: planned
+description: Route realistic messages to one or more operational queues.
+target_question_count: null
+subcategories: [single_label, multi_label, urgent, ambiguous, out_of_scope, insufficient_information]
+evaluation:
+  planned_methods: [label_match, multilabel_f1, clarification_check]
+  implementation_needed: routing_label_scorer
+starter_items:
+  - id: inbox_billing_urgent_001
+    status: draft
+    subcategory: urgent
+    difficulty: easy
+    split: dev
+    prompt: >-
+      Route this message: "My card was charged twice and rent is due today.
+      Please reverse the duplicate charge immediately."
+    expected_behavior:
+      labels: [billing, urgent]

@@ -1,0 +1,11 @@
+schema_version: 1
+id: quantization_survival_curve
+title: Model Size Reduction Comparison
+kind: derived
+status: planned
+description: Compare quality retained and memory saved across quantizations of the same model family.
+source_suite: ../suites/all.yaml
+dimensions:
+  quantizations: [Q8, Q6, Q4, Q3]
+metrics: [quality_retained, peak_memory_bytes, model_file_bytes]
+implementation_needed: matched_quantization_models_and_comparison_report

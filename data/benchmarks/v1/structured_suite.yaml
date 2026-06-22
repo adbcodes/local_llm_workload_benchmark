@@ -1,6 +1,0 @@
-schema_version: 1
-name: local-llm-structured-extraction
-version: 1
-status: pilot
-benchmark_files:
-  - messy_text_to_schema/benchmark.yaml

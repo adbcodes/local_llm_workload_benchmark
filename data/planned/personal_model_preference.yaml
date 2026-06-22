@@ -1,0 +1,21 @@
+schema_version: 1
+id: personal_model_preference
+title: Personal Model Preference
+kind: question_set
+status: planned
+description: Compare anonymous model answers on the owner's real recurring workloads.
+target_question_count: null
+subcategories: [technical, professional, advice, creative]
+evaluation:
+  planned_methods: [blind_human_preference]
+  implementation_needed: freeze_prompt_set
+starter_items:
+  - id: preference_technical_tradeoff_001
+    status: draft
+    subcategory: technical
+    difficulty: medium
+    split: dev
+    prompt: >-
+      Explain whether this local benchmark should prefer a simpler deterministic
+      evaluator or a more flexible LLM judge, including the practical tradeoff.
+    expected_behavior: No gold answer; collect a blind A/B preference vote.

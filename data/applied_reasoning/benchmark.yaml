@@ -1,0 +1,23 @@
+id: applied_reasoning
+title: Applied Reasoning Gauntlet
+description: Practical numerical, calendar, logical, and constraint reasoning.
+items_path: items.jsonl
+authoring_paths:
+  - external.yaml
+  - generated.yaml
+current_question_count: 48
+target_question_count: 48
+current_difficulty_distribution:
+  easy: 12
+  medium: 24
+  hard: 12
+difficulty_distribution:
+  easy: 12
+  medium: 24
+  hard: 12
+order_rule: easy_to_hard
+scoring_methods:
+  - numeric_tolerance
+  - rational_value
+  - date_value
+  - exact_match

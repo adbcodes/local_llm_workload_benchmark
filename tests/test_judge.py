@@ -18,7 +18,7 @@ from llm_workload_benchmark.runner import (
     run_benchmark,
 )
 
-JUDGED_SUITE_PATH = Path("data/benchmarks/v1/judged_suite.yaml").resolve()
+JUDGED_SUITE_PATH = Path("data/suites/judged.yaml").resolve()
 
 
 def _decision(*, critical_error: bool = False) -> SummaryJudgeDecision:

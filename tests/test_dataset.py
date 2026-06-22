@@ -1,6 +1,5 @@
 import json
 import shutil
-from datetime import date, timedelta
 from itertools import permutations
 from pathlib import Path
 
@@ -13,8 +12,8 @@ from llm_workload_benchmark.dataset import (
     score_answer,
 )
 
-SUITE_PATH = Path("data/benchmarks/v1/suite.yaml")
-CONSTRAINT_PATH = Path("data/benchmarks/v1/constraint_load_curve/items.jsonl")
+SUITE_PATH = Path("data/suites/core.yaml")
+CONSTRAINT_PATH = Path("data/constraint_load_curve/items.jsonl")
 
 
 def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
@@ -24,27 +23,27 @@ def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
         "applied_reasoning",
         "messy_text_to_schema",
     }
-    assert sum(len(items) for items in suite.items.values()) == 7
-    assert [item.difficulty for item in suite.items["applied_reasoning"]] == [
-        "easy",
-        "medium",
-        "medium",
-        "hard",
-    ]
+    assert sum(len(items) for items in suite.items.values()) == 51
+    reasoning = suite.items["applied_reasoning"]
+    assert len(reasoning) == 48
+    assert [item.difficulty for item in reasoning].count("easy") == 12
+    assert [item.difficulty for item in reasoning].count("medium") == 24
+    assert [item.difficulty for item in reasoning].count("hard") == 12
     assert [item.difficulty for item in suite.items["messy_text_to_schema"]] == [
         "easy",
         "medium",
         "hard",
     ]
-    for items in suite.items.values():
-        assert all(item.split == "dev" for item in items)
+    assert sum(item.split == "dev" for item in reasoning) == 8
 
 
 def test_numeric_and_exact_answer_verifiers() -> None:
     suite = load_suite(SUITE_PATH)
-    percentage, calendar, calendar_variant, ordering = suite.items[
-        "applied_reasoning"
-    ]
+    items = {item.id: item for item in suite.items["applied_reasoning"]}
+    percentage = items["reason_percentage_001"]
+    calendar = items["reason_calendar_001"]
+    ordering = items["reason_ordering_001"]
+    rational = items["anchor_math_odds_001"]
 
     assert calendar.scoring.method == "date_value"
     percentage_result = score_answer(percentage, "120")
@@ -57,36 +56,34 @@ def test_numeric_and_exact_answer_verifiers() -> None:
     assert score_answer(percentage, "The answer is 120.").passed
     assert not score_answer(percentage, "121").passed
     assert not score_answer(percentage, "It could be 120 or 121.").passed
-    assert score_answer(calendar, "The seventh occurrence is 2026-05-26.").passed
-    assert score_answer(calendar, "The answer is 26-05-2026.").passed
-    assert score_answer(calendar, "The answer is 26/05/2026.").passed
-    assert score_answer(calendar, "The answer is May 26, 2026.").passed
-    assert score_answer(calendar, "The answer is 26 May 2026.").passed
-    assert score_answer(calendar, "The answer is 05/26/2026.").passed
-    assert not score_answer(calendar, "The answer is 05/06/2026.").passed
-    assert not score_answer(calendar, "Either 2026-05-26 or 2026-06-02.").passed
-    assert calendar_variant.variant_of == calendar.id
-    assert score_answer(calendar_variant, "May 26, 2026").passed
-    assert score_answer(ordering, "D,C,A,B").passed
-    assert score_answer(ordering, "Therefore the order is D, C, A, B.").passed
-    assert not score_answer(ordering, "A,B,D,C").passed
+    assert score_answer(calendar, "The date is 2026-04-01.").passed
+    assert score_answer(calendar, "The answer is April 1, 2026.").passed
+    assert not score_answer(calendar, "The answer is 2026-04-02.").passed
+    assert score_answer(ordering, "D,A,B,E,C").passed
+    assert score_answer(ordering, "Therefore: D, A, B, E, C.").passed
+    assert not score_answer(ordering, "A,B,D,E,C").passed
+    assert score_answer(rational, "4/7").passed
+    assert score_answer(rational, r"The answer is \frac{4}{7}.").passed
+    assert score_answer(rational, "0.5714285714285714").passed
+    assert not score_answer(rational, "3/7").passed
 
 
 def test_reasoning_and_order_gold_answers_are_independently_derived() -> None:
     suite = load_suite(SUITE_PATH)
-    _, calendar, calendar_variant, ordering = suite.items["applied_reasoning"]
+    items = {item.id: item for item in suite.items["applied_reasoning"]}
+    calendar = items["reason_calendar_001"]
+    ordering = items["reason_ordering_001"]
 
-    seventh_occurrence = date(2026, 3, 3) + timedelta(weeks=2 * 6)
-    assert seventh_occurrence.isoformat() == calendar.expected["value"]
-    assert calendar_variant.expected == calendar.expected
+    assert calendar.expected["value"] == "2026-04-01"
 
     valid_orders: list[str] = []
-    for candidate in permutations("ABCD"):
+    for candidate in permutations("ABCDE"):
         positions = {label: candidate.index(label) for label in candidate}
         if (
-            positions["B"] > positions["A"]
-            and positions["D"] + 1 == positions["C"]
-            and positions["A"] != 0
+            positions["B"] == positions["A"] + 1
+            and positions["C"] == positions["E"] + 1
+            and positions["D"] < positions["A"]
+            and positions["B"] < positions["E"]
         ):
             valid_orders.append(",".join(candidate))
     assert valid_orders == [ordering.expected["value"]]
@@ -105,24 +102,26 @@ def test_suite_rejects_invalid_variant_lineage(
     invalid_lineage: str,
     message: str,
 ) -> None:
-    suite_root = tmp_path / "v1"
-    shutil.copytree(Path("data/benchmarks/v1"), suite_root)
-    items_path = suite_root / "applied_reasoning" / "items.jsonl"
+    data_root = tmp_path / "data"
+    shutil.copytree(Path("data"), data_root)
+    items_path = data_root / "applied_reasoning" / "items.jsonl"
     items = items_path.read_text(encoding="utf-8").splitlines()
     variant = json.loads(items[2])
+    variant["variant_of"] = json.loads(items[0])["id"]
     if invalid_lineage == "missing":
         variant["variant_of"] = "missing_base_item"
     elif invalid_lineage == "cross_benchmark":
         variant["variant_of"] = "schema_invoice_001"
     else:
         parent = json.loads(items[1])
-        parent["variant_of"] = "reason_percentage_001"
+        parent["variant_of"] = json.loads(items[0])["id"]
         items[1] = json.dumps(parent)
+        variant["variant_of"] = parent["id"]
     items[2] = json.dumps(variant)
     items_path.write_text("\n".join(items) + "\n", encoding="utf-8")
 
     with pytest.raises(DatasetError, match=message):
-        load_suite(suite_root / "suite.yaml")
+        load_suite(data_root / "suites" / "core.yaml")
 
 
 def test_json_verifier_reports_partial_leaf_accuracy() -> None:
@@ -200,9 +199,14 @@ def test_constraint_verifier_checks_one_three_and_six_rule_items() -> None:
 
 def test_loader_rejects_difficulty_regression(tmp_path: Path) -> None:
     source_items = Path(
-        "data/benchmarks/v1/applied_reasoning/items.jsonl"
+        "data/applied_reasoning/items.jsonl"
     ).read_text(encoding="utf-8").splitlines()
-    bad_order = [source_items[1], source_items[0], source_items[2]]
+    easy = next(line for line in source_items if json.loads(line)["difficulty"] == "easy")
+    medium = next(
+        line for line in source_items if json.loads(line)["difficulty"] == "medium"
+    )
+    hard = next(line for line in source_items if json.loads(line)["difficulty"] == "hard")
+    bad_order = [medium, easy, hard]
     dataset_path = tmp_path / "bad_order.jsonl"
     dataset_path.write_text("\n".join(bad_order), encoding="utf-8")
 
@@ -214,7 +218,7 @@ def test_loader_rejects_unknown_and_impossible_constraint_rules(
     tmp_path: Path,
 ) -> None:
     source = json.loads(
-        Path("data/benchmarks/v1/constraint_load_curve/items.jsonl")
+        Path("data/constraint_load_curve/items.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()[1]
     )
@@ -236,7 +240,7 @@ def test_loader_rejects_unknown_and_impossible_constraint_rules(
 
 def test_loader_rejects_a_gold_answer_that_cannot_pass(tmp_path: Path) -> None:
     source = json.loads(
-        Path("data/benchmarks/v1/constraint_load_curve/items.jsonl")
+        Path("data/constraint_load_curve/items.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()[0]
     )

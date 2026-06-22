@@ -488,6 +488,7 @@ def _evaluate_item(
             "subcategory": item.subcategory,
             "difficulty": item.difficulty,
             "split": item.split,
+            "dataset_origin": _dataset_origin(item),
             "repetition": repetition,
             "seed": seed,
             "raw_response": output.text,
@@ -514,6 +515,7 @@ def _evaluate_item(
             "subcategory": item.subcategory,
             "difficulty": item.difficulty,
             "split": item.split,
+            "dataset_origin": _dataset_origin(item),
             "repetition": repetition,
             "seed": seed,
             "raw_response": output.text if output is not None else None,
@@ -568,8 +570,15 @@ def _build_summary(
 
     benchmark_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
     difficulty_groups: dict[str, dict[str, Any]] = defaultdict(dict)
+    benchmark_origin_groups: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    origin_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records:
         benchmark_records[record["benchmark"]].append(record)
+        origin = record["dataset_origin"]
+        origin_records[origin].append(record)
+        benchmark_origin_groups[record["benchmark"]][origin].append(record)
     for (benchmark, difficulty), group_records in groups.items():
         difficulty_groups[benchmark][difficulty] = _aggregate(group_records)
 
@@ -577,6 +586,10 @@ def _build_summary(
         benchmark: {
             "overall": _aggregate(group_records),
             "by_difficulty": difficulty_groups[benchmark],
+            "by_origin": {
+                origin: _aggregate(origin_group)
+                for origin, origin_group in benchmark_origin_groups[benchmark].items()
+            },
         }
         for benchmark, group_records in benchmark_records.items()
     }
@@ -594,6 +607,10 @@ def _build_summary(
             peak_memory_after_model_load_bytes
         ),
         "totals": _aggregate(records),
+        "by_origin": {
+            origin: _aggregate(origin_group)
+            for origin, origin_group in origin_records.items()
+        },
         "total_prompt_tokens": sum(
             record["prompt_tokens"] or 0 for record in completed
         ),
@@ -701,6 +718,14 @@ def _suite_requires_judge(suite: BenchmarkSuite) -> bool:
         for benchmark_items in suite.items.values()
         for item in benchmark_items
     )
+
+
+def _dataset_origin(item: DatasetItem) -> str:
+    if item.provenance.source is not None:
+        return "licensed_anchor"
+    if item.provenance.kind == "synthetic":
+        return "fresh_generated"
+    return "hand_authored"
 
 
 def _model_summary(model: ModelConfig, model_path: Path) -> dict[str, Any]:

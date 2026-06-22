@@ -1,0 +1,10 @@
+schema_version: 1
+name: local-llm-all-benchmarks
+version: 1
+status: pilot
+benchmark_files:
+  - ../applied_reasoning/benchmark.yaml
+  - ../messy_text_to_schema/benchmark.yaml
+  - ../constraint_load_curve/benchmark.yaml
+  - ../code_debug_repair/benchmark.yaml
+  - ../grounded_compression/benchmark.yaml

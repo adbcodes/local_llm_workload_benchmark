@@ -8,7 +8,7 @@ from llm_workload_benchmark.dataset import DatasetError, load_suite, score_answe
 from llm_workload_benchmark.executable import evaluate_python
 from llm_workload_benchmark.runner import GenerationOutput, run_benchmark
 
-CODING_SUITE_PATH = Path("data/benchmarks/v1/coding_suite.yaml").resolve()
+CODING_SUITE_PATH = Path("data/suites/coding.yaml").resolve()
 
 
 def _coding_item():

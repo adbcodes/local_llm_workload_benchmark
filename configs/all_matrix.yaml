@@ -3,7 +3,7 @@ schema_version: 1
 benchmark:
   name: three-model-all-benchmarks
   description: Run every available benchmark on all configured local models.
-  workload_path: data/benchmarks/v1/all_suite.yaml
+  workload_path: data/suites/all.yaml
   output_root: runs
   repetitions: 1
   seed: 42

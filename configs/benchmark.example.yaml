@@ -3,7 +3,7 @@ schema_version: 1
 benchmark:
   name: benchmark-schema-pilot
   description: Validate the generic benchmark dataset and scoring architecture.
-  workload_path: data/benchmarks/v1/suite.yaml
+  workload_path: data/suites/core.yaml
   output_root: runs
   repetitions: 1
   seed: 42

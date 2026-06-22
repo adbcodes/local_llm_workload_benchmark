@@ -1,0 +1,7 @@
+schema_version: 1
+name: local-llm-benchmark-schema-pilot
+version: 1
+status: pilot
+benchmark_files:
+  - ../applied_reasoning/benchmark.yaml
+  - ../messy_text_to_schema/benchmark.yaml

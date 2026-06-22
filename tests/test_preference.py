@@ -23,7 +23,7 @@ from llm_workload_benchmark.preference_terminal import (
     run_terminal_preferences,
 )
 
-SUITE_PATH = Path("data/benchmarks/v1/suite.yaml").resolve()
+SUITE_PATH = Path("data/suites/core.yaml").resolve()
 
 
 def _write_experiment(

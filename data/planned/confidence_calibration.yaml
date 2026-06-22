@@ -1,0 +1,22 @@
+schema_version: 1
+id: confidence_calibration
+title: Confidence vs Correctness
+kind: question_set
+status: planned
+description: Compare stated confidence with objective correctness on reused questions.
+target_question_count: null
+subcategories: [reasoning_confidence, extraction_confidence, uncertainty]
+evaluation:
+  planned_methods: [accuracy, brier_score, expected_calibration_error]
+  implementation_needed: confidence_response_parser
+starter_items:
+  - id: confidence_percentage_001
+    status: draft
+    subcategory: reasoning_confidence
+    difficulty: easy
+    split: dev
+    source_item: reason_percentage_001
+    response_contract:
+      answer: original_answer_contract
+      confidence: integer_0_to_100
+    expected_behavior: Return answer 120 plus a confidence value from 0 to 100.

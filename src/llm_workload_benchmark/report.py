@@ -53,12 +53,25 @@ def _build_row(experiment_root: Path, entry: Any) -> dict[str, Any]:
     if not isinstance(totals, dict):
         return row
     judge = summary.get("judge")
+    by_origin = summary.get("by_origin")
+    licensed = (
+        by_origin.get("licensed_anchor") if isinstance(by_origin, dict) else None
+    )
+    generated = (
+        by_origin.get("fresh_generated") if isinstance(by_origin, dict) else None
+    )
     row.update(
         {
             "attempted": totals.get("attempted"),
             "passed": totals.get("passed"),
             "pass_rate": totals.get("pass_rate"),
             "mean_score": totals.get("mean_score"),
+            "licensed_pass_rate": (
+                licensed.get("pass_rate") if isinstance(licensed, dict) else None
+            ),
+            "generated_pass_rate": (
+                generated.get("pass_rate") if isinstance(generated, dict) else None
+            ),
             "mean_latency_seconds": totals.get("mean_latency_seconds"),
             "mean_ttft_seconds": totals.get("mean_time_to_first_token_seconds"),
             "mean_output_rate": totals.get(
@@ -84,8 +97,8 @@ def _render_markdown(index: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         f"- Status: `{status}`",
         f"- Dataset: `{dataset}`",
         "",
-        "| Model | Status | Passes | Pass rate | Mean score | Mean latency | Mean TTFT | Output tok/s | Peak RSS | Judge cost |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Model | Status | Passes | Pass rate | Mean score | Licensed anchors | Fresh generated | Mean latency | Mean TTFT | Output tok/s | Peak RSS | Judge cost |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
@@ -97,6 +110,8 @@ def _render_markdown(index: dict[str, Any], rows: list[dict[str, Any]]) -> str:
                     _format_passes(row.get("passed"), row.get("attempted")),
                     _format_percent(row.get("pass_rate")),
                     _format_percent(row.get("mean_score")),
+                    _format_percent(row.get("licensed_pass_rate")),
+                    _format_percent(row.get("generated_pass_rate")),
                     _format_seconds(row.get("mean_latency_seconds")),
                     _format_seconds(row.get("mean_ttft_seconds")),
                     _format_number(row.get("mean_output_rate")),

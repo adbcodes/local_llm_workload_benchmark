@@ -1,0 +1,24 @@
+schema_version: 1
+id: tool_use
+title: Tool Use
+kind: question_set
+status: planned
+description: Select tools, provide arguments, sequence calls, recover from errors, and avoid unnecessary calls.
+target_question_count: null
+subcategories: [selection, arguments, sequencing, error_recovery, no_tool_needed]
+evaluation:
+  planned_methods: [fake_environment_execution, call_trace_match, final_state_match]
+  implementation_needed: fake_tool_environment_and_scorer
+starter_items:
+  - id: tool_weather_then_calendar_001
+    status: draft
+    subcategory: sequencing
+    difficulty: medium
+    split: dev
+    prompt: >-
+      Check tomorrow's weather in Bengaluru and add a 30-minute outdoor walk at
+      07:00 only if rain is not forecast.
+    available_tools: [get_weather, create_calendar_event]
+    expected_behavior:
+      call_order: [get_weather, create_calendar_event]
+      condition: create the event only when the weather result has no rain

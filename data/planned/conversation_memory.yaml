@@ -1,0 +1,24 @@
+schema_version: 1
+id: conversation_memory
+title: Remembering a Conversation
+kind: question_set
+status: planned
+description: Test whether facts, preferences, formats, and corrections survive across turns.
+target_question_count: null
+subcategories: [fact_memory, preference_memory, format_retention, correction_retention]
+evaluation:
+  planned_methods: [later_turn_exact_match, constraint_retention]
+  implementation_needed: multi_turn_runner
+starter_items:
+  - id: conversation_format_turn_005_001
+    status: draft
+    subcategory: format_retention
+    difficulty: medium
+    split: dev
+    conversation:
+      - role: user
+        content: Always return task statuses as JSON with keys task and status.
+      - role: user
+        content: The export task is complete. Report its status.
+    check_at_turn: 5
+    expected_behavior: Return valid JSON containing task=export and status=complete.

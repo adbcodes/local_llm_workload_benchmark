@@ -1,0 +1,24 @@
+schema_version: 1
+id: long_text_retrieval
+title: Finding Information in Long Text
+kind: question_set
+status: planned
+description: Measure retrieval accuracy as relevant facts move through longer documents.
+target_question_count: null
+subcategories: [fact_at_start, fact_in_middle, fact_at_end]
+generation_matrix:
+  context_tokens: [1000, 4000, 8000]
+  fact_positions: [start, middle, end]
+evaluation:
+  planned_methods: [exact_match, numeric_tolerance]
+  implementation_needed: seeded_long_context_generator
+starter_items:
+  - id: long_text_project_code_001
+    status: draft
+    subcategory: fact_in_middle
+    difficulty: medium
+    split: dev
+    prompt_template: >-
+      Read the document and return only the internal project code mentioned in
+      the deployment section: {{ generated_document }}
+    expected_behavior: Return the planted project code exactly.

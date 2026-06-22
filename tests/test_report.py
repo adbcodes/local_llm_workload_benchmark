@@ -27,6 +27,10 @@ def _write_experiment(tmp_path: Path) -> Path:
                 "judge": {
                     "estimated_cost_usd": 0.001234,
                 },
+                "by_origin": {
+                    "licensed_anchor": {"pass_rate": 0.6},
+                    "fresh_generated": {"pass_rate": 0.8},
+                },
             }
         ),
         encoding="utf-8",
@@ -36,7 +40,7 @@ def _write_experiment(tmp_path: Path) -> Path:
             {
                 "experiment_id": "matrix-test",
                 "status": "partial_failure",
-                "dataset": "data/benchmarks/v1/suite.yaml",
+                "dataset": "data/suites/core.yaml",
                 "models": [
                     {
                         "model_id": "model-a",
@@ -68,6 +72,8 @@ def test_generate_comparison_report_from_saved_summaries(tmp_path: Path) -> None
     assert "| model-b | failed | — | — | — |" in report
     assert "2.00 GiB" in report
     assert "$0.001234" in report
+    assert "| Licensed anchors | Fresh generated |" in report
+    assert "60.0% | 80.0%" in report
     assert "not model rankings" in report
 
 

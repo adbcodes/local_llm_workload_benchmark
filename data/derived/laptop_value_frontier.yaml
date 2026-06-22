@@ -1,0 +1,15 @@
+schema_version: 1
+id: laptop_value_frontier
+title: Best Model for the Laptop
+kind: derived
+status: planned
+description: Identify the best quality and speed tradeoffs at different local memory limits.
+source_suite: ../suites/all.yaml
+metrics:
+  - category_scores
+  - time_to_first_token_seconds
+  - output_tokens_per_second
+  - peak_memory_bytes
+  - model_file_bytes
+  - output_token_count
+implementation_needed: pareto_frontier_report

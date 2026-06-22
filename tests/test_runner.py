@@ -19,7 +19,7 @@ from llm_workload_benchmark.runner import (
     run_matrix,
 )
 
-SUITE_PATH = Path("data/benchmarks/v1/suite.yaml").resolve()
+SUITE_PATH = Path("data/suites/core.yaml").resolve()
 
 
 class AnsweringBackend:
@@ -124,6 +124,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     config_path = _write_config(tmp_path)
     config = load_config(config_path)
     answers = _correct_answers()
+    item_count = len(answers)
 
     run_directory = run_benchmark(
         config,
@@ -135,7 +136,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
 
     assert (run_directory / "manifest.json").is_file()
     result_lines = (run_directory / "results.jsonl").read_text().splitlines()
-    assert len(result_lines) == 7
+    assert len(result_lines) == item_count
     records = [json.loads(line) for line in result_lines]
     assert all(record["status"] == "completed" for record in records)
     assert all(record["schema_version"] == 2 for record in records)
@@ -151,16 +152,21 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
         "medium",
         "hard",
     }
+    assert sum(record["dataset_origin"] == "licensed_anchor" for record in records) == 24
+    assert sum(record["dataset_origin"] == "fresh_generated" for record in records) == 24
+    assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 3
 
     summary = json.loads((run_directory / "summary.json").read_text())
     assert summary["status"] == "completed"
-    assert summary["totals"]["attempted"] == 7
-    assert summary["totals"]["passed"] == 7
+    assert summary["totals"]["attempted"] == item_count
+    assert summary["totals"]["passed"] == item_count
     assert summary["totals"]["pass_rate"] == 1.0
     assert summary["totals"]["mean_time_to_first_token_seconds"] == pytest.approx(0.05)
     assert summary["totals"]["peak_process_memory_bytes"] == 4_000_000_000
     assert summary["peak_process_memory_after_model_load_bytes"] == 4_000_000_000
-    assert summary["total_prompt_tokens"] == 140
+    assert summary["total_prompt_tokens"] == 20 * item_count
+    assert summary["by_origin"]["licensed_anchor"]["attempted"] == 24
+    assert summary["by_origin"]["fresh_generated"]["attempted"] == 24
     assert len(summary["dataset"]["sha256"]) == 64
 
 
@@ -168,7 +174,8 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
     config_path = _write_config(tmp_path)
     config = load_config(config_path)
     answers = _correct_answers()
-    failing_prompt = next(prompt for prompt in answers if "seventh occurrence" in prompt)
+    item_count = len(answers)
+    failing_prompt = next(prompt for prompt in answers if "occurrence" in prompt)
 
     run_directory = run_benchmark(
         config,
@@ -185,7 +192,7 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
         for line in (run_directory / "results.jsonl").read_text().splitlines()
     ]
     errors = [record for record in records if record["status"] == "error"]
-    assert len(records) == 7
+    assert len(records) == item_count
     assert len(errors) == 1
     assert errors[0]["error"] == {
         "type": "RuntimeError",
@@ -195,9 +202,9 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
     assert errors[0]["evaluation"] is None
 
     summary = json.loads((run_directory / "summary.json").read_text())
-    assert summary["totals"]["completed"] == 6
+    assert summary["totals"]["completed"] == item_count - 1
     assert summary["totals"]["errors"] == 1
-    assert summary["totals"]["passed"] == 6
+    assert summary["totals"]["passed"] == item_count - 1
 
 
 def test_runner_applies_only_configured_empty_think_cleanup(tmp_path: Path) -> None:
@@ -244,19 +251,19 @@ def test_runner_applies_only_configured_empty_think_cleanup(tmp_path: Path) -> N
 
 
 def test_suite_hash_includes_only_active_benchmark_files(tmp_path: Path) -> None:
-    suite_root = tmp_path / "v1"
-    shutil.copytree(Path("data/benchmarks/v1"), suite_root)
-    suite_path = suite_root / "suite.yaml"
+    data_root = tmp_path / "data"
+    shutil.copytree(Path("data"), data_root)
+    suite_path = data_root / "suites" / "core.yaml"
     original_hash = _suite_hash(suite_path)
 
-    inactive_items = suite_root / "constraint_load_curve" / "items.jsonl"
+    inactive_items = data_root / "constraint_load_curve" / "items.jsonl"
     inactive_items.write_text(
         inactive_items.read_text(encoding="utf-8") + "\n",
         encoding="utf-8",
     )
     assert _suite_hash(suite_path) == original_hash
 
-    active_items = suite_root / "applied_reasoning" / "items.jsonl"
+    active_items = data_root / "applied_reasoning" / "items.jsonl"
     active_items.write_text(
         active_items.read_text(encoding="utf-8") + "\n",
         encoding="utf-8",
@@ -280,6 +287,7 @@ def test_matrix_runs_enabled_models_sequentially_and_indexes_artifacts(
     config_path = _write_matrix_config(tmp_path)
     config = load_config(config_path)
     answers = _correct_answers()
+    item_count = len(answers)
     lifecycle: list[str] = []
     progress: list[RunProgress] = []
 
@@ -306,10 +314,10 @@ def test_matrix_runs_enabled_models_sequentially_and_indexes_artifacts(
         "load:second-model",
         "close:second-model",
     ]
-    assert len(progress) == 14
+    assert len(progress) == item_count * 2
     assert progress[0].model_number == 1
     assert progress[-1].model_number == 2
-    assert progress[-1].completed_items == 7
+    assert progress[-1].completed_items == item_count
 
     index = json.loads((experiment_directory / "experiment.json").read_text())
     assert index["status"] == "completed"

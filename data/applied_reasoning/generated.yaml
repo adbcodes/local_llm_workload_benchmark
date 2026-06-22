@@ -1,0 +1,611 @@
+schema_version: 1
+benchmark: applied_reasoning
+generated_by: applied_reasoning_v1
+seed: 20260721
+items:
+- id: reason_percentage_001
+  subcategory: arithmetic_percentages
+  difficulty: easy
+  split: dev
+  prompt: What is 25% of 480?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 120
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - percentage
+- id: reason_discount_tax_generated_001
+  subcategory: arithmetic_percentages
+  difficulty: medium
+  split: test
+  prompt: An item costs ₹2,000. It is discounted by 10%, then taxed at 18% on the discounted
+    price. What is the final price in rupees?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 2124
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - percentage
+  - sequential_operations
+- id: reason_sequential_percentage_generated_001
+  subcategory: arithmetic_percentages
+  difficulty: hard
+  split: test
+  prompt: An account starts with ₹80,000, gains 10%, then loses 20% of its new value. A fee
+    equal to 5% of the remaining value is deducted. What is the final balance in rupees?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 66880
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - percentage
+  - multi_step
+- id: reason_ratio_share_generated_001
+  subcategory: ratios_rates_work
+  difficulty: easy
+  split: dev
+  prompt: Two quantities are in the ratio 2:7 and total 81. What is the smaller quantity?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 18
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - ratio
+  - proportion
+- id: reason_combined_work_generated_001
+  subcategory: ratios_rates_work
+  difficulty: medium
+  split: test
+  prompt: Worker A completes a job in 10 days and worker B in 15 days. At constant rates,
+    how many days do they need working together?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: '6'
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - work_rate
+  - combined_rate
+- id: reason_mixture_generated_001
+  subcategory: ratios_rates_work
+  difficulty: hard
+  split: test
+  prompt: A 40-litre mixture is 25% concentrate. How many litres of pure concentrate must
+    be added to make it 40% concentrate?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: '10'
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - mixture
+  - ratio
+  - algebraic_rate
+- id: reason_linear_equation_generated_001
+  subcategory: algebra_word_problems
+  difficulty: easy
+  split: dev
+  prompt: 'Solve for x: 4x + 5 = 37.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 8
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - linear_equation
+- id: reason_ticket_system_generated_001
+  subcategory: algebra_word_problems
+  difficulty: medium
+  split: test
+  prompt: A venue sold 14 tickets. Adult tickets cost ₹250 and child tickets cost ₹150. Total
+    sales were ₹2900. How many adult tickets were sold?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 8
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - simultaneous_equations
+  - word_problem
+- id: reason_rectangle_algebra_generated_001
+  subcategory: algebra_word_problems
+  difficulty: medium
+  split: test
+  prompt: A rectangle has perimeter 54. Its length is 5 units more than its width. What is
+    its width?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 11
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - linear_equation
+  - geometry_context
+- id: reason_lcm_generated_001
+  subcategory: number_properties_sequences
+  difficulty: easy
+  split: dev
+  prompt: What is the least positive integer divisible by both 9 and 12?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 36
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - divisibility
+  - lcm
+- id: reason_divisibility_count_generated_001
+  subcategory: number_properties_sequences
+  difficulty: medium
+  split: test
+  prompt: How many integers from 1 through 200, inclusive, are divisible by 6 but not by 9?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 22
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - divisibility
+  - inclusion_exclusion
+- id: reason_sequence_generated_001
+  subcategory: number_properties_sequences
+  difficulty: medium
+  split: test
+  prompt: 'Find the next number in the sequence: 3, 8, 15, 24, 35.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 48
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - number_sequence
+  - increasing_differences
+- id: reason_time_duration_generated_001
+  subcategory: calendar_time
+  difficulty: easy
+  split: dev
+  prompt: A session starts at 09:35 and lasts 150 minutes. What time does it end? Return HH:MM
+    in 24-hour time.
+  response_contract:
+    type: text
+    format: HH:MM
+  expected:
+    value: '12:05'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - time
+  - duration
+- id: reason_calendar_001
+  subcategory: calendar_time
+  difficulty: medium
+  split: test
+  prompt: A meeting occurs every 3 weeks, with the first occurrence on 2026-01-07. Counting
+    that as occurrence 1, what is the date of occurrence 5?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2026-04-01'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - calendar
+  - recurrence
+- id: reason_business_days_generated_001
+  subcategory: calendar_time
+  difficulty: hard
+  split: test
+  prompt: A task starts on Monday, 2026-08-03, which counts as business day 1. It requires
+    12 business days. Saturdays and Sundays do not count, and Monday, 2026-08-10 is a holiday.
+    On what date is it completed?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2026-08-19'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - calendar
+  - business_days
+  - holiday
+- id: reason_die_probability_generated_001
+  subcategory: probability_counting
+  difficulty: easy
+  split: dev
+  prompt: A fair 6-sided die numbered 1 through 6 is rolled. What is the probability of rolling
+    a number greater than 4?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 1/3
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - probability
+  - single_event
+- id: reason_without_replacement_generated_001
+  subcategory: probability_counting
+  difficulty: medium
+  split: test
+  prompt: A bag contains 4 red and 6 blue balls. Two balls are drawn without replacement.
+    What is the probability both are blue?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 1/3
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - probability
+  - without_replacement
+- id: reason_conditional_coins_generated_001
+  subcategory: probability_counting
+  difficulty: hard
+  split: test
+  prompt: A fair coin is flipped 5 times. Given that at least one head occurred, what is the
+    probability that exactly 2 heads occurred?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 10/31
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - probability
+  - conditional_probability
+- id: reason_syllogism_generated_001
+  subcategory: deductive_logic
+  difficulty: medium
+  split: dev
+  prompt: All analysts are readers. Some readers are writers. Must some analysts be writers?
+    Return only yes, no, or cannot_be_determined.
+  response_contract:
+    type: text
+    format: label
+  expected:
+    value: cannot_be_determined
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - deduction
+  - syllogism
+- id: reason_implication_chain_generated_001
+  subcategory: deductive_logic
+  difficulty: medium
+  split: test
+  prompt: If deployment occurs, tests pass. If tests pass, approval is logged. Approval was
+    not logged. Did deployment occur? Return only yes or no.
+  response_contract:
+    type: text
+    format: label
+  expected:
+    value: 'no'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - deduction
+  - modus_tollens
+- id: reason_truth_tellers_generated_001
+  subcategory: deductive_logic
+  difficulty: hard
+  split: test
+  prompt: Each of A, B, and C is either always truthful or always lying. A says, 'B and C
+    are the same type.' B says, 'A is lying.' C says, 'B is truthful.' Which people are truthful?
+    Return their labels separated by commas.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - deduction
+  - truth_tellers
+- id: reason_assignment_generated_001
+  subcategory: ordering_constraint_puzzles
+  difficulty: medium
+  split: dev
+  prompt: Ana, Ben, and Chen are assigned API, UI, and DB, one each. Ana is not assigned UI.
+    Ben is assigned API. Chen is not assigned DB. Return Ana's assignment, Ben's assignment,
+    and Chen's assignment in that order, separated by commas.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: DB,API,UI
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - constraints
+  - assignment
+- id: reason_four_order_generated_001
+  subcategory: ordering_constraint_puzzles
+  difficulty: medium
+  split: test
+  prompt: Four tasks A, B, C, and D occupy positions 1 through 4. C is first. B is immediately
+    after A. D is after B. Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: C,A,B,D
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - constraints
+  - ordering
+- id: reason_ordering_001
+  subcategory: ordering_constraint_puzzles
+  difficulty: hard
+  split: test
+  prompt: Five workshops A, B, C, D, and E occupy positions 1 through 5. B is immediately
+    after A. C is immediately after E. D is before A. B is before E. Return the unique order
+    as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: D,A,B,E,C
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning_v1
+    seed: 20260721
+  tags:
+  - fresh_generated
+  - constraints
+  - ordering
+  - multi_step

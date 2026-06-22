@@ -38,7 +38,9 @@ def build_authoring_suite(suite_path: Path, *, check: bool = False) -> BuildResu
     suite_items: dict[str, DatasetItem] = {}
 
     for relative_definition_path in manifest.benchmark_files:
-        definition_path = resolved_suite_path.parent / relative_definition_path
+        definition_path = (
+            resolved_suite_path.parent / relative_definition_path
+        ).resolve()
         definition = _load_model(definition_path, BenchmarkDefinition)
         output_path = definition_path.parent / definition.items_path
         if definition.authoring_paths:
@@ -101,7 +103,13 @@ def _load_authoring_items(
         raw_document = _load_yaml(authoring_path)
         if not isinstance(raw_document, dict):
             raise DatasetError(f"authoring file must contain a YAML object: {authoring_path}")
-        unknown_keys = set(raw_document) - {"schema_version", "benchmark", "items"}
+        unknown_keys = set(raw_document) - {
+            "schema_version",
+            "benchmark",
+            "generated_by",
+            "seed",
+            "items",
+        }
         if unknown_keys:
             raise DatasetError(
                 f"unknown authoring fields in {authoring_path}: "
@@ -168,6 +176,8 @@ def _runtime_item(item: DatasetItem) -> dict[str, Any]:
     value = item.model_dump(mode="json")
     if value["variant_of"] is None:
         value.pop("variant_of")
+    if value["provenance"]["source"] is None:
+        value["provenance"].pop("source")
     return value
 
 

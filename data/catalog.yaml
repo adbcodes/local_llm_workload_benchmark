@@ -1,0 +1,23 @@
+schema_version: 1
+name: local-llm-benchmark-catalog
+benchmarks:
+  - {id: applied_reasoning, title: Applied Reasoning, kind: question_set, status: started, definition_path: applied_reasoning/benchmark.yaml}
+  - {id: messy_text_to_schema, title: Messy Text to Schema, kind: question_set, status: started, definition_path: messy_text_to_schema/benchmark.yaml}
+  - {id: constraint_load_curve, title: Following Multiple Rules, kind: question_set, status: started, definition_path: constraint_load_curve/benchmark.yaml}
+  - {id: code_debug_repair, title: Code Debug and Repair, kind: question_set, status: started, definition_path: code_debug_repair/benchmark.yaml}
+  - {id: grounded_compression, title: Fact-Safe Summaries, kind: question_set, status: started, definition_path: grounded_compression/benchmark.yaml}
+  - {id: tables_to_decisions, title: Tables to Decisions, kind: question_set, status: planned, definition_path: planned/tables_to_decisions.yaml}
+  - {id: inbox_routing, title: Inbox Routing, kind: question_set, status: planned, definition_path: planned/inbox_routing.yaml}
+  - {id: tool_use, title: Tool Use, kind: question_set, status: planned, definition_path: planned/tool_use.yaml}
+  - {id: practical_writing, title: Practical Writing, kind: question_set, status: planned, definition_path: planned/practical_writing.yaml}
+  - {id: personal_model_preference, title: Personal Model Preference, kind: question_set, status: planned, definition_path: planned/personal_model_preference.yaml}
+  - {id: long_text_retrieval, title: Finding Information in Long Text, kind: question_set, status: planned, definition_path: planned/long_text_retrieval.yaml}
+  - {id: conversation_memory, title: Remembering a Conversation, kind: question_set, status: planned, definition_path: planned/conversation_memory.yaml}
+  - {id: noisy_text_robustness, title: Clean Text vs Noisy Text, kind: question_set, status: planned, definition_path: planned/noisy_text_robustness.yaml}
+  - {id: false_or_missing_information, title: False or Missing Information, kind: question_set, status: planned, definition_path: planned/false_or_missing_information.yaml}
+  - {id: answer_stability, title: Answer Stability, kind: question_set, status: planned, definition_path: planned/answer_stability.yaml}
+  - {id: confidence_calibration, title: Confidence vs Correctness, kind: question_set, status: planned, definition_path: planned/confidence_calibration.yaml}
+  - {id: shuffled_choices, title: Shuffled Choices, kind: question_set, status: planned, definition_path: planned/shuffled_choices.yaml}
+  - {id: india_focused_tasks, title: India-Focused Tasks, kind: question_set, status: planned, definition_path: planned/india_focused_tasks.yaml}
+  - {id: quantization_survival_curve, title: Model Size Reduction Comparison, kind: derived, status: planned, definition_path: derived/quantization_survival_curve.yaml}
+  - {id: laptop_value_frontier, title: Best Model for the Laptop, kind: derived, status: planned, definition_path: derived/laptop_value_frontier.yaml}

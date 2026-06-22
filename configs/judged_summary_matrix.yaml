@@ -3,7 +3,7 @@ schema_version: 1
 benchmark:
   name: judged-summary-pilot
   description: Compare local GGUF summaries using GPT-OSS 120B on Groq.
-  workload_path: data/benchmarks/v1/judged_suite.yaml
+  workload_path: data/suites/judged.yaml
   output_root: runs
   repetitions: 1
   seed: 42
