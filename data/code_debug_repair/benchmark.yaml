@@ -1,19 +1,20 @@
 id: code_debug_repair
 title: Code, Debug, and Repair
-description: Small Python functions evaluated by restricted execution against unit tests.
+description: Original Python implementation, bug-diagnosis, and code-repair tasks checked with restricted execution or deterministic labels.
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
-current_question_count: 1
-target_question_count: 20
+current_question_count: 48
+target_question_count: 48
 current_difficulty_distribution:
-  easy: 1
-  medium: 0
-  hard: 0
+  easy: 16
+  medium: 24
+  hard: 8
 difficulty_distribution:
-  easy: 7
-  medium: 8
-  hard: 5
+  easy: 16
+  medium: 24
+  hard: 8
 order_rule: easy_to_hard
 scoring_methods:
   - executable_python
+  - exact_match

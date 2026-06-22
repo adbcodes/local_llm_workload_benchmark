@@ -167,34 +167,69 @@ def test_noisy_order_gold_total_matches_its_line_items_and_tax() -> None:
     assert calculated_total == order["total"]
 
 
-def test_constraint_verifier_checks_one_three_and_six_rule_items() -> None:
-    easy, medium, hard = load_dataset(CONSTRAINT_PATH)
+def test_constraint_verifier_checks_one_to_four_rule_items() -> None:
+    items = {item.id: item for item in load_dataset(CONSTRAINT_PATH)}
+    easy = items["constraint_api_rate_limiting_001"]
+    two_rules = items["constraint_api_rate_limiting_002"]
+    three_rules = items["constraint_api_rate_limiting_003"]
+    hard = items["constraint_api_rate_limiting_004"]
 
     assert score_answer(easy, str(easy.expected["value"])).passed
-    assert score_answer(medium, str(medium.expected["value"])).passed
+    assert score_answer(two_rules, str(two_rules.expected["value"])).passed
+    assert score_answer(three_rules, str(three_rules.expected["value"])).passed
     assert score_answer(hard, str(hard.expected["value"])).passed
 
     empty = score_answer(easy, "")
     assert not empty.passed
-    assert empty.details["checks"]["max_words"] is True
+    assert empty.details["checks"]["exact_sentences"] is False
     assert empty.details["content_preserved"] is False
 
-    friday_substring = score_answer(
-        easy,
-        "The payments deployment passed automated checks and launches "
-        "Fridayish with support monitoring transaction failures.",
+    missing_retry = score_answer(
+        two_rules,
+        "Rate limiting protects the service from overload. "
+        "Servers reject bursts. Clients should wait. This keeps access fair.",
     )
-    assert not friday_substring.passed
-    assert friday_substring.details["fact_checks"]["friday_release"] is False
+    assert not missing_retry.passed
+    assert missing_retry.details["content_preserved"] is False
+    assert missing_retry.details["fact_checks"]["retry_after"] is False
+    assert missing_retry.details["checks"]["required_terms"] is False
 
-    hard_failure = score_answer(
-        hard,
-        "Payments deployment passed automated checks and launches Friday evening, "
-        "with support monitoring transaction failures for one hour afterward.",
-    )
-    assert not hard_failure.passed
-    assert hard_failure.details["content_preserved"] is True
-    assert hard_failure.details["checks"]["forbidden_punctuation"] is False
+    json_item = items["constraint_employee_json_004"]
+    wrong_seniority = json.loads(str(json_item.expected["value"]))
+    wrong_seniority[0]["seniority"] = "junior"
+    seniority_failure = score_answer(json_item, json.dumps(wrong_seniority))
+    assert not seniority_failure.passed
+    assert seniority_failure.details["content_preserved"] is False
+    assert seniority_failure.details["checks"]["json_derived_bands"] is False
+
+
+def test_data_heavy_constraint_tasks_use_larger_inputs_and_changing_answers() -> None:
+    items = {item.id: item for item in load_dataset(CONSTRAINT_PATH)}
+
+    employee_answers = [
+        str(items[f"constraint_employee_json_{level:03d}"].expected["value"])
+        for level in range(1, 5)
+    ]
+    assert len(json.loads(employee_answers[0])) == 12
+    assert len(set(employee_answers)) == 4
+
+    book_answers = [
+        str(items[f"constraint_book_csv_{level:03d}"].expected["value"])
+        for level in range(1, 5)
+    ]
+    assert len(book_answers[0].splitlines()) == 16  # header plus 15 books
+    assert len(set(book_answers)) == 4
+    assert "END,END,0" not in book_answers[-1]
+
+    classification_answers = [
+        str(items[f"constraint_message_classification_{level:03d}"].expected["value"])
+        for level in range(1, 5)
+    ]
+    assert len(json.loads(classification_answers[0])) == 16
+    assert len(set(classification_answers)) == 4
+
+    ordering = items["constraint_point_ordering_001"]
+    assert len(str(ordering.expected["value"]).split(",")) == 15
 
 
 def test_loader_rejects_difficulty_regression(tmp_path: Path) -> None:
@@ -217,10 +252,12 @@ def test_loader_rejects_difficulty_regression(tmp_path: Path) -> None:
 def test_loader_rejects_unknown_and_impossible_constraint_rules(
     tmp_path: Path,
 ) -> None:
-    source = json.loads(
-        Path("data/constraint_load_curve/items.jsonl")
+    source = next(
+        json.loads(line)
+        for line in Path("data/constraint_load_curve/items.jsonl")
         .read_text(encoding="utf-8")
-        .splitlines()[1]
+        .splitlines()
+        if json.loads(line)["id"] == "constraint_paragraph_rewrite_001"
     )
     rules = source["scoring"]["parameters"]["rules"]
     rules["max_word"] = rules.pop("max_words")

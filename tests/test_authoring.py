@@ -47,7 +47,7 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
     assert selected_ids == {
         "reason_percentage_001",
         "schema_invoice_001",
-        "constraint_deployment_001",
+        "constraint_api_rate_limiting_001",
         "code_deduplicate_001",
         "summary_incident_001",
     }

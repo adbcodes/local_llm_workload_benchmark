@@ -12,7 +12,6 @@ SUITE_PATH = Path("data/suites/reasoning.yaml")
 GENERATED_PATH = Path(
     "data/applied_reasoning/generated.yaml"
 )
-REVIEW_PATH = Path("docs/TEMP_APPLIED_REASONING_REVIEW.html")
 
 
 def test_applied_reasoning_has_balanced_hybrid_dataset() -> None:
@@ -81,22 +80,3 @@ def test_materialized_generated_yaml_matches_generator(tmp_path: Path) -> None:
     assert document["generated_by"] == "applied_reasoning_v1"
     assert document["seed"] == 20260721
     assert document == regenerated
-
-
-def test_temporary_html_review_matches_current_dataset(tmp_path: Path) -> None:
-    regenerated_path = tmp_path / "review.html"
-    subprocess.run(
-        [
-            sys.executable,
-            "scripts/generate_applied_reasoning_review.py",
-            "--output",
-            str(regenerated_path),
-        ],
-        check=True,
-    )
-
-    html = REVIEW_PATH.read_text(encoding="utf-8")
-    assert html == regenerated_path.read_text(encoding="utf-8")
-    assert html.count('"benchmark":"applied_reasoning"') == 48
-    assert "Licensed anchor" in html
-    assert "Fresh generated" in html

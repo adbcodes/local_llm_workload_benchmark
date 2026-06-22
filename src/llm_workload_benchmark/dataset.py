@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import math
 import re
+import csv
+import io
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -365,11 +367,60 @@ def _validate_scoring_parameters(
         "prefix",
         "suffix",
         "forbidden_punctuation",
+        "comma_separated",
+        "sorted_numeric",
+        "excluded_values",
+        "item_prefix",
+        "numbered_list",
+        "sorted_alphabetically",
+        "max_words_per_line",
+        "forbidden_item_character",
+        "list_item_descriptions",
+        "list_group_balance",
+        "json_only",
+        "exact_json_keys",
+        "json_field_constraints",
+        "json_key_order",
+        "json_array_field_equals",
+        "json_array_required_keys",
+        "json_array_sorted_by",
+        "json_derived_bands",
+        "json_summary_counts",
+        "csv_format",
+        "csv_sorted_by",
+        "csv_year_format",
+        "csv_final_row",
+        "csv_year_min",
+        "csv_tie_sort",
+        "word_range",
+        "required_forbidden_terms",
+        "exact_paragraphs",
+        "json_label_array",
+        "label_domain",
+        "classification_order",
+        "spam_count_consistent",
+        "boundary",
+        "yaml_only",
+        "exact_top_level_keys",
+        "required_top_level_keys",
+        "yaml_field_constraints",
+        "first_line_comment_prefix",
+        "yaml_healthcheck",
+        "sorted_by_points",
+        "uppercase_items",
+        "ranked_items",
+        "ties_alphabetical",
     }
     unknown_rules = set(rules) - allowed_rules
     if unknown_rules:
         raise ValueError(f"unknown constraint rules: {sorted(unknown_rules)}")
-    for name in ("max_words", "exact_words", "exact_sentences"):
+    for name in (
+        "max_words",
+        "exact_words",
+        "exact_sentences",
+        "max_words_per_line",
+        "exact_paragraphs",
+    ):
         if name in rules:
             value = rules[name]
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
@@ -377,7 +428,19 @@ def _validate_scoring_parameters(
     if "max_words" in rules and "exact_words" in rules:
         if rules["exact_words"] > rules["max_words"]:
             raise ValueError("exact_words cannot exceed max_words")
-    for name in ("required_terms", "forbidden_terms", "forbidden_punctuation"):
+    for name in (
+        "required_terms",
+        "forbidden_terms",
+        "forbidden_punctuation",
+        "excluded_values",
+        "exact_json_keys",
+        "json_key_order",
+        "json_array_required_keys",
+        "csv_final_row",
+        "label_domain",
+        "exact_top_level_keys",
+        "required_top_level_keys",
+    ):
         if name in rules:
             _validate_nonempty_strings(rules[name], name)
     if "forbidden_punctuation" in rules and any(
@@ -395,24 +458,59 @@ def _validate_scoring_parameters(
         raise ValueError("the same term cannot be both required and forbidden")
 
     content = parameters.get("content_requirements")
-    if not isinstance(content, dict) or set(content) != {"required_facts"}:
-        raise ValueError(
-            "constraint_rules requires content_requirements.required_facts"
-        )
-    facts = content["required_facts"]
-    if not isinstance(facts, list) or not facts:
-        raise ValueError("required_facts must be a non-empty list")
-    seen_names: set[str] = set()
-    for fact in facts:
-        if not isinstance(fact, dict) or set(fact) != {"name", "any_of"}:
-            raise ValueError("each required fact needs exactly name and any_of")
-        name = fact["name"]
-        if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", name):
-            raise ValueError("required fact names must use snake_case")
-        if name in seen_names:
-            raise ValueError(f"duplicate required fact name {name!r}")
-        seen_names.add(name)
-        _validate_nonempty_strings(fact["any_of"], f"required fact {name}")
+    if not isinstance(content, dict) or len(content) != 1:
+        raise ValueError("constraint_rules requires exactly one content checker")
+    content_kind, content_value = next(iter(content.items()))
+    if content_kind == "required_facts":
+        facts = content_value
+        if not isinstance(facts, list) or not facts:
+            raise ValueError("required_facts must be a non-empty list")
+        seen_names: set[str] = set()
+        for fact in facts:
+            if not isinstance(fact, dict) or set(fact) != {"name", "any_of"}:
+                raise ValueError("each required fact needs exactly name and any_of")
+            name = fact["name"]
+            if not isinstance(name, str) or not re.fullmatch(
+                r"[a-z][a-z0-9_]*", name
+            ):
+                raise ValueError("required fact names must use snake_case")
+            if name in seen_names:
+                raise ValueError(f"duplicate required fact name {name!r}")
+            seen_names.add(name)
+            _validate_nonempty_strings(fact["any_of"], f"required fact {name}")
+    elif content_kind == "required_values":
+        if not isinstance(content_value, dict):
+            raise ValueError("required_values must be an object")
+        if set(content_value) - {"values", "separator", "strip_prefix"}:
+            raise ValueError("required_values has unknown fields")
+        _validate_nonempty_strings(content_value.get("values"), "required values")
+        separator = content_value.get("separator")
+        if not isinstance(separator, str) or not separator:
+            raise ValueError("required_values separator must be non-empty")
+        strip_prefix = content_value.get("strip_prefix", "")
+        if not isinstance(strip_prefix, str):
+            raise ValueError("required_values strip_prefix must be a string")
+    elif content_kind == "csv_records":
+        if (
+            not isinstance(content_value, list)
+            or not content_value
+            or any(not isinstance(row, list) or not row for row in content_value)
+        ):
+            raise ValueError("csv_records must be a non-empty list of rows")
+    elif content_kind == "classification_labels":
+        _validate_nonempty_strings(content_value, "classification labels")
+    elif content_kind in {"exact_json", "exact_yaml"}:
+        try:
+            json.dumps(content_value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"{content_kind} must be JSON serializable") from error
+        if content_kind == "exact_yaml" and not isinstance(content_value, dict):
+            raise ValueError("exact_yaml must be an object")
+    elif content_kind == "none":
+        if content_value is not True:
+            raise ValueError("the none content checker must be true")
+    else:
+        raise ValueError(f"unknown content checker: {content_kind!r}")
 
 
 def _validate_python_specification(value: Any) -> None:
@@ -1038,6 +1136,11 @@ def _score_constraints(item: DatasetItem, answer: str) -> ScoreResult:
     rules = item.scoring.parameters["rules"]
     checks: dict[str, bool] = {}
     words = re.findall(r"\b[\w'-]+\b", answer, flags=re.UNICODE)
+    comma_items = _comma_items(answer)
+    numbered_items = _numbered_items(answer)
+    parsed_json = _parse_json(answer)
+    parsed_csv = _parse_csv(answer)
+    parsed_yaml = _parse_yaml_mapping(answer)
 
     if "max_words" in rules:
         checks["max_words"] = len(words) <= rules["max_words"]
@@ -1062,15 +1165,323 @@ def _score_constraints(item: DatasetItem, answer: str) -> ScoreResult:
         checks["forbidden_punctuation"] = all(
             punctuation not in answer for punctuation in rules["forbidden_punctuation"]
         )
+    if "comma_separated" in rules:
+        pattern = rules["comma_separated"]["item_pattern"]
+        checks["comma_separated"] = (
+            comma_items is not None
+            and bool(comma_items)
+            and all(re.fullmatch(pattern, value) for value in comma_items)
+        )
+    if "sorted_numeric" in rules:
+        numeric_values = _numeric_suffixes(comma_items)
+        checks["sorted_numeric"] = numeric_values is not None and numeric_values == sorted(
+            numeric_values
+        )
+    if "excluded_values" in rules:
+        normalized_items = _normalized_comma_values(comma_items)
+        checks["excluded_values"] = normalized_items is not None and all(
+            value.casefold() not in normalized_items
+            for value in rules["excluded_values"]
+        )
+    if "item_prefix" in rules:
+        checks["item_prefix"] = comma_items is not None and all(
+            value.startswith(rules["item_prefix"]) for value in comma_items
+        )
+    if "numbered_list" in rules:
+        checks["numbered_list"] = (
+            numbered_items is not None
+            and len(numbered_items) == rules["numbered_list"]["count"]
+            and [number for number, _ in numbered_items]
+            == list(range(1, len(numbered_items) + 1))
+        )
+    if "sorted_alphabetically" in rules:
+        list_values = _list_values(numbered_items)
+        checks["sorted_alphabetically"] = (
+            list_values is not None
+            and list_values == sorted(list_values, key=str.casefold)
+        )
+    if "max_words_per_line" in rules:
+        nonempty_lines = [line for line in answer.splitlines() if line.strip()]
+        checks["max_words_per_line"] = bool(nonempty_lines) and all(
+            len(re.findall(r"\b[\w'-]+\b", line, flags=re.UNICODE))
+            <= rules["max_words_per_line"]
+            for line in nonempty_lines
+        )
+    if "forbidden_item_character" in rules:
+        list_values = _list_values(numbered_items)
+        character = rules["forbidden_item_character"].casefold()
+        checks["forbidden_item_character"] = (
+            list_values is not None
+            and all(character not in value.casefold() for value in list_values)
+        )
+    if "list_item_descriptions" in rules:
+        list_values = _list_values(numbered_items)
+        checks["list_item_descriptions"] = list_values is not None and all(
+            len(value.split(" — ", 1)) == 2
+            and len(re.findall(r"\b[\w'-]+\b", value.split(" — ", 1)[1])) >= 2
+            for value in list_values
+        )
+    if "list_group_balance" in rules:
+        list_values = _list_values(numbered_items)
+        specification = rules["list_group_balance"]
+        groups = specification["groups"]
+        expected_count = specification["count_per_group"]
+        names = (
+            [value.split(" — ", 1)[0] for value in list_values]
+            if list_values is not None
+            else []
+        )
+        group_counts = Counter(groups.get(name) for name in names)
+        checks["list_group_balance"] = (
+            bool(names)
+            and None not in group_counts
+            and set(group_counts) == set(groups.values())
+            and all(count == expected_count for count in group_counts.values())
+        )
+    if "json_only" in rules:
+        expected_type = rules["json_only"]
+        checks["json_only"] = parsed_json is not None and (
+            (expected_type == "object" and isinstance(parsed_json, dict))
+            or (expected_type == "array" and isinstance(parsed_json, list))
+        )
+    if "exact_json_keys" in rules:
+        checks["exact_json_keys"] = isinstance(parsed_json, dict) and set(
+            parsed_json
+        ) == set(rules["exact_json_keys"])
+    if "json_field_constraints" in rules:
+        checks["json_field_constraints"] = isinstance(
+            parsed_json, dict
+        ) and _mapping_fields_satisfy(parsed_json, rules["json_field_constraints"])
+    if "json_key_order" in rules:
+        checks["json_key_order"] = isinstance(parsed_json, dict) and list(
+            parsed_json
+        ) == rules["json_key_order"]
+    json_records = _json_array_records(
+        parsed_json, allow_summary="json_summary_counts" in rules
+    )
+    if "json_array_field_equals" in rules:
+        specification = rules["json_array_field_equals"]
+        checks["json_array_field_equals"] = bool(json_records) and all(
+            record.get(specification["field"]) == specification["equals"]
+            for record in json_records
+        )
+    if "json_array_required_keys" in rules:
+        required_keys = set(rules["json_array_required_keys"])
+        checks["json_array_required_keys"] = bool(json_records) and all(
+            required_keys <= set(record) for record in json_records
+        )
+    if "json_array_sorted_by" in rules:
+        checks["json_array_sorted_by"] = _json_records_are_sorted(
+            json_records, rules["json_array_sorted_by"]
+        )
+    if "json_derived_bands" in rules:
+        checks["json_derived_bands"] = _json_records_have_derived_bands(
+            json_records, rules["json_derived_bands"]
+        )
+    if "json_summary_counts" in rules:
+        checks["json_summary_counts"] = _json_summary_counts_match(
+            parsed_json, rules["json_summary_counts"]
+        )
+    if "csv_format" in rules:
+        specification = rules["csv_format"]
+        data_row_count = len(parsed_csv) - 1 if parsed_csv is not None else 0
+        checks["csv_format"] = (
+            parsed_csv is not None
+            and parsed_csv[0] == specification["header"]
+            and all(len(row) == len(specification["header"]) for row in parsed_csv)
+            and (
+                "data_rows" not in specification
+                or data_row_count
+                == specification["data_rows"]
+                + (1 if "csv_final_row" in rules else 0)
+            )
+            and data_row_count >= specification.get("minimum_data_rows", 1)
+        )
+    if "csv_sorted_by" in rules:
+        checks["csv_sorted_by"] = _csv_column_is_sorted(
+            parsed_csv,
+            (
+                rules["csv_sorted_by"]["column"]
+                if isinstance(rules["csv_sorted_by"], dict)
+                else rules["csv_sorted_by"]
+            ),
+            final_row=rules.get("csv_final_row"),
+            direction=(
+                rules["csv_sorted_by"].get("direction", "ascending")
+                if isinstance(rules["csv_sorted_by"], dict)
+                else "ascending"
+            ),
+        )
+    if "csv_year_min" in rules:
+        checks["csv_year_min"] = _csv_column_meets_minimum(
+            parsed_csv, "year", rules["csv_year_min"]
+        )
+    if "csv_tie_sort" in rules:
+        checks["csv_tie_sort"] = _csv_ties_are_sorted(
+            parsed_csv, rules["csv_tie_sort"]
+        )
+    if "csv_year_format" in rules:
+        lines = [line for line in answer.strip().splitlines() if line]
+        data_lines = lines[1:]
+        if "csv_final_row" in rules and data_lines:
+            data_lines = data_lines[:-1]
+        checks["csv_year_format"] = bool(data_lines) and all(
+            re.fullmatch(r".*,(\d{4})", line) is not None
+            and not re.search(r",\s*[\"']\d{4}[\"']\s*$", line)
+            for line in data_lines
+        )
+    if "csv_final_row" in rules:
+        checks["csv_final_row"] = (
+            parsed_csv is not None
+            and bool(parsed_csv)
+            and parsed_csv[-1] == [str(value) for value in rules["csv_final_row"]]
+        )
+    if "word_range" in rules:
+        checks["word_range"] = (
+            rules["word_range"]["min"]
+            <= len(words)
+            <= rules["word_range"]["max"]
+        )
+    if "required_forbidden_terms" in rules:
+        term_rule = rules["required_forbidden_terms"]
+        checks["required_forbidden_terms"] = all(
+            _contains_term(answer, term) for term in term_rule["required"]
+        ) and all(
+            not _contains_term(answer, term) for term in term_rule["forbidden"]
+        )
+    if "exact_paragraphs" in rules:
+        paragraphs = re.split(r"\n[ \t]*\n", answer.strip())
+        checks["exact_paragraphs"] = (
+            len(paragraphs) == rules["exact_paragraphs"]
+            and all(paragraph.strip() for paragraph in paragraphs)
+        )
+    if "json_label_array" in rules:
+        checks["json_label_array"] = _is_label_array(
+            parsed_json,
+            allow_summary="spam_count_consistent" in rules,
+        )
+    if "label_domain" in rules:
+        labels, _ = _classification_parts(parsed_json)
+        checks["label_domain"] = labels is not None and all(
+            label in rules["label_domain"] for label in labels
+        )
+    if "classification_order" in rules:
+        labels, _ = _classification_parts(parsed_json)
+        checks["classification_order"] = (
+            labels is not None
+            and [_normalize_label(label) for label in labels]
+            == rules["classification_order"]
+        )
+    if "spam_count_consistent" in rules:
+        labels, summary = _classification_parts(parsed_json)
+        reported_count = summary.get("spam_count") if summary is not None else None
+        checks["spam_count_consistent"] = (
+            labels is not None
+            and summary is not None
+            and isinstance(reported_count, int)
+            and not isinstance(reported_count, bool)
+            and reported_count
+            == sum(_normalize_label(label) == "spam" for label in labels)
+        )
+    if "boundary" in rules:
+        checks["boundary"] = answer.startswith(
+            rules["boundary"]["prefix"]
+        ) and answer.endswith(rules["boundary"]["suffix"])
+    if "yaml_only" in rules:
+        checks["yaml_only"] = parsed_yaml is not None
+    if "exact_top_level_keys" in rules:
+        checks["exact_top_level_keys"] = parsed_yaml is not None and set(
+            parsed_yaml
+        ) == set(rules["exact_top_level_keys"])
+    if "required_top_level_keys" in rules:
+        checks["required_top_level_keys"] = parsed_yaml is not None and set(
+            rules["required_top_level_keys"]
+        ) <= set(parsed_yaml)
+    if "yaml_field_constraints" in rules:
+        checks["yaml_field_constraints"] = parsed_yaml is not None and (
+            _mapping_fields_satisfy(parsed_yaml, rules["yaml_field_constraints"])
+        )
+    if "first_line_comment_prefix" in rules:
+        first_line = answer.splitlines()[0] if answer.splitlines() else ""
+        checks["first_line_comment_prefix"] = first_line.startswith(
+            rules["first_line_comment_prefix"]
+        )
+    if "yaml_healthcheck" in rules:
+        healthcheck = parsed_yaml.get("healthcheck") if parsed_yaml else None
+        checks["yaml_healthcheck"] = (
+            isinstance(healthcheck, dict)
+            and healthcheck == rules["yaml_healthcheck"]
+        )
+    if "sorted_by_points" in rules:
+        ranked_values = _ranked_comma_values(comma_items)
+        points = rules["sorted_by_points"]
+        checks["sorted_by_points"] = (
+            ranked_values is not None
+            and all(value.casefold() in points for value in ranked_values)
+            and [points[value.casefold()] for value in ranked_values]
+            == sorted(
+                [points[value.casefold()] for value in ranked_values], reverse=True
+            )
+        )
+    if "uppercase_items" in rules:
+        ranked_values = _ranked_comma_values(comma_items)
+        checks["uppercase_items"] = ranked_values is not None and all(
+            value == value.upper() for value in ranked_values
+        )
+    if "ranked_items" in rules:
+        checks["ranked_items"] = comma_items is not None and all(
+            re.fullmatch(rf"{index}:[A-Za-z]+", value) is not None
+            for index, value in enumerate(comma_items, start=1)
+        )
+    if "ties_alphabetical" in rules:
+        ranked_values = _ranked_comma_values(comma_items)
+        points = rules["ties_alphabetical"]
+        checks["ties_alphabetical"] = (
+            ranked_values is not None
+            and all(value.casefold() in points for value in ranked_values)
+            and all(
+                points[left.casefold()] != points[right.casefold()]
+                or left.casefold() <= right.casefold()
+                for left, right in zip(ranked_values, ranked_values[1:])
+            )
+        )
 
     passed_count = sum(checks.values())
     constraint_score = passed_count / len(checks) if checks else 0
-    fact_checks = {
-        fact["name"]: any(_contains_term(answer, phrase) for phrase in fact["any_of"])
-        for fact in item.scoring.parameters["content_requirements"]["required_facts"]
-    }
-    content_score = sum(fact_checks.values()) / len(fact_checks)
-    content_preserved = all(fact_checks.values())
+    content_preserved, content_score, content_details = _score_constraint_content(
+        item,
+        answer,
+        parsed_csv=parsed_csv,
+        parsed_json=parsed_json,
+        comma_items=comma_items,
+    )
+    classification_details: dict[str, Any] = {}
+    content = item.scoring.parameters["content_requirements"]
+    if "classification_labels" in content:
+        labels, summary = _classification_parts(parsed_json)
+        normalized = (
+            [_normalize_label(label) for label in labels] if labels is not None else []
+        )
+        gold = content["classification_labels"]
+        model_spam_count = sum(label == "spam" for label in normalized)
+        reported_count = summary.get("spam_count") if summary else None
+        reported_count_is_integer = isinstance(reported_count, int) and not isinstance(
+            reported_count, bool
+        )
+        classification_details = {
+            "gold_label_accuracy": content_score,
+            "model_spam_count": model_spam_count,
+            "gold_spam_count": sum(label == "spam" for label in gold),
+            "reported_spam_count": reported_count,
+            "count_consistent_with_labels": (
+                reported_count_is_integer and reported_count == model_spam_count
+            ),
+            "count_matches_gold": (
+                reported_count_is_integer
+                and reported_count
+                == sum(label == "spam" for label in gold)
+            ),
+        }
     return ScoreResult(
         passed=(
             content_preserved
@@ -1081,12 +1492,367 @@ def _score_constraints(item: DatasetItem, answer: str) -> ScoreResult:
         details={
             "content_preserved": content_preserved,
             "content_score": content_score,
-            "fact_checks": fact_checks,
+            **content_details,
             "constraint_score": constraint_score,
             "checks": checks,
             "word_count": len(words),
+            **classification_details,
         },
     )
+
+
+def _score_constraint_content(
+    item: DatasetItem,
+    answer: str,
+    *,
+    parsed_csv: list[list[str]] | None,
+    parsed_json: Any | None,
+    comma_items: list[str] | None,
+) -> tuple[bool, float, dict[str, Any]]:
+    content = item.scoring.parameters["content_requirements"]
+    kind, specification = next(iter(content.items()))
+    if kind == "none":
+        return True, 1.0, {"content_checker": "none"}
+    if kind == "required_facts":
+        fact_checks = {
+            fact["name"]: any(
+                _contains_term(answer, phrase) for phrase in fact["any_of"]
+            )
+            for fact in specification
+        }
+        score = sum(fact_checks.values()) / len(fact_checks)
+        return all(fact_checks.values()), score, {"fact_checks": fact_checks}
+    if kind == "required_values":
+        actual = _normalized_required_values(comma_items, specification)
+        expected = [value.casefold() for value in specification["values"]]
+        matches = sum((Counter(actual) & Counter(expected)).values()) if actual else 0
+        score = matches / max(len(actual or []), len(expected))
+        return Counter(actual or []) == Counter(expected), score, {
+            "actual_values": actual,
+            "expected_values": expected,
+        }
+    if kind == "csv_records":
+        actual_rows = parsed_csv[1:] if parsed_csv else []
+        if actual_rows and actual_rows[-1] == ["END", "END", "0"]:
+            actual_rows = actual_rows[:-1]
+        expected_rows = [[str(value) for value in row] for row in specification]
+        actual_counter = Counter(tuple(row) for row in actual_rows)
+        expected_counter = Counter(tuple(row) for row in expected_rows)
+        matches = sum((actual_counter & expected_counter).values())
+        score = matches / max(len(actual_rows), len(expected_rows))
+        return actual_counter == expected_counter, score, {
+            "actual_records": actual_rows,
+            "expected_records": expected_rows,
+        }
+    if kind == "exact_json":
+        return _score_exact_structure(parsed_json, specification, "json")
+    if kind == "exact_yaml":
+        return _score_exact_structure(_parse_yaml_mapping(answer), specification, "yaml")
+    labels, _ = _classification_parts(parsed_json)
+    actual_labels = (
+        [_normalize_label(label) for label in labels] if labels is not None else []
+    )
+    matches = sum(
+        actual == expected
+        for actual, expected in zip(actual_labels, specification)
+    )
+    score = matches / max(len(actual_labels), len(specification))
+    return actual_labels == specification, score, {
+        "actual_labels": actual_labels,
+        "expected_labels": specification,
+    }
+
+
+def _comma_items(answer: str) -> list[str] | None:
+    if "\n" in answer or "\r" in answer:
+        return None
+    values = [value.strip() for value in answer.strip().split(",")]
+    return values if values and all(values) else None
+
+
+def _numbered_items(answer: str) -> list[tuple[int, str]] | None:
+    lines = [line.strip() for line in answer.strip().splitlines() if line.strip()]
+    parsed: list[tuple[int, str]] = []
+    for line in lines:
+        match = re.fullmatch(r"(\d+)\.\s+(.+)", line)
+        if match is None:
+            return None
+        parsed.append((int(match.group(1)), match.group(2).strip()))
+    return parsed or None
+
+
+def _list_values(items: list[tuple[int, str]] | None) -> list[str] | None:
+    return [value for _, value in items] if items is not None else None
+
+
+def _numeric_suffixes(items: list[str] | None) -> list[int] | None:
+    if items is None:
+        return None
+    matches = [re.search(r"(\d+)$", value) for value in items]
+    if any(match is None for match in matches):
+        return None
+    return [int(match.group(1)) for match in matches if match is not None]
+
+
+def _normalized_comma_values(items: list[str] | None) -> set[str] | None:
+    if items is None:
+        return None
+    return {re.sub(r"^[A-Za-z]+-", "", value).casefold() for value in items}
+
+
+def _normalized_required_values(
+    items: list[str] | None,
+    specification: dict[str, Any],
+) -> list[str] | None:
+    if items is None:
+        return None
+    prefix = specification.get("strip_prefix", "")
+    values: list[str] = []
+    for item in items:
+        value = re.sub(r"^\d+:", "", item).strip()
+        if prefix and value.casefold().startswith(prefix.casefold()):
+            value = value[len(prefix) :]
+        values.append(value.casefold())
+    return values
+
+
+def _parse_json(answer: str) -> Any | None:
+    try:
+        return json.loads(answer)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _parse_csv(answer: str) -> list[list[str]] | None:
+    try:
+        rows = list(csv.reader(io.StringIO(answer, newline=""), strict=True))
+    except csv.Error:
+        return None
+    return rows if rows and all(row for row in rows) else None
+
+
+def _parse_yaml_mapping(answer: str) -> dict[str, Any] | None:
+    try:
+        value = yaml.safe_load(answer)
+    except yaml.YAMLError:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _score_exact_structure(
+    actual: Any | None, expected: Any, format_name: str
+) -> tuple[bool, float, dict[str, Any]]:
+    if actual is None:
+        return False, 0.0, {
+            "content_checker": f"exact_{format_name}",
+            "reason": f"invalid_{format_name}",
+        }
+    actual_leaves = _flatten_json(actual)
+    expected_leaves = _flatten_json(expected)
+    matching = sum(
+        path in actual_leaves
+        and _json_values_equal(actual_leaves[path], expected_value)
+        for path, expected_value in expected_leaves.items()
+    )
+    denominator = max(len(actual_leaves), len(expected_leaves))
+    return _json_values_equal(actual, expected), matching / denominator, {
+        "content_checker": f"exact_{format_name}",
+        "matching_leaves": matching,
+        "expected_leaves": len(expected_leaves),
+        "actual_leaves": len(actual_leaves),
+    }
+
+
+def _json_array_records(
+    value: Any | None, *, allow_summary: bool
+) -> list[dict[str, Any]] | None:
+    if not isinstance(value, list) or not value:
+        return None
+    records = value[:-1] if allow_summary else value
+    if not records or any(not isinstance(record, dict) for record in records):
+        return None
+    return records
+
+
+def _json_records_are_sorted(
+    records: list[dict[str, Any]] | None, specifications: list[dict[str, Any]]
+) -> bool:
+    if not records:
+        return False
+
+    def in_order(left: dict[str, Any], right: dict[str, Any]) -> bool:
+        for specification in specifications:
+            field = specification["field"]
+            if field not in left or field not in right:
+                return False
+            left_value = left[field]
+            right_value = right[field]
+            if "order" in specification:
+                positions = {
+                    value: index for index, value in enumerate(specification["order"])
+                }
+                if left_value not in positions or right_value not in positions:
+                    return False
+                left_value = positions[left_value]
+                right_value = positions[right_value]
+            if left_value == right_value:
+                continue
+            if specification.get("direction", "ascending") == "descending":
+                return left_value > right_value
+            return left_value < right_value
+        return True
+
+    return all(in_order(left, right) for left, right in zip(records, records[1:]))
+
+
+def _json_records_have_derived_bands(
+    records: list[dict[str, Any]] | None, specification: dict[str, Any]
+) -> bool:
+    if not records:
+        return False
+    source_field = specification["source_field"]
+    target_field = specification["target_field"]
+    for record in records:
+        source_value = record.get(source_field)
+        if isinstance(source_value, bool) or not isinstance(source_value, (int, float)):
+            return False
+        expected = specification["otherwise"]
+        for band in specification["bands"]:
+            if source_value <= band["maximum"]:
+                expected = band["value"]
+                break
+        if record.get(target_field) != expected:
+            return False
+    return True
+
+
+def _json_summary_counts_match(
+    value: Any | None, specification: dict[str, Any]
+) -> bool:
+    if not isinstance(value, list) or len(value) < 2 or not isinstance(value[-1], dict):
+        return False
+    summary_key = specification["summary_key"]
+    summary = value[-1].get(summary_key)
+    records = value[:-1]
+    if not isinstance(summary, dict) or any(not isinstance(record, dict) for record in records):
+        return False
+    counts = Counter(record.get(specification["field"]) for record in records)
+    return None not in counts and dict(sorted(counts.items())) == dict(sorted(summary.items()))
+
+
+def _mapping_fields_satisfy(
+    value: dict[str, Any],
+    constraints: dict[str, dict[str, Any]],
+) -> bool:
+    for field, rules in constraints.items():
+        if field not in value:
+            return False
+        field_value = value[field]
+        expected_type = rules.get("type")
+        if expected_type == "integer" and (
+            isinstance(field_value, bool) or not isinstance(field_value, int)
+        ):
+            return False
+        if expected_type == "string" and not isinstance(field_value, str):
+            return False
+        if "enum" in rules and field_value not in rules["enum"]:
+            return False
+        if "equals" in rules and field_value != rules["equals"]:
+            return False
+        if "minimum" in rules and (
+            not isinstance(field_value, (int, float))
+            or field_value < rules["minimum"]
+        ):
+            return False
+        if "maximum" in rules and (
+            not isinstance(field_value, (int, float))
+            or field_value > rules["maximum"]
+        ):
+            return False
+    return True
+
+
+def _csv_column_is_sorted(
+    rows: list[list[str]] | None,
+    column: str,
+    *,
+    final_row: list[Any] | None,
+    direction: str = "ascending",
+) -> bool:
+    if not rows or column not in rows[0]:
+        return False
+    data_rows = rows[1:]
+    if final_row is not None and data_rows:
+        data_rows = data_rows[:-1]
+    index = rows[0].index(column)
+    try:
+        values = [int(row[index]) for row in data_rows]
+    except (IndexError, ValueError):
+        return False
+    return values == sorted(values, reverse=direction == "descending")
+
+
+def _csv_column_meets_minimum(
+    rows: list[list[str]] | None, column: str, minimum: int
+) -> bool:
+    if not rows or column not in rows[0] or len(rows) < 2:
+        return False
+    index = rows[0].index(column)
+    try:
+        values = [int(row[index]) for row in rows[1:]]
+    except (IndexError, ValueError):
+        return False
+    return all(value >= minimum for value in values)
+
+
+def _csv_ties_are_sorted(
+    rows: list[list[str]] | None, specification: dict[str, str]
+) -> bool:
+    if not rows:
+        return False
+    header = rows[0]
+    if specification["primary"] not in header or specification["secondary"] not in header:
+        return False
+    primary_index = header.index(specification["primary"])
+    secondary_index = header.index(specification["secondary"])
+    for left, right in zip(rows[1:], rows[2:]):
+        if left[primary_index] == right[primary_index] and (
+            left[secondary_index].casefold() > right[secondary_index].casefold()
+        ):
+            return False
+    return True
+
+
+def _classification_parts(
+    value: Any | None,
+) -> tuple[list[str] | None, dict[str, Any] | None]:
+    if not isinstance(value, list):
+        return None, None
+    summary = value[-1] if value and isinstance(value[-1], dict) else None
+    labels = value[:-1] if summary is not None else value
+    if any(not isinstance(label, str) for label in labels):
+        return None, summary
+    return labels, summary
+
+
+def _is_label_array(value: Any | None, *, allow_summary: bool) -> bool:
+    labels, summary = _classification_parts(value)
+    if labels is None or not labels:
+        return False
+    if summary is None:
+        return True
+    return allow_summary and set(summary) == {"spam_count"}
+
+
+def _normalize_label(label: str) -> str:
+    normalized = re.sub(r"[\s_-]+", "-", label.strip().casefold())
+    return normalized
+
+
+def _ranked_comma_values(items: list[str] | None) -> list[str] | None:
+    if items is None:
+        return None
+    return [re.sub(r"^\d+:", "", item).strip() for item in items]
 
 
 def _contains_term(answer: str, term: str) -> bool:

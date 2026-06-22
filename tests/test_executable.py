@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,57 @@ CODING_SUITE_PATH = Path("data/suites/coding.yaml").resolve()
 
 def _coding_item():
     return load_suite(CODING_SUITE_PATH).items["code_debug_repair"][0]
+
+
+def test_coding_dataset_has_agreed_task_mix_and_pattern_coverage() -> None:
+    items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+
+    assert len(items) == 48
+    assert Counter(item.subcategory for item in items) == {
+        "function_implementation": 30,
+        "bug_diagnosis": 10,
+        "code_repair": 8,
+    }
+    assert Counter(item.difficulty for item in items) == {
+        "easy": 16,
+        "medium": 24,
+        "hard": 8,
+    }
+    implementations = [
+        item for item in items if item.subcategory == "function_implementation"
+    ]
+    assert sum("dsa" in item.tags for item in implementations) == 24
+    assert sum("practical_python" in item.tags for item in implementations) == 6
+    required_patterns = {
+        "arrays_hashing",
+        "two_pointers",
+        "sliding_window",
+        "stack",
+        "binary_search",
+        "linked_list",
+        "binary_tree",
+        "binary_search_tree",
+        "heap_priority_queue",
+        "backtracking",
+        "trie",
+        "graph",
+        "dynamic_programming",
+        "greedy",
+        "intervals",
+        "bit_manipulation",
+    }
+    assert required_patterns <= {tag for item in implementations for tag in item.tags}
+
+
+def test_bug_diagnosis_items_use_deterministic_labels() -> None:
+    items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+    diagnoses = [item for item in items if item.subcategory == "bug_diagnosis"]
+
+    assert len(diagnoses) == 10
+    assert len({item.expected["value"] for item in diagnoses}) == 10
+    for item in diagnoses:
+        assert item.scoring.method == "exact_match"
+        assert score_answer(item, item.expected["value"].upper()).passed
 
 
 def test_coding_fixture_uses_restricted_executable_contract() -> None:
@@ -125,7 +177,15 @@ models:
         project_root=tmp_path,
         backend_factory=lambda model, path, seed: CodingBackend(),
     )
-    record = json.loads((run_directory / "results.jsonl").read_text())
+    records = [
+        json.loads(line)
+        for line in (run_directory / "results.jsonl").read_text().splitlines()
+    ]
+    record = next(
+        candidate
+        for candidate in records
+        if candidate["item_id"] == "code_deduplicate_001"
+    )
 
     assert record["evaluation"]["type"] == "executable"
     assert record["evaluation"]["passed"] is True
