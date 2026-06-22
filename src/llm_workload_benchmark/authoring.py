@@ -108,6 +108,7 @@ def _load_authoring_items(
             "benchmark",
             "generated_by",
             "seed",
+            "item_template",
             "items",
         }
         if unknown_keys:
@@ -123,9 +124,12 @@ def _load_authoring_items(
                 f"{definition.id!r}"
             )
         raw_items = raw_document.get("items")
-        if not isinstance(raw_items, list) or not raw_items:
+        if not isinstance(raw_items, list) or (
+            not raw_items and definition.current_question_count != 0
+        ):
             raise DatasetError(
-                f"authoring file must contain a non-empty items list: {authoring_path}"
+                f"authoring items must be a list and may be empty only when "
+                f"current_question_count is zero: {authoring_path}"
             )
 
         for item_number, raw_item in enumerate(raw_items, start=1):

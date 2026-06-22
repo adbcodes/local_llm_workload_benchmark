@@ -170,7 +170,7 @@ class BenchmarkDefinition(BaseModel):
     description: str = Field(min_length=1)
     items_path: str = Field(min_length=1)
     authoring_paths: list[str] = Field(default_factory=list)
-    current_question_count: int = Field(gt=0)
+    current_question_count: int = Field(ge=0)
     target_question_count: int = Field(gt=0)
     current_difficulty_distribution: dict[Difficulty, int]
     difficulty_distribution: dict[Difficulty, int]
@@ -197,8 +197,8 @@ class BenchmarkDefinition(BaseModel):
             )
         if set(self.difficulty_distribution) != {"easy", "medium", "hard"}:
             raise ValueError("difficulty_distribution requires easy, medium, and hard")
-        if any(count < 1 for count in self.difficulty_distribution.values()):
-            raise ValueError("target dataset must include every difficulty level")
+        if any(count < 0 for count in self.difficulty_distribution.values()):
+            raise ValueError("target difficulty counts cannot be negative")
         if sum(self.difficulty_distribution.values()) != self.target_question_count:
             raise ValueError(
                 "difficulty_distribution must sum to target_question_count"
@@ -548,7 +548,7 @@ def _validate_nonempty_strings(value: Any, name: str) -> None:
         raise ValueError(f"{name} must be a non-empty list of non-empty strings")
 
 
-def load_dataset(path: Path) -> list[DatasetItem]:
+def load_dataset(path: Path, *, allow_empty: bool = False) -> list[DatasetItem]:
     """Load a JSONL dataset and enforce stable IDs and easy-to-hard ordering."""
 
     try:
@@ -590,9 +590,10 @@ def load_dataset(path: Path) -> list[DatasetItem]:
         seen_ids.add(item.id)
         items.append(item)
 
-    if not items:
+    if not items and not allow_empty:
         raise DatasetError(f"dataset file contains no items: {path}")
-    _validate_difficulty_progression(items, path)
+    if items:
+        _validate_difficulty_progression(items, path)
     return items
 
 
@@ -611,7 +612,10 @@ def load_suite(path: Path) -> BenchmarkSuite:
             raise DatasetError(f"duplicate benchmark id {definition.id!r}")
 
         item_path = definition_path.parent / definition.items_path
-        items = load_dataset(item_path)
+        items = load_dataset(
+            item_path,
+            allow_empty=definition.current_question_count == 0,
+        )
         if len(items) != definition.current_question_count:
             raise DatasetError(
                 f"{definition.id} expected {definition.current_question_count} current "

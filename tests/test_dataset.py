@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from llm_workload_benchmark.dataset import (
+    BenchmarkDefinition,
     DatasetError,
     load_dataset,
     load_suite,
@@ -16,6 +17,34 @@ SUITE_PATH = Path("data/suites/core.yaml")
 CONSTRAINT_PATH = Path("data/constraint_load_curve/items.jsonl")
 
 
+def test_zero_count_benchmarks_can_use_an_empty_dataset(tmp_path: Path) -> None:
+    definition = BenchmarkDefinition.model_validate(
+        {
+            "id": "planned_benchmark",
+            "title": "Planned benchmark",
+            "description": "An empty benchmark template.",
+            "items_path": "items.jsonl",
+            "authoring_paths": ["questions.yaml"],
+            "current_question_count": 0,
+            "target_question_count": 2,
+            "current_difficulty_distribution": {
+                "easy": 0,
+                "medium": 0,
+                "hard": 0,
+            },
+            "difficulty_distribution": {"easy": 1, "medium": 1, "hard": 0},
+            "order_rule": "easy_to_hard",
+            "scoring_methods": ["exact_match"],
+        }
+    )
+    dataset_path = tmp_path / definition.items_path
+    dataset_path.write_text("", encoding="utf-8")
+
+    assert load_dataset(dataset_path, allow_empty=True) == []
+    with pytest.raises(DatasetError, match="contains no items"):
+        load_dataset(dataset_path)
+
+
 def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
     suite = load_suite(SUITE_PATH)
 
@@ -23,17 +52,17 @@ def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
         "applied_reasoning",
         "messy_text_to_schema",
     }
-    assert sum(len(items) for items in suite.items.values()) == 51
+    assert sum(len(items) for items in suite.items.values()) == 78
     reasoning = suite.items["applied_reasoning"]
     assert len(reasoning) == 48
     assert [item.difficulty for item in reasoning].count("easy") == 12
     assert [item.difficulty for item in reasoning].count("medium") == 24
     assert [item.difficulty for item in reasoning].count("hard") == 12
-    assert [item.difficulty for item in suite.items["messy_text_to_schema"]] == [
-        "easy",
-        "medium",
-        "hard",
-    ]
+    schema_items = suite.items["messy_text_to_schema"]
+    assert len(schema_items) == 30
+    assert [item.difficulty for item in schema_items].count("easy") == 8
+    assert [item.difficulty for item in schema_items].count("medium") == 15
+    assert [item.difficulty for item in schema_items].count("hard") == 7
     assert sum(item.split == "dev" for item in reasoning) == 8
 
 
@@ -159,7 +188,11 @@ def test_json_verifier_reports_partial_leaf_accuracy() -> None:
 
 def test_noisy_order_gold_total_matches_its_line_items_and_tax() -> None:
     suite = load_suite(SUITE_PATH)
-    order = suite.items["messy_text_to_schema"][2].expected["value"]
+    order = next(
+        item
+        for item in suite.items["messy_text_to_schema"]
+        if item.id == "schema_order_001"
+    ).expected["value"]
 
     calculated_total = sum(
         item["quantity"] * item["unit_price"] for item in order["line_items"]
