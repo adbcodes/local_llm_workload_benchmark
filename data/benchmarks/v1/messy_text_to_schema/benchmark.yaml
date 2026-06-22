@@ -2,6 +2,8 @@ id: messy_text_to_schema
 title: Messy Text to Schema
 description: Structured extraction from clean, incomplete, noisy, and nested text.
 items_path: items.jsonl
+authoring_paths:
+  - authoring/extraction.yaml
 current_question_count: 3
 target_question_count: 30
 current_difficulty_distribution:

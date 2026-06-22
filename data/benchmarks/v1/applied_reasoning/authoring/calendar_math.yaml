@@ -1,0 +1,43 @@
+schema_version: 1
+benchmark: applied_reasoning
+items:
+  - id: reason_calendar_001
+    subcategory: calendar_math
+    difficulty: medium
+    split: dev
+    prompt: >-
+      A meeting occurs every second Tuesday, with the first occurrence on
+      2026-03-03. What is the date of the seventh occurrence?
+    response_contract:
+      type: date
+      format: common_unambiguous_date
+    expected:
+      value: "2026-05-26"
+    scoring:
+      method: date_value
+      parameters: {}
+    provenance:
+      kind: hand_authored
+      review_status: human_checked
+    tags: [calendar, recurrence, multi_step]
+
+  - id: reason_calendar_variant_001
+    subcategory: calendar_math
+    difficulty: medium
+    split: dev
+    prompt: >-
+      A fortnightly Tuesday meeting starts on March 3, 2026. Count that first
+      meeting as occurrence 1. On what date does occurrence 7 happen?
+    response_contract:
+      type: date
+      format: common_unambiguous_date
+    expected:
+      value: "2026-05-26"
+    scoring:
+      method: date_value
+      parameters: {}
+    provenance:
+      kind: adapted
+      review_status: human_checked
+    tags: [calendar, recurrence, paraphrase_variant]
+    variant_of: reason_calendar_001

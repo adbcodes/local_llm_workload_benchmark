@@ -2,6 +2,10 @@ id: applied_reasoning
 title: Applied Reasoning Gauntlet
 description: Practical numerical, calendar, logical, and constraint reasoning.
 items_path: items.jsonl
+authoring_paths:
+  - authoring/arithmetic.yaml
+  - authoring/calendar_math.yaml
+  - authoring/constraint_puzzles.yaml
 current_question_count: 4
 target_question_count: 48
 current_difficulty_distribution:

@@ -1,0 +1,23 @@
+schema_version: 1
+benchmark: applied_reasoning
+items:
+  - id: reason_percentage_001
+    subcategory: percentage
+    difficulty: easy
+    split: dev
+    prompt: >-
+      What is 15% of 800?
+    response_contract:
+      type: number
+      format: null
+    expected:
+      value: 120
+    scoring:
+      method: numeric_tolerance
+      parameters:
+        absolute_tolerance: 0
+        allow_surrounding_text: true
+    provenance:
+      kind: hand_authored
+      review_status: human_checked
+    tags: [arithmetic, percentage]

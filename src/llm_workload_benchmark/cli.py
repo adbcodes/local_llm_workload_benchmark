@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 
 from llm_workload_benchmark import __version__
+from llm_workload_benchmark.authoring import build_authoring_suite
 from llm_workload_benchmark.config import ConfigError, load_config
 from llm_workload_benchmark.dataset import DatasetError
 from llm_workload_benchmark.preference import (
@@ -25,6 +26,8 @@ app = typer.Typer(
     help="Benchmark local language models on a reproducible workload.",
     no_args_is_help=True,
 )
+dataset_app = typer.Typer(help="Build and validate benchmark datasets.")
+app.add_typer(dataset_app, name="dataset")
 
 
 def _version_callback(value: bool) -> None:
@@ -46,6 +49,38 @@ def main(
     """Local LLM workload benchmark commands."""
 
 
+@dataset_app.command("build")
+def dataset_build_command(
+    suite_path: Path = typer.Option(
+        ...,
+        "--suite",
+        "-s",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Suite manifest whose YAML authoring files should be compiled.",
+    ),
+    check: bool = typer.Option(
+        False,
+        "--check",
+        help="Fail if generated JSONL differs instead of updating it.",
+    ),
+) -> None:
+    """Compile readable YAML authoring files into reusable runtime JSONL."""
+    try:
+        result = build_authoring_suite(suite_path, check=check)
+    except (DatasetError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    if result.written:
+        typer.echo(f"Built {len(result.written)} JSONL file(s).")
+    else:
+        typer.echo("Dataset JSONL is already up to date.")
+
+
 @app.command("run")
 def run_command(
     config_path: Path = typer.Option(
@@ -63,6 +98,7 @@ def run_command(
     """Run the schema-pilot workload on one enabled local model."""
     try:
         config = load_config(config_path)
+        _build_configured_dataset(config.benchmark.workload_path)
         run_directory = run_benchmark(config, config_path)
     except (ConfigError, DatasetError, EvaluationError, OSError) as error:
         typer.echo(f"Error: {error}", err=True)
@@ -107,6 +143,7 @@ def benchmark_command(
 
     try:
         config = load_config(config_path)
+        _build_configured_dataset(config.benchmark.workload_path)
         experiment_directory = run_matrix(
             config,
             config_path,
@@ -140,6 +177,13 @@ def benchmark_command(
             raise typer.Exit(code=1) from error
 
     typer.echo(f"\nExperiment saved to {experiment_directory}")
+
+
+def _build_configured_dataset(workload_path: Path) -> None:
+    suite_path = (
+        workload_path if workload_path.is_absolute() else Path.cwd() / workload_path
+    )
+    build_authoring_suite(suite_path)
 
 
 @app.command("report")

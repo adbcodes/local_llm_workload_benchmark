@@ -1,0 +1,63 @@
+schema_version: 1
+
+benchmark:
+  name: three-model-all-benchmarks
+  description: Run every available benchmark on all configured local models.
+  workload_path: data/benchmarks/v1/all_suite.yaml
+  output_root: runs
+  repetitions: 1
+  seed: 42
+
+judge:
+  provider: groq
+  model: openai/gpt-oss-120b
+  api_key_env: GROQ_API_KEY
+  reasoning_effort: medium
+  max_completion_tokens: 4096
+  timeout_seconds: 60
+  max_retries: 3
+  max_candidate_characters: 12000
+  input_price_per_million_tokens: 0.15
+  cached_input_price_per_million_tokens: 0.075
+  output_price_per_million_tokens: 0.60
+
+models:
+  - id: qwen2.5-3b-q4
+    backend: llama_cpp
+    model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf
+    quantization: Q4_K_M
+    enabled: true
+    context_window: 4096
+    gpu_layers: -1
+    generation:
+      max_output_tokens: 256
+      temperature: 0.0
+      top_p: 1.0
+
+  - id: gemma-3-4b-q4
+    backend: llama_cpp
+    model_path: models/gemma-3-4b-it-Q4_K_M.gguf
+    quantization: Q4_K_M
+    enabled: true
+    context_window: 4096
+    gpu_layers: -1
+    generation:
+      max_output_tokens: 256
+      temperature: 0.0
+      top_p: 1.0
+
+  - id: qwen3-8b-q4
+    backend: llama_cpp
+    model_path: models/Qwen3-8B-Q4_K_M.gguf
+    quantization: Q4_K_M
+    enabled: true
+    context_window: 4096
+    gpu_layers: -1
+    response_cleanup: strip_empty_think
+    system_prompt: |-
+      /no_think
+      Follow the user's instructions precisely. Return only the requested answer without commentary.
+    generation:
+      max_output_tokens: 256
+      temperature: 0.0
+      top_p: 1.0

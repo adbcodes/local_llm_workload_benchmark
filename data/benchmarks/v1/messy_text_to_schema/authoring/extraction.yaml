@@ -1,0 +1,98 @@
+schema_version: 1
+benchmark: messy_text_to_schema
+items:
+  - id: schema_invoice_001
+    subcategory: clean_invoice
+    difficulty: easy
+    split: dev
+    prompt: >-
+      Extract invoice_number, vendor, currency, and total from the text below.
+      Return exactly one valid JSON object with exactly those keys and nothing
+      else. Do not use Markdown fences or include an explanation. The total must
+      be a JSON number, not a string. Text: Invoice INV-204 from Acme Paper.
+      Total due: INR 4,250.00.
+    response_contract:
+      type: json
+      format: object
+    expected:
+      value:
+        invoice_number: INV-204
+        vendor: Acme Paper
+        currency: INR
+        total: 4250.0
+    scoring:
+      method: json_exact
+      parameters:
+        allow_diagnostic_normalization: true
+    provenance:
+      kind: hand_authored
+      review_status: human_checked
+    tags: [extraction, invoice, clean]
+
+  - id: schema_event_001
+    subcategory: missing_fields
+    difficulty: medium
+    split: dev
+    prompt: >-
+      Extract title, event_date, city, and contact_email from the text below.
+      Return exactly one valid JSON object with exactly those keys and nothing
+      else. Do not use Markdown fences or include an explanation. Format
+      event_date as YYYY-MM-DD and use JSON null when a value is absent. Text:
+      Drafted on 4 August 2026. The Bengaluru Data Meetup will happen in
+      Bengaluru's Indiranagar neighbourhood on 19 August 2026. Registration
+      details will be shared later.
+    response_contract:
+      type: json
+      format: object
+    expected:
+      value:
+        title: Bengaluru Data Meetup
+        event_date: "2026-08-19"
+        city: Bengaluru
+        contact_email: null
+    scoring:
+      method: json_exact
+      parameters:
+        allow_diagnostic_normalization: true
+    provenance:
+      kind: hand_authored
+      review_status: human_checked
+    tags: [extraction, missing_field, distractor_date]
+
+  - id: schema_order_001
+    subcategory: nested_ocr_order
+    difficulty: hard
+    split: dev
+    prompt: >-
+      Convert the noisy order below into exactly one valid JSON object with
+      exactly the keys order_id, currency, line_items, tax, and total. Return
+      the JSON object and nothing else; do not use Markdown fences or include an
+      explanation. Each line item must contain exactly description, quantity,
+      and unit_price. Quantity, unit_price, tax, and total must be JSON numbers,
+      not strings. The OCR-like word before the order identifier is a label and
+      is not part of order_id. Text: Ord3r K-77 / curr: INR / 2 x USB-C Hub @
+      1,250.00 / 3 x Cable 2m @ 300.00 / GST: 612.00 / GRAND T0TAL 4,012.00.
+    response_contract:
+      type: json
+      format: nested_object
+    expected:
+      value:
+        order_id: K-77
+        currency: INR
+        line_items:
+          - description: USB-C Hub
+            quantity: 2
+            unit_price: 1250.0
+          - description: Cable 2m
+            quantity: 3
+            unit_price: 300.0
+        tax: 612.0
+        total: 4012.0
+    scoring:
+      method: json_exact
+      parameters:
+        allow_diagnostic_normalization: true
+    provenance:
+      kind: hand_authored
+      review_status: human_checked
+    tags: [extraction, nested_json, ocr_noise, line_items]

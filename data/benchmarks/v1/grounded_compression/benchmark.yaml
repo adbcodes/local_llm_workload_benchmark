@@ -2,6 +2,8 @@ id: grounded_compression
 title: Grounded Compression
 description: Concise summaries that preserve source facts, priorities, and uncertainty.
 items_path: items.jsonl
+authoring_paths:
+  - authoring/operational_updates.yaml
 current_question_count: 1
 target_question_count: 20
 current_difficulty_distribution:

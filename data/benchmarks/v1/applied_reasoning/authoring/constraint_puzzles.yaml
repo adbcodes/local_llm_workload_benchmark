@@ -1,0 +1,26 @@
+schema_version: 1
+benchmark: applied_reasoning
+items:
+  - id: reason_ordering_001
+    subcategory: constraint_puzzle
+    difficulty: hard
+    split: dev
+    prompt: >-
+      Four jobs A, B, C, and D occupy positions 1 through 4. B is after A.
+      D is immediately before C. A is not first. Determine the unique order.
+    response_contract:
+      type: text
+      format: comma_separated_labels
+    expected:
+      value: D,C,A,B
+    scoring:
+      method: exact_match
+      parameters:
+        strip: true
+        case_sensitive: true
+        allow_surrounding_text: true
+        answer_format: comma_separated_labels
+    provenance:
+      kind: hand_authored
+      review_status: human_checked
+    tags: [logic, ordering, constraint_puzzle]

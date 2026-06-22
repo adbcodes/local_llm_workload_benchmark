@@ -143,6 +143,7 @@ class BenchmarkDefinition(BaseModel):
     title: str = Field(min_length=1)
     description: str = Field(min_length=1)
     items_path: str = Field(min_length=1)
+    authoring_paths: list[str] = Field(default_factory=list)
     current_question_count: int = Field(gt=0)
     target_question_count: int = Field(gt=0)
     current_difficulty_distribution: dict[Difficulty, int]
@@ -179,6 +180,32 @@ class BenchmarkDefinition(BaseModel):
         return self
 
 
+class SuiteFilters(BaseModel):
+    """Optional item selection applied after complete benchmark validation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ids: list[str] | None = None
+    subcategories: list[str] | None = None
+    difficulties: list[Difficulty] | None = None
+    splits: list[Split] | None = None
+    review_statuses: list[Literal["draft", "human_checked"]] | None = None
+
+    @model_validator(mode="after")
+    def filters_are_not_empty(self) -> Self:
+        for name in (
+            "ids",
+            "subcategories",
+            "difficulties",
+            "splits",
+            "review_statuses",
+        ):
+            value = getattr(self, name)
+            if value is not None and not value:
+                raise ValueError(f"{name} cannot be empty when provided")
+        return self
+
+
 class SuiteManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -187,6 +214,7 @@ class SuiteManifest(BaseModel):
     version: int = Field(gt=0)
     status: Literal["pilot", "frozen"]
     benchmark_files: list[str] = Field(min_length=1)
+    filters: SuiteFilters | None = None
 
 
 @dataclass(frozen=True)
@@ -496,10 +524,56 @@ def load_suite(path: Path) -> BenchmarkSuite:
 
     _validate_variant_lineage(all_items)
 
+    if manifest.filters is not None:
+        requested_ids = set(manifest.filters.ids or [])
+        unknown_ids = requested_ids - set(all_items)
+        if unknown_ids:
+            raise DatasetError(
+                "suite filters reference unknown item ids: "
+                + ", ".join(sorted(unknown_ids))
+            )
+        items_by_benchmark = {
+            benchmark: selected
+            for benchmark, benchmark_items in items_by_benchmark.items()
+            if (
+                selected := [
+                    item
+                    for item in benchmark_items
+                    if _item_matches_filters(item, manifest.filters)
+                ]
+            )
+        }
+        definitions = {
+            benchmark: definition
+            for benchmark, definition in definitions.items()
+            if benchmark in items_by_benchmark
+        }
+        if not items_by_benchmark:
+            raise DatasetError("suite filters selected no dataset items")
+
     return BenchmarkSuite(
         manifest=manifest,
         definitions=definitions,
         items=items_by_benchmark,
+    )
+
+
+def _item_matches_filters(item: DatasetItem, filters: SuiteFilters) -> bool:
+    return (
+        (filters.ids is None or item.id in filters.ids)
+        and (
+            filters.subcategories is None
+            or item.subcategory in filters.subcategories
+        )
+        and (
+            filters.difficulties is None
+            or item.difficulty in filters.difficulties
+        )
+        and (filters.splits is None or item.split in filters.splits)
+        and (
+            filters.review_statuses is None
+            or item.provenance.review_status in filters.review_statuses
+        )
     )
 
 

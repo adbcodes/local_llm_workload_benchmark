@@ -1,0 +1,123 @@
+schema_version: 1
+benchmark: constraint_load_curve
+items:
+  - id: constraint_deployment_001
+    subcategory: one_constraint
+    difficulty: easy
+    split: dev
+    prompt: >-
+      Summarize the update below in no more than 25 words. Preserve these three
+      facts: the payments deployment passed automated checks, the release is
+      scheduled for Friday, and support will monitor transaction failures after
+      launch. Update: After a two-hour maintenance window, the payments
+      deployment passed all automated checks and the engineering team found no
+      customer-facing errors. The release is scheduled for Friday at 6 p.m.
+      IST. Support staff will monitor transaction failures for one hour after
+      launch, and the rollback package will remain available until Monday. The
+      product manager asked teams to avoid calling the release risk-free because
+      a final database backup is still running.
+    response_contract:
+      type: text
+      format: plain_text
+    expected:
+      value: >-
+        The payments deployment passed automated checks and launches Friday,
+        with support monitoring transaction failures after release.
+    scoring:
+      method: constraint_rules
+      parameters:
+        content_requirements:
+          required_facts: &required_facts
+            - name: checks_passed
+              any_of:
+                - passed automated checks
+                - passed all automated checks
+                - cleared automated checks
+            - name: friday_release
+              any_of: [Friday]
+            - name: post_launch_monitoring
+              any_of:
+                - monitor transaction failures
+                - monitoring transaction failures
+        rules:
+          max_words: 25
+    provenance: &provenance
+      kind: hand_authored
+      review_status: human_checked
+    tags: [instruction_following, one_constraint, deployment_base]
+
+  - id: constraint_deployment_002
+    subcategory: three_constraints
+    difficulty: medium
+    split: dev
+    prompt: >-
+      Summarize the update below while preserving these three facts: the
+      payments deployment passed automated checks, the release is scheduled for
+      Friday, and support will monitor transaction failures after launch. Follow
+      three additional rules: use exactly one sentence; use no more than 20
+      words; and include the word Friday. Update: After a two-hour maintenance
+      window, the payments deployment passed all automated checks and the
+      engineering team found no customer-facing errors. The release is scheduled
+      for Friday at 6 p.m. IST. Support staff will monitor transaction failures
+      for one hour after launch, and the rollback package will remain available
+      until Monday. The product manager asked teams to avoid calling the release
+      risk-free because a final database backup is still running.
+    response_contract:
+      type: text
+      format: plain_text
+    expected:
+      value: >-
+        The payments deployment passed automated checks and launches Friday,
+        with support monitoring transaction failures after release.
+    scoring:
+      method: constraint_rules
+      parameters:
+        content_requirements:
+          required_facts: *required_facts
+        rules:
+          max_words: 20
+          exact_sentences: 1
+          required_terms: [Friday]
+    provenance: *provenance
+    tags: [instruction_following, three_constraints, deployment_base]
+    variant_of: constraint_deployment_001
+
+  - id: constraint_deployment_003
+    subcategory: six_constraints
+    difficulty: hard
+    split: dev
+    prompt: >-
+      Summarize the update below while preserving these three facts: the
+      payments deployment passed automated checks, the release is scheduled for
+      Friday, and support will monitor transaction failures after launch. Follow
+      six additional rules: use exactly 18 words; use exactly one sentence;
+      include both Friday and monitoring; do not use the phrase risk-free; begin
+      with Payments deployment; and do not use commas. Update: After a two-hour
+      maintenance window, the payments deployment passed all automated checks
+      and the engineering team found no customer-facing errors. The release is
+      scheduled for Friday at 6 p.m. IST. Support staff will monitor transaction
+      failures for one hour after launch, and the rollback package will remain
+      available until Monday. The product manager asked teams to avoid calling
+      the release risk-free because a final database backup is still running.
+    response_contract:
+      type: text
+      format: plain_text
+    expected:
+      value: >-
+        Payments deployment passed automated checks and launches Friday evening
+        with support monitoring transaction failures for one hour afterward.
+    scoring:
+      method: constraint_rules
+      parameters:
+        content_requirements:
+          required_facts: *required_facts
+        rules:
+          exact_words: 18
+          exact_sentences: 1
+          required_terms: [Friday, monitoring]
+          forbidden_terms: [risk-free]
+          prefix: Payments deployment
+          forbidden_punctuation: [","]
+    provenance: *provenance
+    tags: [instruction_following, six_constraints, deployment_base]
+    variant_of: constraint_deployment_001

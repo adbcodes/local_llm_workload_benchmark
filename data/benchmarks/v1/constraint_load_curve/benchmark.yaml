@@ -2,6 +2,8 @@ id: constraint_load_curve
 title: Constraint Load Curve
 description: Instruction-following degradation from one to six simultaneous rules.
 items_path: items.jsonl
+authoring_paths:
+  - authoring/deployment.yaml
 current_question_count: 3
 target_question_count: 30
 current_difficulty_distribution:

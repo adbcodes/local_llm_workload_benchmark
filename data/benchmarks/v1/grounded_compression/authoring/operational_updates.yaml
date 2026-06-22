@@ -1,0 +1,47 @@
+schema_version: 1
+benchmark: grounded_compression
+items:
+  - id: summary_incident_001
+    subcategory: operational_update
+    difficulty: medium
+    split: dev
+    prompt: >-
+      Summarize the operational update below for an engineering manager in no
+      more than 60 words. Prioritize customer impact, current status, and the
+      next decision. Clearly distinguish confirmed facts from the suspected
+      cause.
+
+
+      Update: At 10:15 IST, monitoring showed elevated checkout latency shortly
+      after the recommendation-service release that began at 10:05. Eighteen
+      percent of checkout requests took longer than two seconds, compared with
+      a normal rate below three percent. The service returned no additional
+      errors, no payments were duplicated, and no customer data was lost.
+      Engineers rolled back the release at 10:32, and latency returned to
+      baseline by 10:41. Eleven customers contacted support about slow checkout
+      confirmation. A cache warm-up configuration is the leading suspected
+      cause, but this has not been confirmed. The infrastructure team is
+      reviewing traces and will decide by 16:00 whether the release can be
+      retried the following day. Customers do not need to take any action.
+    response_contract:
+      type: text
+      format: plain_text
+    expected:
+      value: >-
+        Checkout latency rose after the recommendation-service release, with
+        18% of requests exceeding two seconds but no additional errors,
+        duplicate payments, or data loss. Rollback restored baseline performance
+        by 10:41. A cache warm-up configuration is suspected but unconfirmed;
+        infrastructure will review traces and decide by 16:00 whether to retry
+        tomorrow.
+    scoring:
+      method: llm_judge
+      parameters:
+        rubric: grounded_summary_v1
+        pass_threshold: 0.7
+        minimum_faithfulness: 3
+        max_words: 60
+    provenance:
+      kind: hand_authored
+      review_status: human_checked
+    tags: [summarization, groundedness, incident_update, pointwise_judge]
