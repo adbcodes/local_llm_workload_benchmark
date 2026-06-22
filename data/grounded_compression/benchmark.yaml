@@ -4,12 +4,12 @@ description: Concise summaries that preserve source facts, priorities, and uncer
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
-current_question_count: 1
+current_question_count: 20
 target_question_count: 20
 current_difficulty_distribution:
-  easy: 0
-  medium: 1
-  hard: 0
+  easy: 5
+  medium: 10
+  hard: 5
 difficulty_distribution:
   easy: 5
   medium: 10

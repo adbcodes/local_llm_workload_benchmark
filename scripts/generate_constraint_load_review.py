@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+import json
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ from llm_workload_benchmark.dataset import DatasetItem, load_suite
 
 
 DEFAULT_SUITE = Path("data/suites/instruction.yaml")
+DEFAULT_SCHEMA_SUITE = Path("data/suites/structured.yaml")
+DEFAULT_SUMMARY_SUITE = Path("data/suites/judged.yaml")
 DEFAULT_OUTPUT = Path("docs/TEMP_CONSTRAINT_LOAD_CURVE_REVIEW.md")
 
 TASK_METADATA = {
@@ -191,7 +194,7 @@ def _render_task(number: int, variants: list[DatasetItem]) -> str:
     hotspot_line = (
         f"\n**Interaction hotspot:** `{hotspot}`\n" if hotspot is not None else ""
     )
-    return f"""## {number}. {title}
+    return f"""### {number}. {title}
 
 **Carrier:** {_carrier(base)}  
 **Task:** {objective}
@@ -206,8 +209,51 @@ def _render_task(number: int, variants: list[DatasetItem]) -> str:
 """
 
 
-def generate_review(suite_path: Path, output_path: Path) -> None:
+def _render_json(value: Any) -> str:
+    return "```json\n" + json.dumps(value, indent=2, ensure_ascii=False) + "\n```"
+
+
+def _render_dataset_items(items: list[DatasetItem], *, json_answers: bool) -> str:
+    sections: list[str] = []
+    for item in items:
+        answer = (
+            _render_json(item.expected["value"])
+            if json_answers
+            else _render_answer(str(item.expected["value"]))
+        )
+        max_words = item.scoring.parameters.get("max_words")
+        limit_line = f"  \n**Word limit:** {max_words}" if max_words else ""
+        sections.append(
+            f"""<details>
+<summary><code>{item.id}</code> — {item.subcategory} ({item.difficulty})</summary>
+
+**Prompt:** {item.prompt}{limit_line}
+
+**Reference answer**
+
+{answer}
+
+</details>"""
+        )
+    return "\n\n".join(sections)
+
+
+def _difficulty_table(items: list[DatasetItem]) -> str:
+    counts = Counter(item.difficulty for item in items)
+    return f"""| Questions | Easy | Medium | Hard |
+|---:|---:|---:|---:|
+| {len(items)} | {counts['easy']} | {counts['medium']} | {counts['hard']} |"""
+
+
+def generate_review(
+    suite_path: Path,
+    output_path: Path,
+    schema_suite_path: Path = DEFAULT_SCHEMA_SUITE,
+    summary_suite_path: Path = DEFAULT_SUMMARY_SUITE,
+) -> None:
     items = load_suite(suite_path.resolve()).items["constraint_load_curve"]
+    schema_items = load_suite(schema_suite_path.resolve()).items["messy_text_to_schema"]
+    summary_items = load_suite(summary_suite_path.resolve()).items["grounded_compression"]
     groups: dict[str, list[DatasetItem]] = {}
     for item in items:
         groups.setdefault(item.variant_of or item.id, []).append(item)
@@ -225,12 +271,23 @@ def generate_review(suite_path: Path, output_path: Path) -> None:
     carrier_rows = "\n".join(
         f"| {carrier} | {count} |" for carrier, count in carrier_counts.items()
     )
-    document = f"""# Instruction Following Constraint Curve — Temporary Review
+    document = f"""# Dataset Benchmarks — Temporary Review
 
-> Generated from `data/suites/instruction.yaml`. Edit the YAML generator, then
-> regenerate this file; do not edit the generated review by hand.
+> Generated from the instruction, structured extraction, and judged summary
+> suites. Edit the question generators, then regenerate this file; do not edit
+> the generated review by hand.
 
-## At a glance
+## Benchmark navigation
+
+- [Following Multiple Rules](#following-multiple-rules) — 40 questions
+- [Messy Text to Schema](#messy-text-to-schema) — 30 questions
+- [Fact-Safe Summaries](#fact-safe-summaries) — 20 questions
+
+<a id="following-multiple-rules"></a>
+<details open>
+<summary><big><big><strong>Following Multiple Rules — 40 questions</strong></big></big></summary>
+
+### At a glance
 
 | Measure | Value |
 |---|---:|
@@ -254,13 +311,13 @@ compliance.
 The data-heavy tasks use 12 to 16 source records. Their references change as
 filtering, sorting, derived fields, priorities, or summaries are added.
 
-## Task index
+### Task index
 
 {task_index}
 
 {sections}
 
-## Expected pressure points
+### Expected pressure points
 
 - `short_rewrite_with_banned_verbs`: fewer than 40 words while retaining key
   meaning and avoiding common verbs.
@@ -269,6 +326,49 @@ filtering, sorting, derived fields, priorities, or summaries are added.
 
 If tested models remain near-perfect at four constraints, a fifth variant can
 be added later without changing these 40 comparisons.
+
+</details>
+
+<a id="messy-text-to-schema"></a>
+<details>
+<summary><big><big><strong>Messy Text to Schema — 30 questions</strong></big></big></summary>
+
+This benchmark checks whether a model can turn realistic text into exact JSON.
+It includes clean records, missing values, distracting numbers, OCR-like
+mistakes, conflicting values, lists, nested objects, multiple records, and unit
+conversion.
+
+**Evaluation:** parse the answer as JSON, compare every value and type with the
+reference, and report partial leaf accuracy when the full object is wrong.
+
+{_difficulty_table(schema_items)}
+
+### Extraction questions
+
+{_render_dataset_items(schema_items, json_answers=True)}
+
+</details>
+
+<a id="fact-safe-summaries"></a>
+<details>
+<summary><big><big><strong>Fact-Safe Summaries — 20 questions</strong></big></big></summary>
+
+This benchmark checks whether a model can shorten source text without changing
+facts or hiding uncertainty. Tasks cover project updates, customer messages,
+policies, incidents, experiments, research, contracts, security, launches, and
+audits for different readers.
+
+**Evaluation:** enforce the word limit, then use the summary judge to score
+faithfulness, fact coverage, relevance, clarity, and concision. Fabricated facts
+or missing decision-critical information can fail the answer.
+
+{_difficulty_table(summary_items)}
+
+### Summary questions
+
+{_render_dataset_items(summary_items, json_answers=False)}
+
+</details>
 """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(document, encoding="utf-8")
@@ -277,9 +377,16 @@ be added later without changing these 40 comparisons.
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--suite", type=Path, default=DEFAULT_SUITE)
+    parser.add_argument("--schema-suite", type=Path, default=DEFAULT_SCHEMA_SUITE)
+    parser.add_argument("--summary-suite", type=Path, default=DEFAULT_SUMMARY_SUITE)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    generate_review(args.suite, args.output)
+    generate_review(
+        args.suite,
+        args.output,
+        schema_suite_path=args.schema_suite,
+        summary_suite_path=args.summary_suite,
+    )
 
 
 if __name__ == "__main__":

@@ -1,98 +1,1052 @@
 schema_version: 1
 benchmark: messy_text_to_schema
+generated_by: schema_and_summary_v1
 items:
-  - id: schema_invoice_001
-    subcategory: clean_invoice
-    difficulty: easy
-    split: dev
-    prompt: >-
-      Extract invoice_number, vendor, currency, and total from the text below.
-      Return exactly one valid JSON object with exactly those keys and nothing
-      else. Do not use Markdown fences or include an explanation. The total must
-      be a JSON number, not a string. Text: Invoice INV-204 from Acme Paper.
-      Total due: INR 4,250.00.
-    response_contract:
-      type: json
-      format: object
-    expected:
-      value:
-        invoice_number: INV-204
-        vendor: Acme Paper
-        currency: INR
-        total: 4250.0
-    scoring:
-      method: json_exact
-      parameters:
-        allow_diagnostic_normalization: true
-    provenance:
-      kind: hand_authored
-      review_status: human_checked
-    tags: [extraction, invoice, clean]
+- id: schema_invoice_001
+  subcategory: clean_invoice
+  difficulty: easy
+  split: dev
+  prompt: 'Extract invoice_number, vendor, currency, total from the text below. Return valid JSON with
+    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Text: Invoice INV-204 from Acme Paper. Total
+    due: INR 4,250.00.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      invoice_number: INV-204
+      vendor: Acme Paper
+      currency: INR
+      total: 4250.0
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+  tags:
+  - extraction
+  - clean_invoice
+- id: schema_contact_001
+  subcategory: clean_contact
+  difficulty: easy
+  split: dev
+  prompt: 'Extract name, email, phone, city from the text below. Return valid JSON with exactly the requested
+    structure and nothing else. Return the raw JSON directly, for example {"key":"value"}. Do not wrap
+    it in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not
+    add an explanation before or after it. Use JSON null for a requested value that is missing. Keep numbers
+    and booleans as JSON values, not strings. Text: Account contact: Meera Nair | meera.nair@example.com
+    | +91 98765 43210 | Pune.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      name: Meera Nair
+      email: meera.nair@example.com
+      phone: +91 98765 43210
+      city: Pune
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - clean_contact
+- id: schema_shipment_001
+  subcategory: clean_shipment
+  difficulty: easy
+  split: dev
+  prompt: 'Extract shipment_id, carrier, origin, destination, expected_date from the text below. Return
+    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
+    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
+    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
+    value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Shipment SH-882
+    leaves Jaipur on 2026-09-03 and is expected in Kochi on 2026-09-07. Carrier: BlueDart.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      shipment_id: SH-882
+      carrier: BlueDart
+      origin: Jaipur
+      destination: Kochi
+      expected_date: '2026-09-07'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - clean_shipment
+- id: schema_booking_001
+  subcategory: clean_booking
+  difficulty: easy
+  split: dev
+  prompt: 'Extract booking_id, guest, rooms, check_in, check_out from the text below. Return valid JSON
+    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Format both dates as YYYY-MM-DD. Text: Booking
+    BK-310: guest Arjun Rao, 2 rooms, check-in 14 October 2026, check-out 17 October 2026.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      booking_id: BK-310
+      guest: Arjun Rao
+      rooms: 2
+      check_in: '2026-10-14'
+      check_out: '2026-10-17'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - clean_booking
+- id: schema_product_001
+  subcategory: clean_product
+  difficulty: easy
+  split: dev
+  prompt: 'Extract sku, name, category, price, in_stock from the text below. Return valid JSON with exactly
+    the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Text: SKU KB-14, Compact Keyboard, category
+    Accessories, price USD 49.95, in stock: yes.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      sku: KB-14
+      name: Compact Keyboard
+      category: Accessories
+      price: 49.95
+      in_stock: true
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - clean_product
+- id: schema_event_002
+  subcategory: clean_event
+  difficulty: easy
+  split: dev
+  prompt: 'Extract title, event_date, city, start_time, capacity from the text below. Return valid JSON
+    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Format event_date as YYYY-MM-DD and start_time
+    as HH:MM. Text: Cloud Basics Workshop; 12 November 2026; Chennai; starts 09:30; capacity 80.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      title: Cloud Basics Workshop
+      event_date: '2026-11-12'
+      city: Chennai
+      start_time: 09:30
+      capacity: 80
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - clean_event
+- id: schema_employee_001
+  subcategory: clean_employee
+  difficulty: easy
+  split: dev
+  prompt: 'Extract employee_id, name, team, joined_on, active from the text below. Return valid JSON with
+    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Text: Employee E-091 is Sana Kapoor from the
+    Data team. Joined 2023-06-12. Active: true.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      employee_id: E-091
+      name: Sana Kapoor
+      team: Data
+      joined_on: '2023-06-12'
+      active: true
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - clean_employee
+- id: schema_support_001
+  subcategory: clean_support
+  difficulty: easy
+  split: dev
+  prompt: 'Extract ticket_id, customer, priority, topic, status from the text below. Return valid JSON
+    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Text: Ticket T-551 was opened by Vikram Sen.
+    Priority high. Topic: duplicate charge. Status: open.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      ticket_id: T-551
+      customer: Vikram Sen
+      priority: high
+      topic: duplicate charge
+      status: open
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - clean_support
+- id: schema_event_001
+  subcategory: missing_fields
+  difficulty: medium
+  split: dev
+  prompt: 'Extract title, event_date, city, contact_email from the text below. Return valid JSON with
+    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Format event_date as YYYY-MM-DD. Text: Drafted
+    on 4 August 2026. The Bengaluru Data Meetup will happen in Bengaluru''s Indiranagar neighbourhood
+    on 19 August 2026. Registration details will be shared later.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      title: Bengaluru Data Meetup
+      event_date: '2026-08-19'
+      city: Bengaluru
+      contact_email: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+  tags:
+  - extraction
+  - missing_fields
+  - distractor_date
+- id: schema_invoice_002
+  subcategory: distracting_numbers
+  difficulty: medium
+  split: dev
+  prompt: 'Extract invoice_number, vendor, currency, subtotal, tax, total from the text below. Return
+    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
+    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
+    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
+    value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Reminder 2 of
+    3, sent 07/09/2026. Bill no. B-778 from North Star Office. Terms: 30 days. Subtotal INR 18,000; GST
+    INR 3,240; amount payable INR 21,240.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      invoice_number: B-778
+      vendor: North Star Office
+      currency: INR
+      subtotal: 18000.0
+      tax: 3240.0
+      total: 21240.0
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - distracting_numbers
+- id: schema_subscription_001
+  subcategory: optional_fields
+  difficulty: medium
+  split: dev
+  prompt: 'Extract organization_id, plan, seats, renewal_date, coupon, auto_renew from the text below.
+    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
+    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
+    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
+    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Plan
+    change for org ORG-42: Pro annual, 35 seats, renewal 2027-01-15. Coupon field left blank. Auto-renew
+    is OFF.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      organization_id: ORG-42
+      plan: Pro annual
+      seats: 35
+      renewal_date: '2027-01-15'
+      coupon: null
+      auto_renew: false
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - optional_fields
+- id: schema_candidate_001
+  subcategory: mixed_format
+  difficulty: medium
+  split: dev
+  prompt: 'Extract candidate_id, name, role, notice_days, expected_ctc_inr, remote from the text below.
+    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
+    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
+    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
+    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: CANDIDATE
+    / C-18
 
-  - id: schema_event_001
-    subcategory: missing_fields
-    difficulty: medium
-    split: dev
-    prompt: >-
-      Extract title, event_date, city, and contact_email from the text below.
-      Return exactly one valid JSON object with exactly those keys and nothing
-      else. Do not use Markdown fences or include an explanation. Format
-      event_date as YYYY-MM-DD and use JSON null when a value is absent. Text:
-      Drafted on 4 August 2026. The Bengaluru Data Meetup will happen in
-      Bengaluru's Indiranagar neighbourhood on 19 August 2026. Registration
-      details will be shared later.
-    response_contract:
-      type: json
-      format: object
-    expected:
-      value:
-        title: Bengaluru Data Meetup
-        event_date: "2026-08-19"
-        city: Bengaluru
-        contact_email: null
-    scoring:
-      method: json_exact
-      parameters:
-        allow_diagnostic_normalization: true
-    provenance:
-      kind: hand_authored
-      review_status: human_checked
-    tags: [extraction, missing_field, distractor_date]
+    name=Leena D''Souza
 
-  - id: schema_order_001
-    subcategory: nested_ocr_order
-    difficulty: hard
-    split: dev
-    prompt: >-
-      Convert the noisy order below into exactly one valid JSON object with
-      exactly the keys order_id, currency, line_items, tax, and total. Return
-      the JSON object and nothing else; do not use Markdown fences or include an
-      explanation. Each line item must contain exactly description, quantity,
-      and unit_price. Quantity, unit_price, tax, and total must be JSON numbers,
-      not strings. The OCR-like word before the order identifier is a label and
-      is not part of order_id. Text: Ord3r K-77 / curr: INR / 2 x USB-C Hub @
-      1,250.00 / 3 x Cable 2m @ 300.00 / GST: 612.00 / GRAND T0TAL 4,012.00.
-    response_contract:
-      type: json
-      format: nested_object
-    expected:
-      value:
-        order_id: K-77
-        currency: INR
-        line_items:
-          - description: USB-C Hub
-            quantity: 2
-            unit_price: 1250.0
-          - description: Cable 2m
-            quantity: 3
-            unit_price: 300.0
-        tax: 612.0
-        total: 4012.0
-    scoring:
-      method: json_exact
-      parameters:
-        allow_diagnostic_normalization: true
-    provenance:
-      kind: hand_authored
-      review_status: human_checked
-    tags: [extraction, nested_json, ocr_noise, line_items]
+    role :: Backend Engineer
+
+    notice period: forty-five days
+
+    expected CTC INR 24.5 lakh
+
+    remote? YES'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      candidate_id: C-18
+      name: Leena D'Souza
+      role: Backend Engineer
+      notice_days: 45
+      expected_ctc_inr: 2450000
+      remote: true
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - mixed_format
+- id: schema_delivery_001
+  subcategory: ocr_noise
+  difficulty: medium
+  split: dev
+  prompt: 'Extract delivery_id, origin, destination, cartons, weight_kg, fragile, eta from the text below.
+    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
+    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
+    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
+    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. The date
+    is DD-MM-YYYY; return eta as YYYY-MM-DD. Text: DELlVERY D-909 | fr0m: Surat | t0: Nagpur | 6 cart0ns
+    | wt 42.5 kg | fragile: N0 | ETA 03-12-2026'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      delivery_id: D-909
+      origin: Surat
+      destination: Nagpur
+      cartons: 6
+      weight_kg: 42.5
+      fragile: false
+      eta: '2026-12-03'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - ocr_noise
+- id: schema_meeting_001
+  subcategory: missing_fields
+  difficulty: medium
+  split: dev
+  prompt: 'Extract meeting, date, time, timezone, owner, location, recording_url from the text below.
+    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
+    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
+    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
+    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Minutes
+    header: Project Cedar sync, Friday 6 March 2026, 15:00 IST. Owner: Omar Ali. Room changed twice; final
+    location is Zoom. No recording link was added.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      meeting: Project Cedar sync
+      date: '2026-03-06'
+      time: '15:00'
+      timezone: IST
+      owner: Omar Ali
+      location: Zoom
+      recording_url: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - missing_fields
+- id: schema_refund_001
+  subcategory: status_history
+  difficulty: medium
+  split: dev
+  prompt: 'Extract refund_id, order_id, amount, currency, current_status, last_action_date from the text
+    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
+    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
+    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
+    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
+    All dates are in 2026; format last_action_date as YYYY-MM-DD. Text: Refund RF-650 for order O-188.
+    Requested 2 May; approved 4 May; bank transfer failed 5 May; retried 7 May. Current state: processing.
+    Amount ₹1,899.00.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      refund_id: RF-650
+      order_id: O-188
+      amount: 1899.0
+      currency: INR
+      current_status: processing
+      last_action_date: '2026-05-07'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - status_history
+- id: schema_address_001
+  subcategory: multiline_address
+  difficulty: medium
+  split: dev
+  prompt: 'Extract recipient, line1, line2, city, state, postal_code, country, landmark from the text
+    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
+    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
+    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
+    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
+    Text: Ship to: Riya Menon
+
+    Flat 8B, Lake View Towers
+
+    17 M.G. Road
+
+    Ernakulam, Kerala 682016
+
+    Country: India
+
+    Landmark: —'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      recipient: Riya Menon
+      line1: Flat 8B, Lake View Towers
+      line2: 17 M.G. Road
+      city: Ernakulam
+      state: Kerala
+      postal_code: '682016'
+      country: India
+      landmark: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - multiline_address
+- id: schema_asset_001
+  subcategory: conflicting_values
+  difficulty: medium
+  split: dev
+  prompt: 'Extract asset_id, employee_id, serial_number, purchase_date, warranty_end from the text below.
+    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
+    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
+    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
+    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Asset
+    register correction: laptop LT-44 was first entered as assigned to E-120. That entry is wrong. Final
+    owner E-128, serial SN9K22, purchased 2025-11-09, warranty expires 2028-11-08.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      asset_id: LT-44
+      employee_id: E-128
+      serial_number: SN9K22
+      purchase_date: '2025-11-09'
+      warranty_end: '2028-11-08'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - conflicting_values
+- id: schema_payment_001
+  subcategory: redacted_fields
+  difficulty: medium
+  split: dev
+  prompt: 'Extract payment_id, payer, method, last_four, amount, currency, authorization_code, settled
+    from the text below. Return valid JSON with exactly the requested structure and nothing else. Return
+    the raw JSON directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences.
+    The first character must be { and the last must be }. Do not add an explanation before or after it.
+    Use JSON null for a requested value that is missing. Keep numbers and booleans as JSON values, not
+    strings. Text: Payment P-771 | payer: Bright Foods Pvt Ltd | method: card ending 4412 | amount USD
+    860.50 | auth code [REDACTED] | settled yes.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      payment_id: P-771
+      payer: Bright Foods Pvt Ltd
+      method: card
+      last_four: '4412'
+      amount: 860.5
+      currency: USD
+      authorization_code: null
+      settled: true
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - redacted_fields
+- id: schema_release_001
+  subcategory: version_noise
+  difficulty: medium
+  split: dev
+  prompt: 'Extract build_id, app_version, platform, rollout_percent, owner, rollback_version from the
+    text below. Return valid JSON with exactly the requested structure and nothing else. Return the raw
+    JSON directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The
+    first character must be { and the last must be }. Do not add an explanation before or after it. Use
+    JSON null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
+    Text: Release notes drafted with Python 3.12. Build r2026.08.17 ships app version 4.7.2 to Android
+    only, staged at 25%, owner Mobile Platform, rollback version 4.7.1.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      build_id: r2026.08.17
+      app_version: 4.7.2
+      platform: Android
+      rollout_percent: 25
+      owner: Mobile Platform
+      rollback_version: 4.7.1
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - version_noise
+- id: schema_course_001
+  subcategory: list_field
+  difficulty: medium
+  split: dev
+  prompt: 'Extract course_id, title, instructor, duration_weeks, prerequisites from the text below. Return
+    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
+    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
+    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
+    value that is missing. Keep numbers and booleans as JSON values, not strings. Keep prerequisites in
+    the order stated and exclude recommendations. Text: Course DS-210: Practical Analytics. Instructor:
+    Nisha Rao. Runs 8 weeks. Prerequisites are Python and basic statistics. SQL is recommended, not required.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      course_id: DS-210
+      title: Practical Analytics
+      instructor: Nisha Rao
+      duration_weeks: 8
+      prerequisites:
+      - Python
+      - basic statistics
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - list_field
+- id: schema_incident_001
+  subcategory: timeline
+  difficulty: medium
+  split: dev
+  prompt: 'Extract incident_id, severity, lead, opened_at, mitigated_at, resolved_at, cause from the text
+    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
+    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
+    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
+    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
+    Text: INC-73 opened 09:12 after API errors reached 14%. Mitigation began 09:24. Errors returned below
+    1% at 09:41. Resolved 10:05. Severity SEV-2; lead Asha Iyer; cause still unknown.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      incident_id: INC-73
+      severity: SEV-2
+      lead: Asha Iyer
+      opened_at: 09:12
+      mitigated_at: 09:41
+      resolved_at: '10:05'
+      cause: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - timeline
+- id: schema_feedback_001
+  subcategory: quoted_text
+  difficulty: medium
+  split: dev
+  prompt: 'Extract response_id, customer, rating, comment, follow_up_allowed from the text below. Return
+    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
+    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
+    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
+    value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Response FB-19
+    from Maya Shah gave 8/10 and said, "Fast setup, but export labels are confusing." Follow-up allowed:
+    no.'
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      response_id: FB-19
+      customer: Maya Shah
+      rating: 8
+      comment: Fast setup, but export labels are confusing.
+      follow_up_allowed: false
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - quoted_text
+- id: schema_inventory_001
+  subcategory: multiple_records
+  difficulty: medium
+  split: dev
+  prompt: 'Extract warehouse, counted_on, items from the text below. Return valid JSON with exactly the
+    requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}. Do
+    not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must be
+    }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Each items entry must contain exactly sku,
+    name, and quantity, in source order. Text: Warehouse W2 count: A-10 / adapters / 18 units; C-07 /
+    cables / 0 units; H-22 / hubs / 6 units. Counted 2026-07-31.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      warehouse: W2
+      counted_on: '2026-07-31'
+      items:
+      - sku: A-10
+        name: adapters
+        quantity: 18
+      - sku: C-07
+        name: cables
+        quantity: 0
+      - sku: H-22
+        name: hubs
+        quantity: 6
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - multiple_records
+- id: schema_order_001
+  subcategory: nested_ocr_order
+  difficulty: hard
+  split: dev
+  prompt: 'Extract order_id, currency, line_items, tax, total from the text below. Return valid JSON with
+    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Each line_items entry must contain exactly
+    description, quantity, and unit_price. The OCR-like word before the identifier is only a label. Text:
+    Ord3r K-77 / curr: INR / 2 x USB-C Hub @ 1,250.00 / 3 x Cable 2m @ 300.00 / GST: 612.00 / GRAND T0TAL
+    4,012.00.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      order_id: K-77
+      currency: INR
+      line_items:
+      - description: USB-C Hub
+        quantity: 2
+        unit_price: 1250.0
+      - description: Cable 2m
+        quantity: 3
+        unit_price: 300.0
+      tax: 612.0
+      total: 4012.0
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+  tags:
+  - extraction
+  - nested_ocr_order
+- id: schema_expense_001
+  subcategory: nested_expenses
+  difficulty: hard
+  split: dev
+  prompt: 'Extract report_id, owner, route, items, approved_total from the text below. Return valid JSON
+    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Each items entry must contain exactly date,
+    category, amount, and approved. Format dates as YYYY-MM-DD. Text: EXP R-18 / owner Neha Jain / trip
+    BLR→DEL / 11-13 Sep 2026. Lines: 11/09 flight INR 8,450 approved; 12/09 taxi INR 780 approved; 12/09
+    minibar INR 460 rejected. Claimed 9,690; approved total 9,230.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      report_id: R-18
+      owner: Neha Jain
+      route:
+        from: BLR
+        to: DEL
+      items:
+      - date: '2026-09-11'
+        category: flight
+        amount: 8450.0
+        approved: true
+      - date: '2026-09-12'
+        category: taxi
+        amount: 780.0
+        approved: true
+      - date: '2026-09-12'
+        category: minibar
+        amount: 460.0
+        approved: false
+      approved_total: 9230.0
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - nested_expenses
+- id: schema_manifest_001
+  subcategory: ocr_table
+  difficulty: hard
+  split: dev
+  prompt: 'Extract manifest_id, origin, destination, departure, packages, total_weight_kg from the text
+    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
+    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
+    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
+    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
+    The date is DD/MM/YY. Each packages entry must contain exactly id, weight_kg, and fragile. Text: MANlFEST
+    M-55; route CCU-BOM; dep 22:10 04/12/26. PKGS: P01|12.4kg|fragile Y; P02|8kg|fragile N; P03|15.75kg|fragile
+    Y. Note: 3 pieces, total shown 36.15kg.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      manifest_id: M-55
+      origin: CCU
+      destination: BOM
+      departure: 2026-12-04T22:10
+      packages:
+      - id: P01
+        weight_kg: 12.4
+        fragile: true
+      - id: P02
+        weight_kg: 8.0
+        fragile: false
+      - id: P03
+        weight_kg: 15.75
+        fragile: true
+      total_weight_kg: 36.15
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - ocr_table
+- id: schema_purchase_order_001
+  subcategory: revisions
+  difficulty: hard
+  split: dev
+  prompt: 'Extract purchase_order, revision, vendor, items, freight, tax_rate, pre_tax_total, delivery_date
+    from the text below. Return valid JSON with exactly the requested structure and nothing else. Return
+    the raw JSON directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences.
+    The first character must be { and the last must be }. Do not add an explanation before or after it.
+    Use JSON null for a requested value that is missing. Keep numbers and booleans as JSON values, not
+    strings. Use only the final revision. Each items entry must contain exactly name, quantity, and unit_price.
+    Text: PO PO-902 rev1 (ignore): 40 chairs at 3,000. Revision 2 FINAL: vendor Cedar Works; 36 chairs
+    at INR 2,850 each and 6 tables at INR 7,200 each. Delivery 18 Jan 2027. Freight 4,500. GST 18%. Pre-tax
+    total including freight 150,300.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      purchase_order: PO-902
+      revision: 2
+      vendor: Cedar Works
+      items:
+      - name: chair
+        quantity: 36
+        unit_price: 2850.0
+      - name: table
+        quantity: 6
+        unit_price: 7200.0
+      freight: 4500.0
+      tax_rate: 0.18
+      pre_tax_total: 150300.0
+      delivery_date: '2027-01-18'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - revisions
+- id: schema_project_001
+  subcategory: nested_status
+  difficulty: hard
+  split: dev
+  prompt: 'Extract project, owner, target_date, risk, workstreams, blocker from the text below. Return
+    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
+    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
+    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
+    value that is missing. Keep numbers and booleans as JSON values, not strings. Each workstreams entry
+    must contain exactly name, status, percent, and owner. Text: Project Atlas, owner Tara Bose. Old target
+    30 June is obsolete; revised target 18 July 2026. Work: API=done (Dev Patel); migration=in progress,
+    70% (Isha Rao); docs=blocked, 40% (Omar Ali). Blocker: legal review, expected 10 July. Overall risk
+    amber.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      project: Atlas
+      owner: Tara Bose
+      target_date: '2026-07-18'
+      risk: amber
+      workstreams:
+      - name: API
+        status: done
+        percent: 100
+        owner: Dev Patel
+      - name: migration
+        status: in progress
+        percent: 70
+        owner: Isha Rao
+      - name: docs
+        status: blocked
+        percent: 40
+        owner: Omar Ali
+      blocker:
+        name: legal review
+        expected_date: '2026-07-10'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - nested_status
+- id: schema_sensor_001
+  subcategory: mixed_units
+  difficulty: hard
+  split: dev
+  prompt: 'Extract station_id, readings, online, battery_percent from the text below. Return valid JSON
+    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
+    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Each readings entry must contain exactly time,
+    temperature_c, and humidity_percent. Convert Fahrenheit and Kelvin exactly as implied by the supplied
+    values. Text: Station S7 log: 08:00 temp 86°F humidity 61%; 12:00 temp 32°C humidity 48%; 16:00 temp
+    303.15K humidity sensor ERROR. Convert all temperatures to Celsius. Device remained online. Battery
+    37%.'
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      station_id: S7
+      readings:
+      - time: 08:00
+        temperature_c: 30.0
+        humidity_percent: 61
+      - time: '12:00'
+        temperature_c: 32.0
+        humidity_percent: 48
+      - time: '16:00'
+        temperature_c: 30.0
+        humidity_percent: null
+      online: true
+      battery_percent: 37
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - mixed_units
+- id: schema_batch_001
+  subcategory: multiple_noisy_records
+  difficulty: hard
+  split: dev
+  prompt: 'Extract the records from the text below as a JSON array. Return valid JSON with exactly the
+    requested structure and nothing else. Return the raw JSON directly, for example [{"key":"value"}].
+    Do not wrap it in ``` or ```json Markdown fences. The first character must be [ and the last must
+    be ]. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
+    Keep numbers and booleans as JSON values, not strings. Each array entry must contain exactly user_id,
+    name, email, role, and enabled. Keep the first current u-1 row and ignore the labelled old duplicate.
+    Text: Batch export: [u-1] Asha / asha@example.com / admin / enabled; [u-2] Rohan / email MISSING /
+    viewer / disabled; duplicate old row [u-1] role viewer (ignore); [u-3] Mei / mei@example.com / editor
+    / enabled.'
+  response_contract:
+    type: json
+    format: array
+  expected:
+    value:
+    - user_id: u-1
+      name: Asha
+      email: asha@example.com
+      role: admin
+      enabled: true
+    - user_id: u-2
+      name: Rohan
+      email: null
+      role: viewer
+      enabled: false
+    - user_id: u-3
+      name: Mei
+      email: mei@example.com
+      role: editor
+      enabled: true
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - extraction
+  - multiple_noisy_records

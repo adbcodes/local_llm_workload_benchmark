@@ -4,12 +4,12 @@ description: Structured extraction from clean, incomplete, noisy, and nested tex
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
-current_question_count: 3
+current_question_count: 30
 target_question_count: 30
 current_difficulty_distribution:
-  easy: 1
-  medium: 1
-  hard: 1
+  easy: 8
+  medium: 15
+  hard: 7
 difficulty_distribution:
   easy: 8
   medium: 15
