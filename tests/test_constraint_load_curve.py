@@ -187,15 +187,15 @@ def test_temporary_markdown_review_matches_dataset(tmp_path: Path) -> None:
 
     review = REVIEW_PATH.read_text(encoding="utf-8")
     assert review == regenerated_path.read_text(encoding="utf-8")
-    assert review.count("**Constraint progression**") == 10
-    assert "| Total questions | 40 |" in review
-    assert "| Prose | 3 |" in review
-    assert "| Extraction | 1 |" in review
-    assert "| Classification | 1 |" in review
-    assert "[Following Multiple Rules](#following-multiple-rules)" in review
+    assert "559 questions across 22 benchmarks" in review
+    assert "[Applied Reasoning Gauntlet](#applied-reasoning)" in review
+    assert "[Following Multiple Rules](#constraint-load-curve)" in review
     assert "[Messy Text to Schema](#messy-text-to-schema)" in review
-    assert "[Fact-Safe Summaries](#fact-safe-summaries)" in review
+    assert "[Long-Text Retrieval](#long-text-retrieval)" in review
+    assert "[Over-Refusal](#over-refusal)" in review
     assert "Messy Text to Schema — 30 questions" in review
-    assert "Fact-Safe Summaries — 20 questions" in review
-    assert review.count("<details") == 53
+    assert "Confidence vs Correctness — 48 questions" in review
+    assert "**Conversation shown to the model**" in review
+    assert review.count("<summary><code>") == 559
+    assert review.count("<details>") == 581
     assert not Path("docs/TEMP_CODE_DEBUG_REPAIR_REVIEW.html").exists()

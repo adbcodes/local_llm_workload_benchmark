@@ -1,8 +1,8 @@
 id: prompt_format_sensitivity
 title: Prompt-Format Sensitivity
-description: Planned prompt-format sensitivity question set from the final benchmark plan.
+description: Repeat equivalent tasks in prose, Markdown, and XML to measure format sensitivity.
 suite: E
-status: planned
+status: started
 execution_mode: paired_variants
 task_types:
 - plain prose
@@ -17,12 +17,12 @@ score_formula: clean_score_retained
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 18
 target_question_count: 18
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 6
+  medium: 6
+  hard: 6
 difficulty_distribution:
   easy: 6
   medium: 6

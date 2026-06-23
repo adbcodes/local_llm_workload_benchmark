@@ -1,8 +1,8 @@
 id: false_missing_information
 title: False or Missing Information
-description: Planned false or missing information question set from the final benchmark plan.
+description: Correct false premises and flag fabricated, conflicting, or missing information.
 suite: E
-status: planned
+status: started
 execution_mode: single_turn
 task_types:
 - false premise
@@ -16,12 +16,12 @@ score_formula: clean_score_retained
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 20
 target_question_count: 20
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 5
+  medium: 10
+  hard: 5
 difficulty_distribution:
   easy: 5
   medium: 10

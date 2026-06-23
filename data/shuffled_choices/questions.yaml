@@ -1,5 +1,7 @@
 schema_version: 1
 benchmark: shuffled_choices
+generated_by: remaining_benchmarks_v1
+seed: 20260724
 item_template:
   id: shuffled_choices_replace_001
   subcategory: replace_with_one_declared_task_type
@@ -20,5 +22,704 @@ item_template:
     review_status: draft
   tags:
   - replace_tag
-  source_item: replace_with_clean_item_id
-items: []
+items:
+- id: shuffled_choices_001
+  subcategory: gold_answer_in_each_position
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'What is 2 + 3?
+
+    A. 5
+
+    B. 4
+
+    C. 6
+
+    D. 7
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_002
+  subcategory: gold_answer_in_each_position
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Which planet is closest to the Sun?
+
+    A. Venus
+
+    B. Mercury
+
+    C. Earth
+
+    D. Mars
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_003
+  subcategory: gold_answer_in_each_position
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Which is a mammal?
+
+    A. shark
+
+    B. dolphin
+
+    C. trout
+
+    D. octopus
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_004
+  subcategory: gold_answer_in_each_position
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'What is 10% of 250?
+
+    A. 20
+
+    B. 25
+
+    C. 30
+
+    D. 35
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_005
+  subcategory: gold_answer_in_each_position
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Which HTTP code means Not Found?
+
+    A. 200
+
+    B. 301
+
+    C. 404
+
+    D. 500
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: C
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_006
+  subcategory: mapped_answer_labels
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'What is 2 + 3?
+
+    A. 4
+
+    B. 6
+
+    C. 7
+
+    D. 5
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: D
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_001
+  variant_of: shuffled_choices_001
+- id: shuffled_choices_007
+  subcategory: mapped_answer_labels
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Which planet is closest to the Sun?
+
+    A. Mercury
+
+    B. Earth
+
+    C. Mars
+
+    D. Venus
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_002
+  variant_of: shuffled_choices_002
+- id: shuffled_choices_008
+  subcategory: mapped_answer_labels
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Which is a mammal?
+
+    A. dolphin
+
+    B. trout
+
+    C. octopus
+
+    D. shark
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_003
+  variant_of: shuffled_choices_003
+- id: shuffled_choices_009
+  subcategory: mapped_answer_labels
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'What is 10% of 250?
+
+    A. 25
+
+    B. 30
+
+    C. 35
+
+    D. 20
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_004
+  variant_of: shuffled_choices_004
+- id: shuffled_choices_010
+  subcategory: mapped_answer_labels
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Which HTTP code means Not Found?
+
+    A. 301
+
+    B. 404
+
+    C. 500
+
+    D. 200
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_005
+  variant_of: shuffled_choices_005
+- id: shuffled_choices_011
+  subcategory: gold_answer_in_each_position
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Which number is prime?
+
+    A. 39
+
+    B. 41
+
+    C. 45
+
+    D. 51
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_012
+  subcategory: gold_answer_in_each_position
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'What does SQL GROUP BY do?
+
+    A. sorts files
+
+    B. groups rows
+
+    C. deletes rows
+
+    D. renames columns
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_013
+  subcategory: gold_answer_in_each_position
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Which date is valid in 2027?
+
+    A. 2027-02-29
+
+    B. 2027-04-31
+
+    C. 2027-06-30
+
+    D. 2027-13-01
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: C
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_014
+  subcategory: gold_answer_in_each_position
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Which value is greatest?
+
+    A. 0.7
+
+    B. 2/3
+
+    C. 68%
+
+    D. 0.69
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_015
+  subcategory: gold_answer_in_each_position
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Which structure uses FIFO?
+
+    A. stack
+
+    B. queue
+
+    C. set
+
+    D. tree
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - gold_answer_in_each_position
+- id: shuffled_choices_016
+  subcategory: mapped_answer_labels
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Which number is prime?
+
+    A. 41
+
+    B. 45
+
+    C. 51
+
+    D. 39
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_011
+  variant_of: shuffled_choices_011
+- id: shuffled_choices_017
+  subcategory: mapped_answer_labels
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'What does SQL GROUP BY do?
+
+    A. groups rows
+
+    B. deletes rows
+
+    C. renames columns
+
+    D. sorts files
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_012
+  variant_of: shuffled_choices_012
+- id: shuffled_choices_018
+  subcategory: mapped_answer_labels
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Which date is valid in 2027?
+
+    A. 2027-04-31
+
+    B. 2027-06-30
+
+    C. 2027-13-01
+
+    D. 2027-02-29
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_013
+  variant_of: shuffled_choices_013
+- id: shuffled_choices_019
+  subcategory: mapped_answer_labels
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'Which value is greatest?
+
+    A. 2/3
+
+    B. 68%
+
+    C. 0.69
+
+    D. 0.7
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: D
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_014
+  variant_of: shuffled_choices_014
+- id: shuffled_choices_020
+  subcategory: mapped_answer_labels
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Which structure uses FIFO?
+
+    A. queue
+
+    B. set
+
+    C. tree
+
+    D. stack
+
+    Return only the option letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - mapped_answer_labels
+  source_item: shuffled_choices_015
+  variant_of: shuffled_choices_015

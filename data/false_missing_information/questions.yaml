@@ -1,5 +1,7 @@
 schema_version: 1
 benchmark: false_missing_information
+generated_by: remaining_benchmarks_v1
+seed: 20260724
 item_template:
   id: false_missing_information_replace_001
   subcategory: replace_with_one_declared_task_type
@@ -11,18 +13,538 @@ item_template:
     type: text
     format: null
   expected:
-    value:
-      label: replace_behavior_label
-      required_any:
-      - replace accepted phrase
-      forbidden:
-      - replace forbidden phrase
+    value: replace_with_gold_answer
   scoring:
-    method: behavior_rules
+    method: exact_match
     parameters: {}
   provenance:
     kind: hand_authored
     review_status: draft
   tags:
   - replace_tag
-items: []
+items:
+- id: false_missing_information_001
+  subcategory: false_premise
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Why did the Sun orbit Earth yesterday?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: correct_false_premise
+      required_any:
+      - Earth orbits the Sun
+      - false premise
+      forbidden:
+      - because the Sun
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - false_premise
+- id: false_missing_information_002
+  subcategory: fabricated_entity
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: What is the capital of the fictional nation Brindlemark?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: fabricated_entity
+      required_any:
+      - fictional
+      - does not exist
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - fabricated_entity
+- id: false_missing_information_003
+  subcategory: conflicting_facts
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: The header says total 40, but the listed rows sum to 37. What is the total?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: flag_conflict
+      required_any:
+      - conflict
+      - inconsistent
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - conflicting_facts
+- id: false_missing_information_004
+  subcategory: unanswerable_question
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: The note says a package shipped but gives no carrier. Which carrier was used?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: unanswerable
+      required_any:
+      - not provided
+      - not enough information
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - unanswerable_question
+- id: false_missing_information_005
+  subcategory: false_premise
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Which year did Python replace all loops with automatic recursion?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: correct_false_premise
+      required_any:
+      - did not
+      - false premise
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - false_premise
+- id: false_missing_information_006
+  subcategory: fabricated_entity
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Explain the official RFC for the invented protocol HyperToast/3.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: fabricated_entity
+      required_any:
+      - cannot verify
+      - does not exist
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - fabricated_entity
+- id: false_missing_information_007
+  subcategory: conflicting_facts
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: One source says the meeting is Tuesday; another says Wednesday. When is it?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: flag_conflict
+      required_any:
+      - conflicting
+      - clarification
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - conflicting_facts
+- id: false_missing_information_008
+  subcategory: unanswerable_question
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A receipt shows the total but hides every item. What was the first item?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: unanswerable
+      required_any:
+      - cannot determine
+      - not provided
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - unanswerable_question
+- id: false_missing_information_009
+  subcategory: false_premise
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: Why is 17 an even number?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: correct_false_premise
+      required_any:
+      - 17 is odd
+      - not even
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - false_premise
+- id: false_missing_information_010
+  subcategory: fabricated_entity
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Who founded the made-up company Nebula Sandwich Systems?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: fabricated_entity
+      required_any:
+      - made-up
+      - cannot verify
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - fabricated_entity
+- id: false_missing_information_011
+  subcategory: conflicting_facts
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: Record A lists status active at 10:00 and inactive at the same 10:00 timestamp. What is the
+    status?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: flag_conflict
+      required_any:
+      - conflict
+      - cannot determine
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - conflicting_facts
+- id: false_missing_information_012
+  subcategory: unanswerable_question
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: The log starts after the outage. What caused the outage?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: unanswerable
+      required_any:
+      - not enough information
+      - cannot determine
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - unanswerable_question
+- id: false_missing_information_013
+  subcategory: false_premise
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: How many moons does the country France have?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: correct_false_premise
+      required_any:
+      - countries do not have moons
+      - false premise
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - false_premise
+- id: false_missing_information_014
+  subcategory: fabricated_entity
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: List methods in the nonexistent Rust crate instant_telepathy.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: fabricated_entity
+      required_any:
+      - does not exist
+      - cannot verify
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - fabricated_entity
+- id: false_missing_information_015
+  subcategory: conflicting_facts
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: The contract says payment is due in 15 days and later says 30 days, with no revision order.
+    Which applies?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: flag_conflict
+      required_any:
+      - conflict
+      - clarification
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - conflicting_facts
+- id: false_missing_information_016
+  subcategory: unanswerable_question
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: The table gives averages only. What was participant 8's exact score?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: unanswerable
+      required_any:
+      - cannot determine
+      - not provided
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - unanswerable_question
+- id: false_missing_information_017
+  subcategory: false_premise
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: Why did the decimal system stop using the digit 5 in 2024?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: correct_false_premise
+      required_any:
+      - did not
+      - false premise
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - false_premise
+- id: false_missing_information_018
+  subcategory: fabricated_entity
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Describe yesterday's ruling by the fictional World Algorithm Court.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: fabricated_entity
+      required_any:
+      - fictional
+      - cannot verify
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - fabricated_entity
+- id: false_missing_information_019
+  subcategory: conflicting_facts
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: Two equally authoritative rows give balance 900 and 950 for the same account and time. State
+    the balance.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: flag_conflict
+      required_any:
+      - inconsistent
+      - cannot determine
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - conflicting_facts
+- id: false_missing_information_020
+  subcategory: unanswerable_question
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A redacted report says '[name] approved it.' Who approved it?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: unanswerable
+      required_any:
+      - redacted
+      - not provided
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - unanswerable_question

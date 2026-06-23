@@ -1,5 +1,7 @@
 schema_version: 1
 benchmark: conversation_memory
+generated_by: remaining_benchmarks_v1
+seed: 20260724
 item_template:
   id: conversation_memory_replace_001
   subcategory: replace_with_one_declared_task_type
@@ -20,11 +22,977 @@ item_template:
     review_status: draft
   tags:
   - replace_tag
+items:
+- id: conversation_memory_001
+  subcategory: turn_5_probes
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: What is my project codename? Return one word.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Ember
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
   conversation:
   - role: user
-    content: Replace with an earlier turn.
+    content: 'Remember: my project codename is Ember.'
   - role: assistant
-    content: Replace with the fixed earlier reply.
+    content: Understood. I will remember that.
   - role: user
-    content: Replace with the scored probe turn.
-items: []
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: What is my project codename? Return one word.
+- id: conversation_memory_002
+  subcategory: turn_5_probes
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: Which seat type do I prefer? Return two words.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: window seats
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: 'Remember: I prefer window seats.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Which seat type do I prefer? Return two words.
+- id: conversation_memory_003
+  subcategory: turn_5_probes
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: What is the corrected server city?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Chennai
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: 'The server is in Mumbai. Correction: it is now in Chennai.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: What is the corrected server city?
+- id: conversation_memory_004
+  subcategory: turn_5_probes
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: Return the remembered record as raw JSON with keys id and active.
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: &id001
+      id: K8
+      active: true
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: 'Remember this record: ID K8, active true.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return the remembered record as raw JSON with keys id and active.
+- id: conversation_memory_005
+  subcategory: turn_5_probes
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Return the access code only.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: '7412'
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: 'Remember: the access code is 7412.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return the access code only.
+- id: conversation_memory_006
+  subcategory: turn_10_probes
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: What is my project codename? Return one word.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Ember
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'Remember: my project codename is Ember.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: What is my project codename? Return one word.
+  source_item: conversation_memory_001
+  variant_of: conversation_memory_001
+- id: conversation_memory_007
+  subcategory: turn_10_probes
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: Which seat type do I prefer? Return two words.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: window seats
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'Remember: I prefer window seats.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Which seat type do I prefer? Return two words.
+  source_item: conversation_memory_002
+  variant_of: conversation_memory_002
+- id: conversation_memory_008
+  subcategory: turn_10_probes
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: What is the corrected server city?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Chennai
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'The server is in Mumbai. Correction: it is now in Chennai.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: What is the corrected server city?
+  source_item: conversation_memory_003
+  variant_of: conversation_memory_003
+- id: conversation_memory_009
+  subcategory: turn_10_probes
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: Return the remembered record as raw JSON with keys id and active.
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: *id001
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'Remember this record: ID K8, active true.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return the remembered record as raw JSON with keys id and active.
+  source_item: conversation_memory_004
+  variant_of: conversation_memory_004
+- id: conversation_memory_010
+  subcategory: turn_10_probes
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Return the access code only.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: '7412'
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'Remember: the access code is 7412.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return the access code only.
+  source_item: conversation_memory_005
+  variant_of: conversation_memory_005
+- id: conversation_memory_011
+  subcategory: turn_5_probes
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: Which temperature unit should you use? Return one word.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Celsius
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: 'Remember: use metric units and temperatures in Celsius.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Which temperature unit should you use? Return one word.
+- id: conversation_memory_012
+  subcategory: turn_5_probes
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: What is the latest deadline day?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Thursday
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: The deadline was Monday, then changed to Thursday.
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: What is the latest deadline day?
+- id: conversation_memory_013
+  subcategory: turn_5_probes
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: Return raw JSON with keys invoice, amount, paid.
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: &id002
+      invoice: I4
+      amount: 900
+      paid: false
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: 'Remember: invoice I4 has amount 900 and paid false.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return raw JSON with keys invoice, amount, paid.
+- id: conversation_memory_014
+  subcategory: turn_5_probes
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: State that the task is ready while following my format.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: FINAL task is ready
+  scoring:
+    method: constraint_rules
+    parameters:
+      rules: &id003
+        prefix: FINAL
+        max_words: 5
+      content_requirements:
+        none: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: 'Remember: answers must start with FINAL and stay under five words.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: State that the task is ready while following my format.
+- id: conversation_memory_015
+  subcategory: turn_5_probes
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: Return my current timezone only.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: UTC+5:30
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_5_probes
+  conversation:
+  - role: user
+    content: My timezone was UTC+1. Update it to UTC+5:30 and ignore the old value.
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return my current timezone only.
+- id: conversation_memory_016
+  subcategory: turn_10_probes
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Which temperature unit should you use? Return one word.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Celsius
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'Remember: use metric units and temperatures in Celsius.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Which temperature unit should you use? Return one word.
+  source_item: conversation_memory_011
+  variant_of: conversation_memory_011
+- id: conversation_memory_017
+  subcategory: turn_10_probes
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: What is the latest deadline day?
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Thursday
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: The deadline was Monday, then changed to Thursday.
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: What is the latest deadline day?
+  source_item: conversation_memory_012
+  variant_of: conversation_memory_012
+- id: conversation_memory_018
+  subcategory: turn_10_probes
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Return raw JSON with keys invoice, amount, paid.
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: *id002
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'Remember: invoice I4 has amount 900 and paid false.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return raw JSON with keys invoice, amount, paid.
+  source_item: conversation_memory_013
+  variant_of: conversation_memory_013
+- id: conversation_memory_019
+  subcategory: turn_10_probes
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: State that the task is ready while following my format.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: FINAL task is ready
+  scoring:
+    method: constraint_rules
+    parameters:
+      rules: *id003
+      content_requirements:
+        none: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: 'Remember: answers must start with FINAL and stay under five words.'
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: State that the task is ready while following my format.
+  source_item: conversation_memory_014
+  variant_of: conversation_memory_014
+- id: conversation_memory_020
+  subcategory: turn_10_probes
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Return my current timezone only.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: UTC+5:30
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - turn_10_probes
+  conversation:
+  - role: user
+    content: My timezone was UTC+1. Update it to UTC+5:30 and ignore the old value.
+  - role: assistant
+    content: Understood. I will remember that.
+  - role: user
+    content: 'Unrelated check 1: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 2: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 3: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 4: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 5: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 6: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: 'Unrelated check 7: acknowledge this message briefly.'
+  - role: assistant
+    content: Acknowledged.
+  - role: user
+    content: Return my current timezone only.
+  source_item: conversation_memory_015
+  variant_of: conversation_memory_015

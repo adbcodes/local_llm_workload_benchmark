@@ -1,8 +1,8 @@
 id: raw_output_discipline
 title: Raw Output Discipline
-description: Planned raw output discipline question set from the final benchmark plan.
+description: Produce exact machine-readable output without fences, preambles, or trailing explanations.
 suite: C
-status: planned
+status: started
 execution_mode: single_turn
 task_types:
 - raw JSON
@@ -20,12 +20,12 @@ score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 10
 target_question_count: 10
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 3
+  medium: 5
+  hard: 2
 difficulty_distribution:
   easy: 3
   medium: 5

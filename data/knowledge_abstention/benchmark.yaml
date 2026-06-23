@@ -1,8 +1,8 @@
 id: knowledge_abstention
 title: Knowledge and Abstention
-description: Planned knowledge and abstention question set from the final benchmark plan.
+description: Answer supported facts, reject fabrications, abstain when evidence is missing, and ask for clarification.
 suite: A
-status: planned
+status: started
 execution_mode: single_turn
 task_types:
 - answerable facts with a stated cutoff
@@ -18,12 +18,12 @@ score_formula: accuracy_minus_hallucination
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 30
 target_question_count: 30
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 10
+  medium: 15
+  hard: 5
 difficulty_distribution:
   easy: 10
   medium: 15

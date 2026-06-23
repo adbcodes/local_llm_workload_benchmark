@@ -1,5 +1,7 @@
 schema_version: 1
 benchmark: prompt_format_sensitivity
+generated_by: remaining_benchmarks_v1
+seed: 20260724
 item_template:
   id: prompt_format_sensitivity_replace_001
   subcategory: replace_with_one_declared_task_type
@@ -20,5 +22,492 @@ item_template:
     review_status: draft
   tags:
   - replace_tag
-  source_item: replace_with_clean_item_id
-items: []
+items:
+- id: prompt_format_sensitivity_001
+  subcategory: plain_prose
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Return the capital of Canada only.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Ottawa
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - plain_prose
+- id: prompt_format_sensitivity_002
+  subcategory: plain_prose
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: Return raw JSON with key total and value 18.
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: &id001
+      total: 18
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - plain_prose
+- id: prompt_format_sensitivity_003
+  subcategory: plain_prose
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Return the word READY in uppercase only.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: READY
+  scoring:
+    method: exact_match
+    parameters:
+      strip: false
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - plain_prose
+- id: prompt_format_sensitivity_004
+  subcategory: plain_prose
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: Write exactly three words beginning with Status.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Status remains fully stable
+  scoring:
+    method: constraint_rules
+    parameters:
+      rules: &id002
+        exact_words: 4
+        prefix: Status
+      content_requirements:
+        none: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - plain_prose
+- id: prompt_format_sensitivity_005
+  subcategory: plain_prose
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Return raw JSON with keys id and valid for id Q2 and valid true.
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: &id003
+      id: Q2
+      valid: true
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - plain_prose
+- id: prompt_format_sensitivity_006
+  subcategory: plain_prose
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: Return the result of 11 plus 9 as digits only.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: '20'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - plain_prose
+- id: prompt_format_sensitivity_007
+  subcategory: markdown
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: '## Task
+
+
+    - Return the capital of Canada only.
+
+    - Follow the requested output format exactly.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Ottawa
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - markdown
+  source_item: prompt_format_sensitivity_001
+  variant_of: prompt_format_sensitivity_001
+- id: prompt_format_sensitivity_008
+  subcategory: markdown
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: '## Task
+
+
+    - Return raw JSON with key total and value 18.
+
+    - Follow the requested output format exactly.'
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: *id001
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - markdown
+  source_item: prompt_format_sensitivity_002
+  variant_of: prompt_format_sensitivity_002
+- id: prompt_format_sensitivity_009
+  subcategory: markdown
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: '## Task
+
+
+    - Return the word READY in uppercase only.
+
+    - Follow the requested output format exactly.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: READY
+  scoring:
+    method: exact_match
+    parameters:
+      strip: false
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - markdown
+  source_item: prompt_format_sensitivity_003
+  variant_of: prompt_format_sensitivity_003
+- id: prompt_format_sensitivity_010
+  subcategory: markdown
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: '## Task
+
+
+    - Write exactly three words beginning with Status.
+
+    - Follow the requested output format exactly.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Status remains fully stable
+  scoring:
+    method: constraint_rules
+    parameters:
+      rules: *id002
+      content_requirements:
+        none: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - markdown
+  source_item: prompt_format_sensitivity_004
+  variant_of: prompt_format_sensitivity_004
+- id: prompt_format_sensitivity_011
+  subcategory: markdown
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: '## Task
+
+
+    - Return raw JSON with keys id and valid for id Q2 and valid true.
+
+    - Follow the requested output format exactly.'
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: *id003
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - markdown
+  source_item: prompt_format_sensitivity_005
+  variant_of: prompt_format_sensitivity_005
+- id: prompt_format_sensitivity_012
+  subcategory: markdown
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: '## Task
+
+
+    - Return the result of 11 plus 9 as digits only.
+
+    - Follow the requested output format exactly.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: '20'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - markdown
+  source_item: prompt_format_sensitivity_006
+  variant_of: prompt_format_sensitivity_006
+- id: prompt_format_sensitivity_013
+  subcategory: xml_tags
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: <task><instruction>Return the capital of Canada only.</instruction><rule>Follow the requested
+    output format exactly.</rule></task>
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Ottawa
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - xml_tags
+  source_item: prompt_format_sensitivity_001
+  variant_of: prompt_format_sensitivity_001
+- id: prompt_format_sensitivity_014
+  subcategory: xml_tags
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: <task><instruction>Return raw JSON with key total and value 18.</instruction><rule>Follow the
+    requested output format exactly.</rule></task>
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: *id001
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - xml_tags
+  source_item: prompt_format_sensitivity_002
+  variant_of: prompt_format_sensitivity_002
+- id: prompt_format_sensitivity_015
+  subcategory: xml_tags
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: <task><instruction>Return the word READY in uppercase only.</instruction><rule>Follow the requested
+    output format exactly.</rule></task>
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: READY
+  scoring:
+    method: exact_match
+    parameters:
+      strip: false
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - xml_tags
+  source_item: prompt_format_sensitivity_003
+  variant_of: prompt_format_sensitivity_003
+- id: prompt_format_sensitivity_016
+  subcategory: xml_tags
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: <task><instruction>Write exactly three words beginning with Status.</instruction><rule>Follow
+    the requested output format exactly.</rule></task>
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Status remains fully stable
+  scoring:
+    method: constraint_rules
+    parameters:
+      rules: *id002
+      content_requirements:
+        none: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - xml_tags
+  source_item: prompt_format_sensitivity_004
+  variant_of: prompt_format_sensitivity_004
+- id: prompt_format_sensitivity_017
+  subcategory: xml_tags
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: <task><instruction>Return raw JSON with keys id and valid for id Q2 and valid true.</instruction><rule>Follow
+    the requested output format exactly.</rule></task>
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value: *id003
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - xml_tags
+  source_item: prompt_format_sensitivity_005
+  variant_of: prompt_format_sensitivity_005
+- id: prompt_format_sensitivity_018
+  subcategory: xml_tags
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: <task><instruction>Return the result of 11 plus 9 as digits only.</instruction><rule>Follow
+    the requested output format exactly.</rule></task>
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: '20'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: remaining_benchmarks_v1
+    seed: 20260724
+  tags:
+  - fresh_generated
+  - xml_tags
+  source_item: prompt_format_sensitivity_006
+  variant_of: prompt_format_sensitivity_006

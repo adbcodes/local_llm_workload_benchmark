@@ -1,8 +1,8 @@
 id: shuffled_choices
 title: Shuffled Choices
-description: Planned shuffled choices question set from the final benchmark plan.
+description: Reorder multiple-choice answers to measure position bias and label mapping.
 suite: E
-status: planned
+status: started
 execution_mode: paired_variants
 task_types:
 - gold answer in each position
@@ -15,12 +15,12 @@ score_formula: clean_score_retained
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 20
 target_question_count: 20
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 5
+  medium: 10
+  hard: 5
 difficulty_distribution:
   easy: 5
   medium: 10

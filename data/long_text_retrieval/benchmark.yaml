@@ -1,8 +1,8 @@
 id: long_text_retrieval
 title: Long-Text Retrieval
-description: Planned long-text retrieval question set from the final benchmark plan.
+description: Retrieve exact facts from the start, middle, and end of 1K, 4K, and 8K contexts.
 suite: E
-status: planned
+status: started
 execution_mode: paired_variants
 task_types:
 - fact at start
@@ -20,12 +20,12 @@ score_formula: clean_score_retained
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 27
 target_question_count: 27
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 9
+  medium: 9
+  hard: 9
 difficulty_distribution:
   easy: 9
   medium: 9
