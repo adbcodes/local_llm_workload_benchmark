@@ -7,6 +7,7 @@ import pytest
 from llm_workload_benchmark.config import JudgeConfig, load_config
 from llm_workload_benchmark.dataset import DatasetError, load_suite, score_answer
 from llm_workload_benchmark.judge import (
+    CachedJudgeBackend,
     GroqJudgeBackend,
     JudgeCallResult,
     JudgeError,
@@ -84,6 +85,34 @@ def test_judge_defaults_leave_room_for_reasoning_and_structured_output() -> None
     assert config.model == "openai/gpt-oss-120b"
     assert config.reasoning_effort == "medium"
     assert config.max_completion_tokens == 4096
+    assert config.cache_path is None
+
+
+def test_judge_cache_reuses_exact_decisions_without_request_cost(tmp_path: Path) -> None:
+    config = JudgeConfig(cache_path=tmp_path / "judge-cache.jsonl")
+    delegate = FakeJudgeBackend()
+    backend = CachedJudgeBackend(delegate, config)
+    arguments = {
+        "system_prompt": "judge policy",
+        "user_prompt": "candidate answer",
+        "response_schema": SummaryJudgeDecision.model_json_schema(),
+        "seed": 42,
+    }
+
+    first = backend.evaluate(**arguments)
+    second = backend.evaluate(**arguments)
+
+    assert len(delegate.calls) == 1
+    assert first.cache_hit is False
+    assert second.cache_hit is True
+    assert second.latency_seconds == 0.0
+    assert second.prompt_tokens == second.output_tokens == 0
+
+    fresh_delegate = FakeJudgeBackend()
+    disk_backed = CachedJudgeBackend(fresh_delegate, config)
+    from_disk = disk_backed.evaluate(**arguments)
+    assert from_disk.cache_hit is True
+    assert not fresh_delegate.calls
 
 
 def test_pointwise_judge_builds_anonymous_prompt_and_computes_score() -> None:

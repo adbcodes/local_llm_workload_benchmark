@@ -30,9 +30,9 @@ benchmarks:
   - {id: code_debug_repair, suite: A, status: complete, kind: question_set, definition_path: code_debug_repair/benchmark.yaml}
   - {id: knowledge_abstention, suite: A, status: planned, kind: question_set, definition_path: knowledge_abstention/benchmark.yaml}
   - {id: messy_text_to_schema, suite: B, status: started, kind: question_set, definition_path: messy_text_to_schema/benchmark.yaml}
-  - {id: tables_to_decisions, suite: B, status: planned, kind: question_set, definition_path: tables_to_decisions/benchmark.yaml}
-  - {id: inbox_routing, suite: B, status: planned, kind: question_set, definition_path: inbox_routing/benchmark.yaml}
-  - {id: tool_use, suite: B, status: planned, kind: question_set, definition_path: tool_use/benchmark.yaml}
+  - {id: tables_to_decisions, suite: B, status: started, kind: question_set, definition_path: tables_to_decisions/benchmark.yaml}
+  - {id: inbox_routing, suite: B, status: started, kind: question_set, definition_path: inbox_routing/benchmark.yaml}
+  - {id: tool_use, suite: B, status: started, kind: question_set, definition_path: tool_use/benchmark.yaml}
   - {id: constraint_load_curve, suite: C, status: complete, kind: question_set, definition_path: constraint_load_curve/benchmark.yaml}
   - {id: negative_instructions, suite: C, status: planned, kind: question_set, definition_path: negative_instructions/benchmark.yaml}
   - {id: instruction_hierarchy, suite: C, status: planned, kind: question_set, definition_path: instruction_hierarchy/benchmark.yaml}

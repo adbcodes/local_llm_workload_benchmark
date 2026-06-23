@@ -74,3 +74,14 @@ models:
 
     with pytest.raises(ConfigError, match="typo_field"):
         load_config(config_path)
+
+
+def test_fast_matrix_configs_load() -> None:
+    smoke = load_config(Path("configs/smoke_matrix.yaml"))
+    deterministic = load_config(Path("configs/deterministic_matrix.yaml"))
+
+    assert len(smoke.models) == len(deterministic.models) == 3
+    assert smoke.benchmark.workload_path == Path("data/suites/smoke.yaml")
+    assert deterministic.benchmark.workload_path == Path(
+        "data/suites/deterministic.yaml"
+    )

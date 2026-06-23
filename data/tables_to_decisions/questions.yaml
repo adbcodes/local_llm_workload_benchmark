@@ -1,5 +1,7 @@
 schema_version: 1
 benchmark: tables_to_decisions
+generated_by: structured_work_v1
+seed: 20260723
 item_template:
   id: tables_to_decisions_replace_001
   subcategory: replace_with_one_declared_task_type
@@ -11,14 +13,981 @@ item_template:
     type: number
     format: null
   expected:
-    value: 0
+    value: replace_with_gold_answer
   scoring:
     method: numeric_tolerance
-    parameters:
-      absolute_tolerance: 0
+    parameters: {}
   provenance:
     kind: hand_authored
     review_status: draft
   tags:
   - replace_tag
-items: []
+items:
+- id: tables_to_decisions_001
+  subcategory: totals_and_differences
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Monthly units:
+
+    Jan | 120
+
+    Feb | 150
+
+    Mar | 130
+
+    What is the total? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 400
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - totals_and_differences
+- id: tables_to_decisions_002
+  subcategory: totals_and_differences
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Team | Tickets closed
+
+    A | 92
+
+    B | 75
+
+    How many more tickets did A close than B? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 17
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - totals_and_differences
+- id: tables_to_decisions_003
+  subcategory: decision_from_table_evidence
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Region | Orders
+
+    East | 44
+
+    West | 61
+
+    North | 58
+
+    Which region has the most orders? Return only the region name.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: West
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_004
+  subcategory: decision_from_table_evidence
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Item | Stock
+
+    P | 12
+
+    Q | 5
+
+    R | 9
+
+    Which item has the lowest stock? Return only its item letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: Q
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_005
+  subcategory: decision_from_table_evidence
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Agent | Score
+
+    A | 82
+
+    B | 77
+
+    C | 91
+
+    D | 80
+
+    Return the agents scoring at least 80 as comma-separated letters only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - A
+    - C
+    - D
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_006
+  subcategory: small_joins
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Price table: P = 20, Q = 15.
+
+    Order table: P quantity = 3, Q quantity = 4.
+
+    What is the total order value? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 120
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - small_joins
+- id: tables_to_decisions_007
+  subcategory: trends_with_exception_rows
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Product | Week 1 | Week 2
+
+    A | 10 | 12
+
+    B | 8 | 7
+
+    C | 5 | 9
+
+    Which product is the only one that declined? Return only its letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - trends_with_exception_rows
+- id: tables_to_decisions_008
+  subcategory: duplicated_rows
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Row | Invoice ID
+
+    1 | 101
+
+    2 | 102
+
+    3 | 101
+
+    4 | 103
+
+    Which invoice ID is duplicated? Return only the ID.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 101
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - duplicated_rows
+- id: tables_to_decisions_009
+  subcategory: totals_and_differences
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Order | Status | Amount
+
+    A | completed | 120
+
+    B | cancelled | 90
+
+    C | completed | 140
+
+    What is the total for completed orders only? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 260
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - totals_and_differences
+- id: tables_to_decisions_010
+  subcategory: small_joins
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Customers: C1 = North, C2 = South, C3 = West.
+
+    Open orders belong to C1 and C3.
+
+    Return the regions with open orders as comma-separated names only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - North
+    - West
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - small_joins
+- id: tables_to_decisions_011
+  subcategory: trends_with_exception_rows
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Product | Start | End
+
+    A | 100 | 130
+
+    B | 50 | 70
+
+    C | 200 | 230
+
+    Which product has the largest percentage growth? Return only its letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - trends_with_exception_rows
+- id: tables_to_decisions_012
+  subcategory: small_joins
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Product | Quantity | Unit price
+
+    P | 5 | 120
+
+    Q | 8 | 75
+
+    R | 4 | 200
+
+    What is total revenue? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 2000
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - small_joins
+- id: tables_to_decisions_013
+  subcategory: duplicated_rows
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Invoice | Amount
+
+    I1 | 100
+
+    I1 | 100
+
+    I2 | 250
+
+    I3 | 150
+
+    The repeated I1 row is an accidental duplicate. What is the deduplicated total? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 500
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - duplicated_rows
+- id: tables_to_decisions_014
+  subcategory: inconsistent_rows
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Item | Qty | Unit price | Reported total
+
+    A | 2 | 10 | 20
+
+    B | 3 | 8 | 25
+
+    C | 4 | 6 | 24
+
+    Which item has an inconsistent total? Return only its letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - inconsistent_rows
+- id: tables_to_decisions_015
+  subcategory: decision_from_table_evidence
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Vendor | Price | Rating | Lead days
+
+    V1 | 48 | 4.6 | 6
+
+    V2 | 50 | 4.5 | 5
+
+    V3 | 45 | 4.2 | 4
+
+    Choose vendors with price at most 50, rating at least 4.5, and lead time at most 5 days. Return comma-separated
+    vendor IDs only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - V2
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_016
+  subcategory: totals_and_differences
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Run | Score
+
+    1 | 70
+
+    2 | missing
+
+    3 | 90
+
+    4 | 80
+
+    What is the average of the available scores? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 80
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - totals_and_differences
+- id: tables_to_decisions_017
+  subcategory: small_joins
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Invoices: C1 overdue, C2 paid, C3 overdue.
+
+    Customers: C1 active, C2 active, C3 inactive.
+
+    Return active customer IDs with overdue invoices, comma-separated only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - C1
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - small_joins
+- id: tables_to_decisions_018
+  subcategory: trends_with_exception_rows
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Product | Jan | Feb | Mar
+
+    A | 10 | 12 | 14
+
+    B | 20 | 18 | 22
+
+    C | 5 | 6 | 7
+
+    Which product breaks the month-by-month upward trend? Return only its letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - trends_with_exception_rows
+- id: tables_to_decisions_019
+  subcategory: decision_from_table_evidence
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Item | Stock | Reorder point | Inbound
+
+    A | 4 | 10 | 0
+
+    B | 8 | 8 | 0
+
+    C | 2 | 5 | 6
+
+    Reorder only when stock is below the reorder point and no units are inbound. Return item letters,
+    comma-separated only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - A
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_020
+  subcategory: totals_and_differences
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Ten deliveries were checked: 8 were on time and 2 were late. What percentage were on time?
+    Return only the number without a percent sign.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 80
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - totals_and_differences
+- id: tables_to_decisions_021
+  subcategory: decision_from_table_evidence
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Campaign | Cost | Conversions
+
+    A | 1000 | 25
+
+    B | 700 | 14
+
+    C | 1200 | 40
+
+    Choose the lowest cost per conversion among campaigns with at least 20 conversions. Return only the
+    campaign letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: C
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_022
+  subcategory: inconsistent_rows
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Account | Time | Status
+
+    X | 10:00 | active
+
+    X | 12:00 | suspended
+
+    Y | 11:00 | active
+
+    Using the latest row for each account, what is X''s status? Return one word.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: suspended
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - inconsistent_rows
+- id: tables_to_decisions_023
+  subcategory: decision_from_table_evidence
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Site | Revenue | Target | Complaints
+
+    P | 105 | 100 | 1
+
+    Q | 120 | 100 | 4
+
+    R | 90 | 85 | 2
+
+    Return sites that beat target and have at most 2 complaints, comma-separated only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - P
+    - R
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_024
+  subcategory: small_joins
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Sales: A sold 10 units; B sold 5.
+
+    Prices: A = 50; B = 100.
+
+    Unit costs: A = 30; B = 70.
+
+    What is total profit across both products? Return only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 350
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - small_joins
+- id: tables_to_decisions_025
+  subcategory: decision_from_table_evidence
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'Cohort | Starting users | Month-3 users
+
+    A | 100 | 70
+
+    B | 80 | 60
+
+    C | 50 | 35
+
+    Which cohort has the highest month-3 retention rate? Return only its letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_026
+  subcategory: duplicated_rows
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Event | Time | Amount | Status
+
+    e1 | 09:00 | 30 | valid
+
+    e1 | 10:00 | 40 | valid
+
+    e2 | 09:30 | 25 | valid
+
+    e3 | 08:00 | 10 | valid
+
+    e3 | 11:00 | 10 | cancelled
+
+    Keep only the latest row per event, then sum amounts for rows whose latest status is valid. Return
+    only the number.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 65
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - duplicated_rows
+- id: tables_to_decisions_027
+  subcategory: decision_from_table_evidence
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'Region | Demand | Capacity | Transfer out
+
+    East | 120 | 100 | 15
+
+    West | 75 | 90 | 0
+
+    North | 60 | 65 | 0
+
+    After transfers, demand is demand minus transfer out. Which regions remain over capacity? Return comma-separated
+    names only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - East
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - decision_from_table_evidence
+- id: tables_to_decisions_028
+  subcategory: small_joins
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Vendor | Price | Currency | Rating | Lead days
+
+    A | 100 | USD | 4.6 | 6
+
+    B | 90 | EUR | 4.5 | 7
+
+    C | 8200 | INR | 4.4 | 5
+
+    Rates: 1 USD = 83 INR; 1 EUR = 92 INR. Choose the cheapest vendor with rating at least 4.4 and lead
+    time at most 7 days. Return only its letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: C
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - small_joins
+- id: tables_to_decisions_029
+  subcategory: trends_with_exception_rows
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'Product | Jan | Feb | Mar
+
+    A | 100 | 90 | 80
+
+    B | 50 | 70 | 100
+
+    Totals | 150 | 160 | 180
+
+    The total rises each month. Which product nevertheless declines every month? Return only its letter.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: A
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - trends_with_exception_rows
+- id: tables_to_decisions_030
+  subcategory: inconsistent_rows
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Invoice | Billed | Paid
+
+    I1 | 100 | 100
+
+    I2 | 120 | 100
+
+    I3 | 80 | 90
+
+    Return every invoice whose paid amount does not equal its billed amount, comma-separated only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - I2
+    - I3
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - inconsistent_rows

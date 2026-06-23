@@ -1,8 +1,8 @@
 id: inbox_routing
 title: Inbox Routing
-description: Planned inbox routing question set from the final benchmark plan.
+description: Route clear, ambiguous, urgent, multi-topic, and out-of-scope messages.
 suite: B
-status: planned
+status: started
 execution_mode: single_turn
 task_types:
 - single-label routing
@@ -19,12 +19,12 @@ score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 30
 target_question_count: 30
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 8
+  medium: 15
+  hard: 7
 difficulty_distribution:
   easy: 8
   medium: 15

@@ -1,9 +1,9 @@
 schema_version: 1
 
 benchmark:
-  name: judged-summary-pilot
-  description: Compare local GGUF summaries using GPT-OSS 120B on Groq.
-  workload_path: data/suites/judged.yaml
+  name: three-model-five-item-smoke
+  description: Verify generation, deterministic scoring, code execution, and judging.
+  workload_path: data/suites/smoke.yaml
   output_root: runs
   repetitions: 1
   seed: 42
@@ -54,7 +54,7 @@ models:
     enabled: true
     context_window: 4096
     gpu_layers: -1
-    response_cleanup: strip_empty_think
+    response_cleanup: strip_think
     system_prompt: |-
       /no_think
       Follow the user's instructions precisely. Return only the requested answer without commentary.

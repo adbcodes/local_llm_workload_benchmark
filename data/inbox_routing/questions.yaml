@@ -1,5 +1,7 @@
 schema_version: 1
 benchmark: inbox_routing
+generated_by: structured_work_v1
+seed: 20260723
 item_template:
   id: inbox_routing_replace_001
   subcategory: replace_with_one_declared_task_type
@@ -20,4 +22,922 @@ item_template:
     review_status: draft
   tags:
   - replace_tag
-items: []
+items:
+- id: inbox_routing_001
+  subcategory: single_label_routing
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: I was charged twice for the same monthly plan.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - billing
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_002
+  subcategory: single_label_routing
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: I forgot my password and cannot sign in.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - account_access
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_003
+  subcategory: single_label_routing
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: My parcel was due yesterday and still has not arrived.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - delivery
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_004
+  subcategory: single_label_routing
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Please cancel my subscription before it renews.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - cancellation
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_005
+  subcategory: single_label_routing
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: The mobile app crashes whenever I upload a photo.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - product_support
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_006
+  subcategory: single_label_routing
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: I received a login alert from a device I do not recognize.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - security
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_007
+  subcategory: single_label_routing
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Can you share enterprise pricing for 200 seats?
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - sales
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_008
+  subcategory: single_label_routing
+  difficulty: easy
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: The new search filters are excellent. Thank you!
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - feedback
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_009
+  subcategory: multi_label_routing
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Please help today: a duplicate charge has left my account overdrawn.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - billing
+    - urgent
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_010
+  subcategory: urgency_under_polite_tone
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: When convenient, could you check the unauthorized transfer? It happened minutes ago and more
+    money may leave.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - security
+    - urgent
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - urgency_under_polite_tone
+- id: inbox_routing_011
+  subcategory: multi_label_routing
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: My temperature-sensitive medicine was promised this morning. It must arrive within two hours.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - delivery
+    - urgent
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_012
+  subcategory: multi_label_routing
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: I cancelled yesterday but was renewed and charged this morning.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - cancellation
+    - billing
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_013
+  subcategory: ask_for_more_information_cases
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: It is broken again. Please fix it.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - needs_information
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - ask_for_more_information_cases
+- id: inbox_routing_014
+  subcategory: out_of_scope_messages
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Can your team cater lunch for a wedding next Sunday?
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - out_of_scope
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - out_of_scope_messages
+- id: inbox_routing_015
+  subcategory: multi_label_routing
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Before buying the business plan, I need to know whether your API supports SAML.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - sales
+    - product_support
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_016
+  subcategory: multi_label_routing
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: An unknown person changed my two-factor number and now I am locked out.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - security
+    - account_access
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_017
+  subcategory: urgency_under_polite_tone
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Sorry to bother you, but my flight is tonight and I cannot access the account holding my
+    ticket.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - account_access
+    - urgent
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - urgency_under_polite_tone
+- id: inbox_routing_018
+  subcategory: single_label_routing
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Tracking has not updated for four days. Order ID is R-8821. Where is it?
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - delivery
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_019
+  subcategory: ask_for_more_information_cases
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Please sort this out as soon as you can.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - needs_information
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - ask_for_more_information_cases
+- id: inbox_routing_020
+  subcategory: multi_label_routing
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Dark mode is a great addition, but its save button does nothing on Android.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - feedback
+    - product_support
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_021
+  subcategory: single_label_routing
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: I enjoyed the service, but I no longer need it after this billing period. Do not renew it.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - cancellation
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_022
+  subcategory: single_label_routing
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Why is tax shown twice on invoice INV-44?
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - billing
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_023
+  subcategory: out_of_scope_messages
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: I would like to apply for a software engineering job at your company.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - out_of_scope
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - out_of_scope_messages
+- id: inbox_routing_024
+  subcategory: multi_label_routing
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Someone replaced my recovery email, made purchases, and signed me out. Freeze access immediately.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - security
+    - account_access
+    - urgent
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_025
+  subcategory: multi_label_routing
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: I paid extra for express shipping, but the package arrived after the event. Please refund
+    the express fee.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - delivery
+    - billing
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_026
+  subcategory: multi_label_routing
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: A renewal I cancelled was charged today, and the bank dispute deadline is in three hours.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - cancellation
+    - billing
+    - urgent
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_027
+  subcategory: ask_for_more_information_cases
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: The same problem from last time is back. You already know what I mean.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - needs_information
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - ask_for_more_information_cases
+- id: inbox_routing_028
+  subcategory: multi_label_routing
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Your desktop app shows an invalid security certificate and refuses to connect.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - product_support
+    - security
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing
+- id: inbox_routing_029
+  subcategory: single_label_routing
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: We want to discuss a reseller partnership and volume pricing for our clients.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - sales
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - single_label_routing
+- id: inbox_routing_030
+  subcategory: multi_label_routing
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Available labels: billing, account_access, delivery, cancellation, product_support, security,
+    sales, feedback, needs_information, out_of_scope, urgent.
+
+    Message: Our warehouse integration stopped creating shipping labels, so today''s dispatch is blocked.
+
+    Return every applicable label as a comma-separated list. Return labels only.'
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+    - product_support
+    - urgent
+  scoring:
+    method: set_match
+    parameters:
+      separator: ','
+      case_sensitive: false
+  provenance:
+    kind: synthetic
+    review_status: draft
+    generator: structured_work_v1
+    seed: 20260723
+  tags:
+  - fresh_generated
+  - multi_label_routing

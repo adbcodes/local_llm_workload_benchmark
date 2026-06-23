@@ -30,6 +30,7 @@ from llm_workload_benchmark.dataset import (
 )
 from llm_workload_benchmark.executable import evaluate_python
 from llm_workload_benchmark.judge import (
+    CachedJudgeBackend,
     GroqJudgeBackend,
     JudgeBackend,
     evaluate_summary,
@@ -78,7 +79,8 @@ JudgeBackendFactory = Callable[[JudgeConfig], JudgeBackend]
 
 
 def _default_judge_backend_factory(config: JudgeConfig) -> JudgeBackend:
-    return GroqJudgeBackend(config)
+    backend: JudgeBackend = GroqJudgeBackend(config)
+    return CachedJudgeBackend(backend, config) if config.cache_path else backend
 
 
 class LlamaCppBackend:

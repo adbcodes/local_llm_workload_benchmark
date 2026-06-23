@@ -1,8 +1,8 @@
 id: tool_use
 title: Tool Use
-description: Planned tool use question set from the final benchmark plan.
+description: Choose tools, pass correct arguments, chain results, and avoid unnecessary calls.
 suite: B
-status: planned
+status: started
 execution_mode: tool_scenario
 task_types:
 - no-tool-needed traps
@@ -21,12 +21,12 @@ score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 20
 target_question_count: 20
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 5
+  medium: 10
+  hard: 5
 difficulty_distribution:
   easy: 5
   medium: 10

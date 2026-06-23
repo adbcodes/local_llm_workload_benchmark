@@ -18,6 +18,16 @@ QUESTION_SET_IDS = {
     "false_missing_information", "answer_stability", "confidence_correctness",
     "shuffled_choices", "prompt_format_sensitivity", "over_refusal",
 }
+POPULATED_QUESTION_SET_IDS = {
+    "applied_reasoning",
+    "code_debug_repair",
+    "messy_text_to_schema",
+    "tables_to_decisions",
+    "inbox_routing",
+    "tool_use",
+    "constraint_load_curve",
+    "grounded_compression",
+}
 
 
 def test_catalog_matches_the_six_suite_plan() -> None:
@@ -61,7 +71,7 @@ def test_planned_question_sets_are_empty_but_runnable_templates() -> None:
         assert (directory / "items.jsonl").read_text(encoding="utf-8") == ""
 
     suite = load_suite(Path("data/suites/all.yaml"))
-    assert sum(len(items) for items in suite.items.values()) == 186
+    assert sum(len(items) for items in suite.items.values()) == 266
 
 
 def test_backbone_generator_reproduces_planned_templates(tmp_path: Path) -> None:
@@ -70,10 +80,7 @@ def test_backbone_generator_reproduces_planned_templates(tmp_path: Path) -> None
         [sys.executable, "scripts/generate_benchmark_backbone.py", "--root", str(generated_root)],
         check=True,
     )
-    for benchmark_id in QUESTION_SET_IDS - {
-        "applied_reasoning", "code_debug_repair", "messy_text_to_schema",
-        "constraint_load_curve", "grounded_compression",
-    }:
+    for benchmark_id in QUESTION_SET_IDS - POPULATED_QUESTION_SET_IDS:
         for filename in ("benchmark.yaml", "questions.yaml", "items.jsonl"):
             assert (generated_root / benchmark_id / filename).read_text() == (
                 Path("data") / benchmark_id / filename
@@ -91,5 +98,52 @@ def test_evaluation_and_probe_definitions_exist() -> None:
     result = validate_catalog(CATALOG_PATH)
     assert result.benchmark_count == 24
     assert result.question_set_count == 22
-    assert result.current_question_count == 186
-    assert result.planned_question_set_count == 17
+    assert result.current_question_count == 266
+    assert result.planned_question_set_count == 14
+
+
+def test_structured_work_sets_hit_their_targets_and_cover_task_types() -> None:
+    expected = {
+        "tables_to_decisions": {
+            "count": 30,
+            "subcategories": {
+                "totals_and_differences",
+                "small_joins",
+                "trends_with_exception_rows",
+                "duplicated_rows",
+                "inconsistent_rows",
+                "decision_from_table_evidence",
+            },
+        },
+        "inbox_routing": {
+            "count": 30,
+            "subcategories": {
+                "single_label_routing",
+                "multi_label_routing",
+                "urgency_under_polite_tone",
+                "ask_for_more_information_cases",
+                "out_of_scope_messages",
+            },
+        },
+        "tool_use": {
+            "count": 20,
+            "subcategories": {
+                "no_tool_needed_traps",
+                "two_call_chains",
+                "using_one_call_result_in_the_next",
+                "error_recovery",
+                "argument_conversion",
+                "unnecessary_call_avoidance",
+            },
+        },
+    }
+
+    for benchmark_id, requirements in expected.items():
+        document = yaml.safe_load(
+            (Path("data") / benchmark_id / "questions.yaml").read_text()
+        )
+        items = document["items"]
+        assert len(items) == requirements["count"]
+        assert {item["subcategory"] for item in items} == requirements["subcategories"]
+        assert {item["difficulty"] for item in items} == {"easy", "medium", "hard"}
+        assert sum(item["visibility"] == "public" for item in items) == len(items) // 2

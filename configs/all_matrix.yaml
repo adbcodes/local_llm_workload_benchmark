@@ -17,6 +17,7 @@ judge:
   timeout_seconds: 60
   max_retries: 3
   max_candidate_characters: 12000
+  cache_path: runs/judge_cache.jsonl
   input_price_per_million_tokens: 0.15
   cached_input_price_per_million_tokens: 0.075
   output_price_per_million_tokens: 0.60

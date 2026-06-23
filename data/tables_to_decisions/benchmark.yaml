@@ -1,8 +1,8 @@
 id: tables_to_decisions
 title: Tables to Decisions
-description: Planned tables to decisions question set from the final benchmark plan.
+description: Read small tables, reconcile messy rows, and make decisions from the evidence.
 suite: B
-status: planned
+status: started
 execution_mode: single_turn
 task_types:
 - totals and differences
@@ -19,12 +19,12 @@ score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 0
+current_question_count: 30
 target_question_count: 30
 current_difficulty_distribution:
-  easy: 0
-  medium: 0
-  hard: 0
+  easy: 8
+  medium: 15
+  hard: 7
 difficulty_distribution:
   easy: 8
   medium: 15

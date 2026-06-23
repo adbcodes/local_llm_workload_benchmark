@@ -5,7 +5,8 @@ import json
 import os
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -54,6 +55,7 @@ class JudgeCallResult:
     reasoning_tokens: int | None
     latency_seconds: float
     finish_reason: str | None
+    cache_hit: bool = False
 
 
 class JudgeBackend(Protocol):
@@ -65,6 +67,119 @@ class JudgeBackend(Protocol):
         response_schema: dict[str, Any],
         seed: int,
     ) -> JudgeCallResult: ...
+
+
+class CachedJudgeBackend:
+    """Persist exact judge decisions so unchanged candidates are judged once."""
+
+    def __init__(self, backend: JudgeBackend, config: JudgeConfig) -> None:
+        self._backend = backend
+        self._config = config
+        self._path = config.cache_path
+        self._entries = self._load_entries(self._path)
+
+    def evaluate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: dict[str, Any],
+        seed: int,
+    ) -> JudgeCallResult:
+        key = self._key(system_prompt, user_prompt, response_schema, seed)
+        cached = self._entries.get(key)
+        if cached is not None:
+            return replace(
+                cached,
+                response_id=f"cache:{key[:16]}",
+                prompt_tokens=0,
+                cached_prompt_tokens=0,
+                output_tokens=0,
+                reasoning_tokens=0,
+                latency_seconds=0.0,
+                cache_hit=True,
+            )
+        call = self._backend.evaluate(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            response_schema=response_schema,
+            seed=seed,
+        )
+        self._entries[key] = call
+        self._append_entry(key, call)
+        return call
+
+    def _key(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: dict[str, Any],
+        seed: int,
+    ) -> str:
+        payload = {
+            "judge": {
+                "provider": self._config.provider,
+                "model": self._config.model,
+                "family": self._config.family,
+                "reasoning_effort": self._config.reasoning_effort,
+                "max_completion_tokens": self._config.max_completion_tokens,
+            },
+            "system_prompt": system_prompt,
+            "user_prompt": user_prompt,
+            "response_schema": response_schema,
+            "seed": seed,
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _load_entries(path: Path | None) -> dict[str, JudgeCallResult]:
+        if path is None or not path.exists():
+            return {}
+        entries: dict[str, JudgeCallResult] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                value = json.loads(line)
+                call = value["call"]
+                entries[value["key"]] = JudgeCallResult(
+                    decision=SummaryJudgeDecision.model_validate(call["decision"]),
+                    response_id=call.get("response_id"),
+                    model=call["model"],
+                    system_fingerprint=call.get("system_fingerprint"),
+                    prompt_tokens=call.get("prompt_tokens"),
+                    cached_prompt_tokens=call.get("cached_prompt_tokens"),
+                    output_tokens=call.get("output_tokens"),
+                    reasoning_tokens=call.get("reasoning_tokens"),
+                    latency_seconds=call["latency_seconds"],
+                    finish_reason=call.get("finish_reason"),
+                )
+            except (KeyError, TypeError, ValueError, ValidationError, json.JSONDecodeError):
+                continue
+        return entries
+
+    def _append_entry(self, key: str, call: JudgeCallResult) -> None:
+        if self._path is None:
+            return
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        value = {
+            "key": key,
+            "call": {
+                "decision": call.decision.model_dump(mode="json"),
+                "response_id": call.response_id,
+                "model": call.model,
+                "system_fingerprint": call.system_fingerprint,
+                "prompt_tokens": call.prompt_tokens,
+                "cached_prompt_tokens": call.cached_prompt_tokens,
+                "output_tokens": call.output_tokens,
+                "reasoning_tokens": call.reasoning_tokens,
+                "latency_seconds": call.latency_seconds,
+                "finish_reason": call.finish_reason,
+            },
+        }
+        with self._path.open("a", encoding="utf-8") as cache_file:
+            cache_file.write(json.dumps(value, sort_keys=True) + "\n")
 
 
 SUMMARY_RUBRIC_ID = "grounded_summary_v1"
@@ -316,6 +431,7 @@ def evaluate_summary(
                 "requested_model": config.model,
                 "returned_model": call.model,
                 "reasoning_effort": config.reasoning_effort,
+                "cache_hit": call.cache_hit,
                 "response_id": call.response_id,
                 "system_fingerprint": call.system_fingerprint,
                 "prompt_sha256": prompt_hash,
@@ -382,6 +498,8 @@ def evaluate_summary_panel(
 
 
 def _estimate_cost(call: JudgeCallResult, config: JudgeConfig) -> float | None:
+    if call.cache_hit:
+        return 0.0
     if call.prompt_tokens is None or call.output_tokens is None:
         return None
     cached = min(call.cached_prompt_tokens or 0, call.prompt_tokens)
