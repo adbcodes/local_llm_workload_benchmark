@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 
 class ConfigError(ValueError):
@@ -17,6 +17,9 @@ class GenerationConfig(BaseModel):
     max_output_tokens: int = Field(default=256, ge=1)
     temperature: float = Field(default=0.0, ge=0.0)
     top_p: float = Field(default=1.0, gt=0.0, le=1.0)
+    top_k: int = Field(default=40, ge=0)
+    repeat_penalty: float = Field(default=1.0, gt=0.0)
+    constrained_decoding: Literal["none", "json"] = "none"
 
 
 class ModelConfig(BaseModel):
@@ -26,10 +29,16 @@ class ModelConfig(BaseModel):
     backend: Literal["llama_cpp"]
     model_path: Path
     quantization: str | None = None
+    architecture: str | None = None
+    family: str | None = None
+    role: Literal["candidate", "difficulty_anchor"] = "candidate"
     enabled: bool = True
     context_window: int = Field(default=4096, ge=512)
     gpu_layers: int = Field(default=-1, ge=-1)
     threads: int | None = Field(default=None, ge=1)
+    batch_size: int = Field(default=512, ge=1)
+    flash_attention: bool = False
+    kv_cache_type: str | None = None
     chat_format: str | None = None
     response_cleanup: Literal["none", "strip_empty_think"] = "none"
     verbose: bool = False
@@ -50,6 +59,7 @@ class JudgeConfig(BaseModel):
 
     provider: Literal["groq"] = "groq"
     model: str = Field(default="openai/gpt-oss-120b", min_length=1)
+    family: str = Field(default="openai", min_length=1)
     api_key_env: str = Field(
         default="GROQ_API_KEY",
         pattern=r"^[A-Z][A-Z0-9_]*$",
@@ -64,6 +74,19 @@ class JudgeConfig(BaseModel):
     output_price_per_million_tokens: float = Field(default=0.60, ge=0)
 
 
+class JudgePanelConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    judges: list[JudgeConfig] = Field(min_length=3, max_length=3)
+
+    @model_validator(mode="after")
+    def families_are_distinct(self) -> "JudgePanelConfig":
+        families = [judge.family.casefold() for judge in self.judges]
+        if len(families) != len(set(families)):
+            raise ValueError("judge panel requires three different model families")
+        return self
+
+
 class BenchmarkSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -73,6 +96,7 @@ class BenchmarkSettings(BaseModel):
     output_root: Path = Path("runs")
     repetitions: int = Field(default=1, ge=1)
     seed: int = 42
+    probe_version: str | None = None
 
 
 class BenchmarkConfig(BaseModel):
@@ -82,6 +106,7 @@ class BenchmarkConfig(BaseModel):
     benchmark: BenchmarkSettings
     models: list[ModelConfig] = Field(min_length=1)
     judge: JudgeConfig | None = None
+    judge_panel: JudgePanelConfig | None = None
 
     @field_validator("models")
     @classmethod

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import os
 import platform
@@ -87,6 +88,8 @@ def _environment_details() -> dict[str, Any]:
         "physical_memory_bytes": memory_bytes,
         "python_version": platform.python_version(),
         "logical_cpu_count": os.cpu_count(),
+        "llama_cpp_python_version": _package_version("llama-cpp-python"),
+        "power_source": _power_source(),
     }
 
 
@@ -102,6 +105,30 @@ def _physical_memory_bytes() -> int | None:
         return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
     except (AttributeError, OSError, ValueError):
         return None
+
+
+def _package_version(name: str) -> str | None:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def _power_source() -> str | None:
+    if platform.system() != "Darwin":
+        return None
+    try:
+        result = subprocess.run(
+            ["pmset", "-g", "batt"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    first_line = result.stdout.splitlines()[0] if result.stdout.splitlines() else ""
+    return first_line.strip() or None
 
 
 def _sysctl_value(name: str) -> str | None:

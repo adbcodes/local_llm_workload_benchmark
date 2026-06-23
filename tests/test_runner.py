@@ -143,6 +143,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert all(record["evaluation"]["passed"] for record in records)
     assert all(record["evaluation"]["type"] == "deterministic" for record in records)
     assert all(record["evaluation"]["version"] == 1 for record in records)
+    assert all(record["integration_outcome"] == "scored" for record in records)
     assert all(record["prompt_tokens"] == 20 for record in records)
     assert all(record["time_to_first_token_seconds"] == 0.05 for record in records)
     assert all(record["output_characters"] > 0 for record in records)
@@ -154,13 +155,15 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     }
     assert sum(record["dataset_origin"] == "licensed_anchor" for record in records) == 24
     assert sum(record["dataset_origin"] == "fresh_generated" for record in records) == 24
-    assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 3
+    assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 30
 
     summary = json.loads((run_directory / "summary.json").read_text())
     assert summary["status"] == "completed"
     assert summary["totals"]["attempted"] == item_count
     assert summary["totals"]["passed"] == item_count
     assert summary["totals"]["pass_rate"] == 1.0
+    assert summary["totals"]["integration_friction_rate"] == 0.0
+    assert summary["totals"]["pass_rate_ci_95"]["high"] == pytest.approx(1.0)
     assert summary["totals"]["mean_time_to_first_token_seconds"] == pytest.approx(0.05)
     assert summary["totals"]["peak_process_memory_bytes"] == 4_000_000_000
     assert summary["peak_process_memory_after_model_load_bytes"] == 4_000_000_000
@@ -471,6 +474,8 @@ def test_llama_cpp_adapter_streams_and_extracts_performance_metrics(
         "n_gpu_layers": 0,
         "seed": 42,
         "verbose": False,
+        "n_batch": 512,
+        "flash_attn": False,
     }
     generation = captured["generation"]
     assert generation["seed"] == 43

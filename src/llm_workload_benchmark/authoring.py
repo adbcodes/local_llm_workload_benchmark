@@ -18,6 +18,7 @@ from llm_workload_benchmark.dataset import (
     _validate_variant_lineage,
     load_dataset,
     load_suite,
+    gold_answer_text,
     score_answer,
 )
 
@@ -180,6 +181,12 @@ def _runtime_item(item: DatasetItem) -> dict[str, Any]:
     value = item.model_dump(mode="json")
     if value["variant_of"] is None:
         value.pop("variant_of")
+    if value["source_item"] is None:
+        value.pop("source_item")
+    if value["conversation"] is None:
+        value.pop("conversation")
+    if value["visibility"] == "public":
+        value.pop("visibility")
     if value["provenance"]["source"] is None:
         value["provenance"].pop("source")
     return value
@@ -188,12 +195,7 @@ def _runtime_item(item: DatasetItem) -> dict[str, Any]:
 def _validate_gold(item: DatasetItem) -> None:
     if item.scoring.method in {"llm_judge", "executable_python"}:
         return
-    value = item.expected["value"]
-    answer = (
-        json.dumps(value, separators=(",", ":"))
-        if item.response_contract.type == "json"
-        else str(value)
-    )
+    answer = gold_answer_text(item)
     if not score_answer(item, answer).passed:
         raise DatasetError(
             f"expected answer for authoring item {item.id!r} does not satisfy its scorer"

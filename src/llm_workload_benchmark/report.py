@@ -78,6 +78,8 @@ def _build_row(experiment_root: Path, entry: Any) -> dict[str, Any]:
                 "mean_output_tokens_per_second_end_to_end"
             ),
             "peak_memory_bytes": totals.get("peak_process_memory_bytes"),
+            "pass_rate_ci_95": totals.get("pass_rate_ci_95"),
+            "integration_friction_rate": totals.get("integration_friction_rate"),
             "judge_cost_usd": (
                 judge.get("estimated_cost_usd") if isinstance(judge, dict) else None
             ),
@@ -97,8 +99,8 @@ def _render_markdown(index: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         f"- Status: `{status}`",
         f"- Dataset: `{dataset}`",
         "",
-        "| Model | Status | Passes | Pass rate | Mean score | Licensed anchors | Fresh generated | Mean latency | Mean TTFT | Output tok/s | Peak RSS | Judge cost |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Model | Status | Passes | Pass rate | Mean score | Licensed anchors | Fresh generated | Mean latency | Mean TTFT | Output tok/s | Peak RSS | Judge cost | 95% CI | Integration friction |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
@@ -117,6 +119,8 @@ def _render_markdown(index: dict[str, Any], rows: list[dict[str, Any]]) -> str:
                     _format_number(row.get("mean_output_rate")),
                     _format_memory(row.get("peak_memory_bytes")),
                     _format_cost(row.get("judge_cost_usd")),
+                    _format_interval(row.get("pass_rate_ci_95")),
+                    _format_percent(row.get("integration_friction_rate")),
                 ]
             )
             + " |"
@@ -171,3 +175,13 @@ def _format_memory(value: Any) -> str:
 
 def _format_cost(value: Any) -> str:
     return f"${value:.6f}" if isinstance(value, int | float) else "—"
+
+
+def _format_interval(value: Any) -> str:
+    if not isinstance(value, dict):
+        return "—"
+    low = value.get("low")
+    high = value.get("high")
+    if not isinstance(low, int | float) or not isinstance(high, int | float):
+        return "—"
+    return f"{low * 100:.1f}–{high * 100:.1f}%"

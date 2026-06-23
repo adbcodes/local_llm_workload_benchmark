@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 
 import pytest
 
@@ -11,6 +12,7 @@ from llm_workload_benchmark.judge import (
     JudgeError,
     SummaryJudgeDecision,
     evaluate_summary,
+    evaluate_summary_panel,
 )
 from llm_workload_benchmark.runner import (
     EvaluationError,
@@ -63,11 +65,12 @@ def _judged_item():
     return suite.items["grounded_compression"][0]
 
 
-def test_judged_summary_suite_loads_one_incremental_pilot_item() -> None:
+def test_judged_summary_suite_loads_complete_first_pass_set() -> None:
     suite = load_suite(JUDGED_SUITE_PATH)
     item = _judged_item()
 
     assert suite.manifest.status == "pilot"
+    assert len(suite.items["grounded_compression"]) == 20
     assert item.scoring.method == "llm_judge"
     assert item.scoring.parameters["rubric"] == "grounded_summary_v1"
     assert item.expected["value"]
@@ -108,6 +111,7 @@ def test_pointwise_judge_builds_anonymous_prompt_and_computes_score() -> None:
     prompt_payload = json.loads(call["user_prompt"])
     assert prompt_payload == {
         "task_and_source": item.prompt,
+        "reference_answer": item.expected["value"],
         "candidate_summary": item.expected["value"],
     }
     assert "qwen" not in call["user_prompt"].casefold()
@@ -151,16 +155,58 @@ def test_pointwise_judge_enforces_mechanical_gate_and_critical_error() -> None:
     assert not critical_failure.passed
 
 
+def test_judge_panel_uses_third_family_only_on_disagreement() -> None:
+    item = _judged_item()
+    backends = [
+        FakeJudgeBackend(_decision()),
+        FakeJudgeBackend(_decision(critical_error=True)),
+        FakeJudgeBackend(_decision()),
+    ]
+    configs = [
+        JudgeConfig(model="judge-a", family="family-a"),
+        JudgeConfig(model="judge-b", family="family-b"),
+        JudgeConfig(model="judge-c", family="family-c"),
+    ]
+
+    result = evaluate_summary_panel(
+        item, item.expected["value"], backends=backends, configs=configs, seed=42
+    )
+
+    assert result.passed
+    assert result.evaluator == "summary_judge_panel"
+    assert result.details["tie_break_used"] is True
+    assert result.details["judges_used"] == 3
+    assert [len(backend.calls) for backend in backends] == [1, 1, 1]
+
+
 def test_runner_dispatches_judged_item_and_records_usage(tmp_path: Path) -> None:
     model_path = tmp_path / "model.gguf"
     model_path.write_bytes(b"fake model")
+    item = _judged_item()
+    benchmark_directory = tmp_path / "grounded_compression"
+    shutil.copytree(Path("data/grounded_compression"), benchmark_directory)
+    suite_path = tmp_path / "single-judged-item.yaml"
+    benchmark_path = benchmark_directory / "benchmark.yaml"
+    suite_path.write_text(
+        f"""
+schema_version: 1
+name: single-judged-item
+version: 1
+status: pilot
+benchmark_files:
+  - {benchmark_path}
+filters:
+  ids: [{item.id}]
+""".strip(),
+        encoding="utf-8",
+    )
     config_path = tmp_path / "judge-run.yaml"
     config_path.write_text(
         f"""
 schema_version: 1
 benchmark:
   name: judged-runner-test
-  workload_path: {JUDGED_SUITE_PATH}
+  workload_path: {suite_path}
   output_root: {tmp_path / 'runs'}
   repetitions: 1
   seed: 42
@@ -175,8 +221,6 @@ models:
         encoding="utf-8",
     )
     config = load_config(config_path)
-    item = _judged_item()
-
     class SummaryBackend:
         def generate(self, prompt, generation, *, seed):
             assert prompt == item.prompt

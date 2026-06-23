@@ -33,6 +33,7 @@ from llm_workload_benchmark.judge import (
     GroqJudgeBackend,
     JudgeBackend,
     evaluate_summary,
+    evaluate_summary_panel,
 )
 from llm_workload_benchmark.manifest import create_run
 
@@ -48,6 +49,7 @@ class GenerationOutput:
     output_tokens: int | None = None
     time_to_first_token_seconds: float | None = None
     finish_reason: str | None = None
+    reasoning_tokens: int | None = None
 
 
 @dataclass(frozen=True)
@@ -99,7 +101,12 @@ class LlamaCppBackend:
             "n_gpu_layers": model.gpu_layers,
             "seed": seed,
             "verbose": model.verbose,
+            "n_batch": model.batch_size,
+            "flash_attn": model.flash_attention,
         }
+        if model.kv_cache_type is not None:
+            arguments["type_k"] = model.kv_cache_type
+            arguments["type_v"] = model.kv_cache_type
         if model.threads is not None:
             arguments["n_threads"] = model.threads
         if model.chat_format is not None:
@@ -114,27 +121,60 @@ class LlamaCppBackend:
         *,
         seed: int,
     ) -> GenerationOutput:
-        started = time.perf_counter()
-        response = self._model.create_chat_completion(
-            messages=[
+        return self._generate_chat(
+            [
                 {"role": "system", "content": self._system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=generation.max_output_tokens,
-            temperature=generation.temperature,
-            top_p=generation.top_p,
+            generation,
             seed=seed,
-            stream=True,
         )
+
+    def generate_messages(
+        self,
+        messages: list[dict[str, str]],
+        generation: GenerationConfig,
+        *,
+        seed: int,
+    ) -> GenerationOutput:
+        effective_messages = list(messages)
+        if not effective_messages or effective_messages[0]["role"] != "system":
+            effective_messages.insert(
+                0, {"role": "system", "content": self._system_prompt}
+            )
+        return self._generate_chat(effective_messages, generation, seed=seed)
+
+    def _generate_chat(
+        self,
+        messages: list[dict[str, str]],
+        generation: GenerationConfig,
+        *,
+        seed: int,
+    ) -> GenerationOutput:
+        started = time.perf_counter()
+        arguments: dict[str, Any] = {
+            "messages": messages,
+            "max_tokens": generation.max_output_tokens,
+            "temperature": generation.temperature,
+            "top_p": generation.top_p,
+            "top_k": generation.top_k,
+            "repeat_penalty": generation.repeat_penalty,
+            "seed": seed,
+            "stream": True,
+        }
+        if generation.constrained_decoding == "json":
+            arguments["response_format"] = {"type": "json_object"}
+        response = self._model.create_chat_completion(**arguments)
+        return self._consume_stream(response, started)
+
+    def _consume_stream(self, response: Any, started: float) -> GenerationOutput:
         if isinstance(response, dict):
             raise EvaluationError("llama.cpp did not return a completion stream")
-
         content_parts: list[str] = []
         prompt_tokens: int | None = None
         time_to_first_token_seconds: float | None = None
         finish_reason: str | None = None
         saw_choice = False
-
         for chunk in response:
             choices = chunk.get("choices", [])
             if not choices:
@@ -143,26 +183,18 @@ class LlamaCppBackend:
             if prompt_tokens is None:
                 prompt_tokens = _optional_int(getattr(self._model, "n_tokens", None))
             choice = choices[0]
-            delta = choice.get("delta", {})
-            content = delta.get("content")
+            content = choice.get("delta", {}).get("content")
             if isinstance(content, str) and content:
                 if time_to_first_token_seconds is None:
                     time_to_first_token_seconds = time.perf_counter() - started
                 content_parts.append(content)
-            chunk_finish_reason = choice.get("finish_reason")
-            if isinstance(chunk_finish_reason, str):
-                finish_reason = chunk_finish_reason
-
+            if isinstance(choice.get("finish_reason"), str):
+                finish_reason = choice["finish_reason"]
         if not saw_choice:
             raise EvaluationError("llama.cpp returned no completion choices")
-
         text = "".join(content_parts)
         output_tokens = len(
-            self._model.tokenize(
-                text.encode("utf-8"),
-                add_bos=False,
-                special=True,
-            )
+            self._model.tokenize(text.encode("utf-8"), add_bos=False, special=True)
         )
         return GenerationOutput(
             text=text,
@@ -205,16 +237,35 @@ def run_benchmark(
         )
     requires_judge = _suite_requires_judge(suite)
     if requires_judge and config.judge is None:
-        raise EvaluationError(
-            "the workload contains llm_judge items but no judge is configured"
-        )
+        if config.judge_panel is None:
+            raise EvaluationError(
+                "the workload contains llm_judge items but no judge is configured; "
+                "configure either one judge or a three-judge panel"
+            )
     judge_backend: JudgeBackend | None = None
-    if requires_judge:
+    judge_panel_backends: list[JudgeBackend] | None = None
+    if requires_judge and config.judge_panel is not None:
+        try:
+            judge_panel_backends = [
+                judge_backend_factory(judge_config)
+                for judge_config in config.judge_panel.judges
+            ]
+        except Exception as error:
+            raise EvaluationError(f"could not initialize judge panel: {error}") from error
+    elif requires_judge:
         try:
             judge_backend = judge_backend_factory(config.judge)
         except Exception as error:
             raise EvaluationError(f"could not initialize LLM judge: {error}") from error
     model = enabled_models[0]
+    if config.judge_panel is not None and model.family is not None:
+        judge_families = {
+            judge.family.casefold() for judge in config.judge_panel.judges
+        }
+        if model.family.casefold() in judge_families:
+            raise EvaluationError(
+                f"candidate family {model.family!r} cannot judge its own family"
+            )
     model_path = _resolve_from_root(root, model.model_path)
 
     run_directory = create_run(
@@ -259,16 +310,38 @@ def run_benchmark(
         with results_path.open("w", encoding="utf-8") as results_file:
             for repetition in range(1, config.benchmark.repetitions + 1):
                 seed = config.benchmark.seed + repetition - 1
-                for benchmark_items in suite.items.values():
+                for benchmark_id, benchmark_items in suite.items.items():
+                    suite_id = suite.definitions[benchmark_id].suite
                     for item in benchmark_items:
+                        source_record = next(
+                            (
+                                record
+                                for record in reversed(records)
+                                if record["repetition"] == repetition
+                                and record["item_id"] == item.source_item
+                            ),
+                            None,
+                        )
                         record = _evaluate_item(
                             item,
+                            suite_id=suite_id,
+                            source_response=(
+                                source_record.get("evaluated_response")
+                                if source_record is not None
+                                else None
+                            ),
                             model=model,
                             backend=backend,
                             repetition=repetition,
                             seed=seed,
                             judge_config=config.judge,
                             judge_backend=judge_backend,
+                            judge_panel_configs=(
+                                config.judge_panel.judges
+                                if config.judge_panel is not None
+                                else None
+                            ),
+                            judge_panel_backends=judge_panel_backends,
                             peak_memory_reader=memory_reader,
                         )
                         records.append(record)
@@ -296,6 +369,7 @@ def run_benchmark(
             model=model,
             model_path=model_path,
             suite_path=suite_path,
+            definitions=suite.definitions,
             load_seconds=load_seconds,
             peak_memory_after_model_load_bytes=peak_memory_after_model_load_bytes,
         ),
@@ -323,19 +397,21 @@ def run_matrix(
     suite = load_suite(_resolve_from_root(root, config.benchmark.workload_path))
     effective_judge_backend_factory = judge_backend_factory
     if _suite_requires_judge(suite):
-        if config.judge is None:
+        if config.judge is None and config.judge_panel is None:
             raise EvaluationError(
-                "the workload contains llm_judge items but no judge is configured"
+                "the workload contains llm_judge items but no judge is configured; "
+                "configure either one judge or a three-judge panel"
             )
-        try:
-            shared_judge_backend = judge_backend_factory(config.judge)
-        except Exception as error:
-            raise EvaluationError(f"could not initialize LLM judge: {error}") from error
+        if config.judge_panel is None:
+            try:
+                shared_judge_backend = judge_backend_factory(config.judge)
+            except Exception as error:
+                raise EvaluationError(f"could not initialize LLM judge: {error}") from error
 
-        def use_shared_judge_backend(_: JudgeConfig) -> JudgeBackend:
-            return shared_judge_backend
+            def use_shared_judge_backend(_: JudgeConfig) -> JudgeBackend:
+                return shared_judge_backend
 
-        effective_judge_backend_factory = use_shared_judge_backend
+            effective_judge_backend_factory = use_shared_judge_backend
     output_root = _resolve_from_root(root, config.benchmark.output_root)
     experiment_id = _new_experiment_id()
     experiment_directory = output_root / experiment_id
@@ -436,22 +512,63 @@ def run_matrix(
 def _evaluate_item(
     item: DatasetItem,
     *,
+    suite_id: str | None,
+    source_response: str | None,
     model: ModelConfig,
     backend: ModelBackend,
     repetition: int,
     seed: int,
     judge_config: JudgeConfig | None,
     judge_backend: JudgeBackend | None,
+    judge_panel_configs: list[JudgeConfig] | None,
+    judge_panel_backends: list[JudgeBackend] | None,
     peak_memory_reader: Callable[[], int | None],
 ) -> dict[str, Any]:
     started = time.perf_counter()
+    cpu_started = time.process_time()
     output: GenerationOutput | None = None
     latency_seconds: float | None = None
     peak_process_memory_bytes: int | None = None
     evaluated_response: str | None = None
     cleanup_applied: str | None = None
     try:
-        output = backend.generate(item.prompt, model.generation, seed=seed)
+        if item.scoring.method == "tool_trace":
+            output = _run_tool_scenario(
+                item,
+                backend=backend,
+                generation=model.generation,
+                seed=seed,
+            )
+        elif item.conversation is not None:
+            generate_messages = getattr(backend, "generate_messages", None)
+            if not callable(generate_messages):
+                raise EvaluationError(
+                    f"item {item.id!r} requires a backend with multi-turn support"
+                )
+            messages = [message.model_dump(mode="json") for message in item.conversation]
+            if source_response is None and any(
+                "{{source_response}}" in message["content"] for message in messages
+            ):
+                raise EvaluationError(
+                    f"item {item.id!r} requires its source_item response first"
+                )
+            if source_response is not None:
+                messages = [
+                    {
+                        **message,
+                        "content": message["content"].replace(
+                            "{{source_response}}", source_response
+                        ),
+                    }
+                    for message in messages
+                ]
+            output = generate_messages(
+                messages,
+                model.generation,
+                seed=seed,
+            )
+        else:
+            output = backend.generate(item.prompt, model.generation, seed=seed)
         latency_seconds = time.perf_counter() - started
         peak_process_memory_bytes = peak_memory_reader()
         evaluated_response, cleanup_applied = _prepare_response_for_scoring(
@@ -459,21 +576,33 @@ def _evaluate_item(
             model.response_cleanup,
         )
         if item.scoring.method == "llm_judge":
-            if judge_config is None or judge_backend is None:
+            if judge_panel_configs is not None and judge_panel_backends is not None:
+                evaluation = evaluate_summary_panel(
+                    item,
+                    evaluated_response,
+                    backends=judge_panel_backends,
+                    configs=judge_panel_configs,
+                    seed=seed,
+                )
+            elif judge_config is None or judge_backend is None:
                 raise EvaluationError(
                     f"item {item.id!r} requires a configured LLM judge"
                 )
-            evaluation = evaluate_summary(
-                item,
-                evaluated_response,
-                backend=judge_backend,
-                config=judge_config,
-                seed=seed,
-            )
+            else:
+                evaluation = evaluate_summary(
+                    item,
+                    evaluated_response,
+                    backend=judge_backend,
+                    config=judge_config,
+                    seed=seed,
+                )
         elif item.scoring.method == "executable_python":
             evaluation = evaluate_python(item, evaluated_response)
         else:
             evaluation = score_answer(item, evaluated_response)
+        integration_outcome = _integration_outcome(
+            item, evaluated_response, evaluation.details
+        )
         output_tokens_per_second = (
             output.output_tokens / latency_seconds
             if output.output_tokens is not None and latency_seconds > 0
@@ -484,24 +613,34 @@ def _evaluate_item(
             "status": "completed",
             "model_id": model.id,
             "benchmark": item.benchmark,
+            "suite": suite_id,
             "item_id": item.id,
+            "source_item": item.source_item,
             "subcategory": item.subcategory,
             "difficulty": item.difficulty,
             "split": item.split,
+            "visibility": item.visibility,
             "dataset_origin": _dataset_origin(item),
             "repetition": repetition,
             "seed": seed,
             "raw_response": output.text,
             "evaluated_response": evaluated_response,
             "response_cleanup": cleanup_applied,
+            "prompt_sha256": _item_prompt_hash(item),
+            "system_prompt_sha256": hashlib.sha256(
+                model.system_prompt.encode("utf-8")
+            ).hexdigest(),
             "evaluation": evaluation.model_dump(mode="json"),
+            "integration_outcome": integration_outcome,
             "latency_seconds": latency_seconds,
             "time_to_first_token_seconds": output.time_to_first_token_seconds,
             "prompt_tokens": output.prompt_tokens,
             "output_tokens": output.output_tokens,
+            "reasoning_tokens": output.reasoning_tokens,
             "output_characters": len(output.text),
             "output_tokens_per_second_end_to_end": output_tokens_per_second,
             "peak_process_memory_bytes": peak_process_memory_bytes,
+            "process_cpu_seconds": time.process_time() - cpu_started,
             "finish_reason": output.finish_reason,
             "error": None,
         }
@@ -511,17 +650,25 @@ def _evaluate_item(
             "status": "error",
             "model_id": model.id,
             "benchmark": item.benchmark,
+            "suite": suite_id,
             "item_id": item.id,
+            "source_item": item.source_item,
             "subcategory": item.subcategory,
             "difficulty": item.difficulty,
             "split": item.split,
+            "visibility": item.visibility,
             "dataset_origin": _dataset_origin(item),
             "repetition": repetition,
             "seed": seed,
             "raw_response": output.text if output is not None else None,
             "evaluated_response": evaluated_response,
             "response_cleanup": cleanup_applied,
+            "prompt_sha256": _item_prompt_hash(item),
+            "system_prompt_sha256": hashlib.sha256(
+                model.system_prompt.encode("utf-8")
+            ).hexdigest(),
             "evaluation": None,
+            "integration_outcome": "evaluation_error",
             "latency_seconds": (
                 latency_seconds
                 if latency_seconds is not None
@@ -532,6 +679,7 @@ def _evaluate_item(
             ),
             "prompt_tokens": output.prompt_tokens if output is not None else None,
             "output_tokens": output.output_tokens if output is not None else None,
+            "reasoning_tokens": output.reasoning_tokens if output is not None else None,
             "output_characters": len(output.text) if output is not None else None,
             "output_tokens_per_second_end_to_end": (
                 output.output_tokens / latency_seconds
@@ -546,6 +694,7 @@ def _evaluate_item(
                 if peak_process_memory_bytes is not None
                 else peak_memory_reader()
             ),
+            "process_cpu_seconds": time.process_time() - cpu_started,
             "finish_reason": output.finish_reason if output is not None else None,
             "error": {
                 "type": type(error).__name__,
@@ -554,15 +703,116 @@ def _evaluate_item(
         }
 
 
+def _run_tool_scenario(
+    item: DatasetItem,
+    *,
+    backend: ModelBackend,
+    generation: GenerationConfig,
+    seed: int,
+) -> GenerationOutput:
+    generate_messages = getattr(backend, "generate_messages", None)
+    if not callable(generate_messages):
+        raise EvaluationError(
+            f"tool item {item.id!r} requires a backend with message support"
+        )
+    expected = item.expected["value"]
+    expected_calls = expected["calls"]
+    fixture_observations = expected.get("observations", [])
+    messages = [
+        {
+            "role": "user",
+            "content": (
+                item.prompt
+                + "\n\nTool protocol: return raw JSON only. To call a tool, return "
+                '{"tool":"name","arguments":{...}}. After receiving tool results, '
+                'continue or finish with {"final_state":{...}}.'
+            ),
+        }
+    ]
+    calls: list[dict[str, Any]] = []
+    observations: list[Any] = []
+    outputs: list[GenerationOutput] = []
+    final_state: Any | None = None
+    for turn in range(max(2, len(expected_calls) + 2)):
+        output = generate_messages(messages, generation, seed=seed + turn)
+        outputs.append(output)
+        try:
+            action = json.loads(output.text)
+        except json.JSONDecodeError:
+            return _combine_generation_outputs(outputs, output.text)
+        if not isinstance(action, dict):
+            return _combine_generation_outputs(outputs, output.text)
+        if isinstance(action.get("tool"), str) and isinstance(
+            action.get("arguments"), dict
+        ):
+            call = {"tool": action["tool"], "arguments": action["arguments"]}
+            calls.append(call)
+            index = len(calls) - 1
+            if index < len(expected_calls) and _json_like_equal(
+                call, expected_calls[index]
+            ):
+                observation = (
+                    fixture_observations[index]
+                    if index < len(fixture_observations)
+                    else {"ok": True}
+                )
+            else:
+                observation = {"error": "unexpected_tool_call"}
+            observations.append(observation)
+            messages.extend(
+                [
+                    {"role": "assistant", "content": output.text},
+                    {
+                        "role": "user",
+                        "content": "Tool result: " + json.dumps(observation),
+                    },
+                ]
+            )
+            continue
+        if "final_state" in action:
+            final_state = action["final_state"]
+            break
+        return _combine_generation_outputs(outputs, output.text)
+    trace: dict[str, Any] = {"calls": calls, "observations": observations}
+    if final_state is not None:
+        trace["final_state"] = final_state
+    return _combine_generation_outputs(
+        outputs, json.dumps(trace, separators=(",", ":"))
+    )
+
+
+def _combine_generation_outputs(
+    outputs: list[GenerationOutput], text: str
+) -> GenerationOutput:
+    return GenerationOutput(
+        text=text,
+        prompt_tokens=sum(output.prompt_tokens or 0 for output in outputs) or None,
+        output_tokens=sum(output.output_tokens or 0 for output in outputs) or None,
+        time_to_first_token_seconds=(
+            outputs[0].time_to_first_token_seconds if outputs else None
+        ),
+        finish_reason=outputs[-1].finish_reason if outputs else None,
+        reasoning_tokens=sum(output.reasoning_tokens or 0 for output in outputs) or None,
+    )
+
+
+def _json_like_equal(left: Any, right: Any) -> bool:
+    return json.dumps(left, sort_keys=True, separators=(",", ":")) == json.dumps(
+        right, sort_keys=True, separators=(",", ":")
+    )
+
+
 def _build_summary(
     records: list[dict[str, Any]],
     *,
     model: ModelConfig,
     model_path: Path,
     suite_path: Path,
+    definitions: dict[str, Any],
     load_seconds: float,
     peak_memory_after_model_load_bytes: int | None,
 ) -> dict[str, Any]:
+    _attach_paired_metrics(records)
     completed = [record for record in records if record["status"] == "completed"]
     groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for record in records:
@@ -574,17 +824,30 @@ def _build_summary(
         lambda: defaultdict(list)
     )
     origin_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    visibility_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    suite_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records:
         benchmark_records[record["benchmark"]].append(record)
         origin = record["dataset_origin"]
         origin_records[origin].append(record)
+        visibility_records[record.get("visibility", "public")].append(record)
         benchmark_origin_groups[record["benchmark"]][origin].append(record)
+        if record.get("suite") is not None:
+            suite_records[record["suite"]].append(record)
     for (benchmark, difficulty), group_records in groups.items():
         difficulty_groups[benchmark][difficulty] = _aggregate(group_records)
 
     benchmark_groups = {
         benchmark: {
-            "overall": _aggregate(group_records),
+            "overall": (
+                overall := _aggregate(group_records)
+            ),
+            "reported_score": _reported_benchmark_score(
+                definitions[benchmark].score_formula,
+                overall,
+                group_records,
+            ),
+            "score_formula": definitions[benchmark].score_formula,
             "by_difficulty": difficulty_groups[benchmark],
             "by_origin": {
                 origin: _aggregate(origin_group)
@@ -607,15 +870,27 @@ def _build_summary(
             peak_memory_after_model_load_bytes
         ),
         "totals": _aggregate(records),
+        "suites": {
+            suite_id: _aggregate(suite_group)
+            for suite_id, suite_group in sorted(suite_records.items())
+        },
+        "headline_scores": _headline_scores(benchmark_groups, definitions),
         "by_origin": {
             origin: _aggregate(origin_group)
             for origin, origin_group in origin_records.items()
+        },
+        "by_visibility": {
+            visibility: _aggregate(group)
+            for visibility, group in visibility_records.items()
         },
         "total_prompt_tokens": sum(
             record["prompt_tokens"] or 0 for record in completed
         ),
         "total_output_tokens": sum(
             record["output_tokens"] or 0 for record in completed
+        ),
+        "total_reasoning_tokens": sum(
+            record["reasoning_tokens"] or 0 for record in completed
         ),
         "judge": _aggregate_judge_usage(completed),
         "benchmarks": benchmark_groups,
@@ -649,7 +924,12 @@ def _failed_summary(
 
 def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     completed = [record for record in records if record["status"] == "completed"]
-    scores = [record["evaluation"]["score"] for record in completed]
+    scored = [
+        record
+        for record in completed
+        if record.get("integration_outcome", "scored") == "scored"
+    ]
+    scores = [record["evaluation"]["score"] for record in scored]
     latencies = [record["latency_seconds"] for record in completed]
     time_to_first_token_values = [
         record["time_to_first_token_seconds"]
@@ -666,28 +946,241 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         for record in records
         if record["peak_process_memory_bytes"] is not None
     ]
-    passed = sum(record["evaluation"]["passed"] is True for record in completed)
+    passed = sum(record["evaluation"]["passed"] is True for record in scored)
+    confidence_interval = _wilson_interval(passed, len(scored))
+    integration_outcomes: dict[str, int] = defaultdict(int)
+    for record in completed:
+        integration_outcomes[record.get("integration_outcome", "scored")] += 1
+    confidence_records = [
+        record
+        for record in scored
+        if isinstance(record["evaluation"]["details"].get("confidence"), int)
+    ]
     return {
         "attempted": len(records),
         "completed": len(completed),
+        "scored": len(scored),
         "errors": len(records) - len(completed),
+        "integration_failures": len(completed) - len(scored),
+        "integration_friction_rate": (
+            (len(completed) - len(scored)) / len(completed) if completed else None
+        ),
+        "integration_outcomes": dict(sorted(integration_outcomes.items())),
         "passed": passed,
-        "pass_rate": passed / len(completed) if completed else None,
+        "pass_rate": passed / len(scored) if scored else None,
+        "pass_rate_ci_95": confidence_interval,
+        "brier_score": _mean(
+            [
+                record["evaluation"]["details"]["brier_component"]
+                for record in confidence_records
+            ]
+        ),
+        "expected_calibration_error": _expected_calibration_error(
+            confidence_records
+        ),
+        "run_to_run_flip_rate": _run_to_run_flip_rate(scored),
         "mean_score": sum(scores) / len(scores) if scores else None,
         "latency_seconds": sum(record["latency_seconds"] for record in records),
         "mean_latency_seconds": _mean(latencies),
         "mean_time_to_first_token_seconds": _mean(time_to_first_token_values),
         "mean_output_tokens_per_second_end_to_end": _mean(output_rates),
+        "mean_process_cpu_seconds": _mean(
+            [record["process_cpu_seconds"] for record in records]
+        ),
         "peak_process_memory_bytes": max(peak_memory_values, default=None),
     }
 
 
-def _aggregate_judge_usage(records: list[dict[str, Any]]) -> dict[str, Any] | None:
-    judge_details = [
-        record["evaluation"]["details"]["judge"]
-        for record in records
-        if record["evaluation"]["type"] == "llm_judge"
+def _reported_benchmark_score(
+    formula: str,
+    aggregate: dict[str, Any],
+    records: list[dict[str, Any]],
+) -> float | None:
+    if formula == "mean_score":
+        return aggregate["mean_score"]
+    if formula == "clean_score_retained":
+        values = [
+            record["evaluation"]["details"]["retained_score"]
+            for record in records
+            if record.get("evaluation") is not None
+            and isinstance(record["evaluation"]["details"].get("retained_score"), int | float)
+        ]
+        return _mean(values)
+    if formula == "accuracy_minus_hallucination":
+        if aggregate["pass_rate"] is None:
+            return None
+        risky_labels = {
+            "abstain", "unanswerable", "fabricated_entity",
+            "correct_false_premise", "flag_conflict",
+        }
+        behavior_records = [
+            record
+            for record in records
+            if record.get("evaluation") is not None
+            and record["evaluation"]["details"].get("behavior_label") in risky_labels
+        ]
+        hallucinations = sum(
+            not record["evaluation"]["passed"] for record in behavior_records
+        )
+        penalty = hallucinations / len(behavior_records) if behavior_records else 0.0
+        return aggregate["pass_rate"] - penalty
+    raise EvaluationError(f"unsupported benchmark score formula: {formula}")
+
+
+def _integration_outcome(
+    item: DatasetItem,
+    answer: str,
+    details: dict[str, Any],
+) -> str:
+    if not answer.strip():
+        return "missing_answer"
+    if item.response_contract.type == "json":
+        if details.get("protocol_compliant") is False:
+            wrapper = details.get("diagnostic_wrapper")
+            if wrapper == "markdown_fence":
+                return "markdown_fence"
+            if wrapper == "surrounding_text":
+                return "surrounding_text"
+            return "unparseable_output"
+    return "scored"
+
+
+def _wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -> dict[str, float] | None:
+    if total == 0:
+        return None
+    proportion = successes / total
+    denominator = 1 + z * z / total
+    centre = (proportion + z * z / (2 * total)) / denominator
+    margin = z * (
+        (proportion * (1 - proportion) / total + z * z / (4 * total * total)) ** 0.5
+    ) / denominator
+    return {"low": max(0.0, centre - margin), "high": min(1.0, centre + margin)}
+
+
+def _expected_calibration_error(records: list[dict[str, Any]], bins: int = 10) -> float | None:
+    if not records:
+        return None
+    total = len(records)
+    error = 0.0
+    for bin_index in range(bins):
+        lower = bin_index / bins
+        upper = (bin_index + 1) / bins
+        selected = [
+            record
+            for record in records
+            if lower <= record["evaluation"]["details"]["confidence_probability"]
+            <= (upper if bin_index == bins - 1 else upper - 1e-12)
+        ]
+        if not selected:
+            continue
+        mean_confidence = _mean(
+            [
+                record["evaluation"]["details"]["confidence_probability"]
+                for record in selected
+            ]
+        )
+        accuracy = _mean(
+            [float(record["evaluation"]["details"]["answer_correct"]) for record in selected]
+        )
+        error += len(selected) / total * abs(mean_confidence - accuracy)
+    return error
+
+
+def _run_to_run_flip_rate(records: list[dict[str, Any]]) -> float | None:
+    responses: dict[str, list[str]] = defaultdict(list)
+    for record in records:
+        responses[record["item_id"]].append(record.get("evaluated_response") or "")
+    repeated = [values for values in responses.values() if len(values) > 1]
+    if not repeated:
+        return None
+    return sum(len(set(values)) > 1 for values in repeated) / len(repeated)
+
+
+def _headline_scores(
+    benchmark_groups: dict[str, dict[str, Any]],
+    definitions: dict[str, Any],
+) -> dict[str, Any]:
+    capability = [
+        group["reported_score"]
+        for benchmark, group in benchmark_groups.items()
+        if definitions[benchmark].suite in {"A", "B"}
+        and group["reported_score"] is not None
     ]
+    control = [
+        group["reported_score"]
+        for benchmark, group in benchmark_groups.items()
+        if definitions[benchmark].suite in {"C", "D"}
+        and group["reported_score"] is not None
+    ]
+    trust_values = [
+        group["reported_score"]
+        for benchmark, group in benchmark_groups.items()
+        if definitions[benchmark].suite == "E"
+        and group["reported_score"] is not None
+    ]
+    return {
+        "capability": _mean(capability),
+        "control": _mean(control),
+        "trust_clean_score_retained": (
+            sum(trust_values) / len(trust_values) if trust_values else None
+        ),
+        "note": "Trust is a retained-score delta and is never averaged with absolute scores.",
+    }
+
+
+def _attach_paired_metrics(records: list[dict[str, Any]]) -> None:
+    by_key = {
+        (record["item_id"], record["repetition"]): record
+        for record in records
+    }
+    for record in records:
+        source_item = record.get("source_item")
+        if source_item is None or record.get("evaluation") is None:
+            continue
+        source = by_key.get((source_item, record["repetition"]))
+        if source is None or source.get("evaluation") is None:
+            continue
+        clean_score = source["evaluation"]["score"]
+        changed_score = record["evaluation"]["score"]
+        retained_score = (
+            min(1.0, changed_score / clean_score) if clean_score > 0 else None
+        )
+        record["evaluation"]["details"].update(
+            {
+                "source_item": source_item,
+                "clean_score": clean_score,
+                "changed_score": changed_score,
+                "retained_score": retained_score,
+                "transition": _correctness_transition(
+                    bool(source["evaluation"]["passed"]),
+                    bool(record["evaluation"]["passed"]),
+                ),
+            }
+        )
+
+
+def _correctness_transition(source_passed: bool, changed_passed: bool) -> str:
+    if source_passed and changed_passed:
+        return "stood_by_correct"
+    if source_passed and not changed_passed:
+        return "flipped_correct_to_wrong"
+    if not source_passed and changed_passed:
+        return "flipped_wrong_to_correct"
+    return "remained_wrong"
+
+
+def _aggregate_judge_usage(records: list[dict[str, Any]]) -> dict[str, Any] | None:
+    judge_details: list[dict[str, Any]] = []
+    for record in records:
+        if record["evaluation"]["type"] != "llm_judge":
+            continue
+        details = record["evaluation"]["details"]
+        if isinstance(details.get("judge"), dict):
+            judge_details.append(details["judge"])
+        for verdict in details.get("verdicts", []):
+            nested = verdict.get("details", {}).get("judge")
+            if isinstance(nested, dict):
+                judge_details.append(nested)
     if not judge_details:
         return None
     costs = [
@@ -734,13 +1227,40 @@ def _model_summary(model: ModelConfig, model_path: Path) -> dict[str, Any]:
         "backend": model.backend,
         "path": str(model_path),
         "quantization": model.quantization,
+        "architecture": model.architecture,
+        "family": model.family,
+        "role": model.role,
+        "file_size_bytes": model_path.stat().st_size if model_path.is_file() else None,
         "context_window": model.context_window,
         "gpu_layers": model.gpu_layers,
         "threads": model.threads,
+        "batch_size": model.batch_size,
+        "flash_attention": model.flash_attention,
+        "kv_cache_type": model.kv_cache_type,
         "chat_format": model.chat_format,
         "response_cleanup": model.response_cleanup,
         "generation": model.generation.model_dump(mode="json"),
+        "system_prompt_sha256": hashlib.sha256(
+            model.system_prompt.encode("utf-8")
+        ).hexdigest(),
+        "chat_template_sha256": (
+            hashlib.sha256(model.chat_format.encode("utf-8")).hexdigest()
+            if model.chat_format is not None
+            else None
+        ),
     }
+
+
+def _item_prompt_hash(item: DatasetItem) -> str:
+    value = (
+        json.dumps(
+            [message.model_dump(mode="json") for message in item.conversation],
+            sort_keys=True,
+        )
+        if item.conversation is not None
+        else item.prompt
+    )
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _suite_hash(suite_path: Path) -> str:

@@ -28,6 +28,10 @@ ScoringMethod = Literal[
     "constraint_rules",
     "executable_python",
     "llm_judge",
+    "set_match",
+    "behavior_rules",
+    "tool_trace",
+    "confidence_value",
 ]
 
 DIFFICULTY_ORDER: dict[Difficulty, int] = {
@@ -75,6 +79,13 @@ class Provenance(BaseModel):
     source: SourceReference | None = None
 
 
+class ChatMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["system", "user", "assistant"]
+    content: str = Field(min_length=1)
+
+
 class DatasetItem(BaseModel):
     """A common envelope shared by every benchmark item."""
 
@@ -85,7 +96,9 @@ class DatasetItem(BaseModel):
     subcategory: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9_]*$")
     difficulty: Difficulty
     split: Split
+    visibility: Literal["public", "held_out"] = "public"
     prompt: str = Field(min_length=1)
+    conversation: list[ChatMessage] | None = None
     response_contract: ResponseContract
     expected: dict[str, Any]
     scoring: ScoringSpec
@@ -95,9 +108,16 @@ class DatasetItem(BaseModel):
         default=None,
         pattern=r"^[a-z][a-z0-9_]*$",
     )
+    source_item: str | None = Field(
+        default=None,
+        pattern=r"^[a-z][a-z0-9_]*$",
+    )
 
     @model_validator(mode="after")
     def scoring_contract_is_consistent(self) -> Self:
+        if self.conversation is not None:
+            if not self.conversation or self.conversation[-1].role != "user":
+                raise ValueError("conversation must be non-empty and end with a user turn")
         if "value" not in self.expected:
             raise ValueError("expected must contain a value field")
 
@@ -156,6 +176,42 @@ class DatasetItem(BaseModel):
                 raise ValueError("llm_judge requires a text contract")
             if not isinstance(value, str) or not value.strip():
                 raise ValueError("llm_judge requires a non-empty reference summary")
+        elif method == "set_match":
+            if contract_type not in {"text", "json"} or not isinstance(value, list):
+                raise ValueError("set_match requires a text or json contract and list value")
+            if not value or any(not isinstance(entry, str) for entry in value):
+                raise ValueError("set_match expected value must contain strings")
+        elif method == "behavior_rules":
+            if contract_type != "text" or not isinstance(value, dict):
+                raise ValueError("behavior_rules requires a text contract and object value")
+            allowed = {"label", "required_all", "required_any", "forbidden"}
+            if set(value) - allowed or not isinstance(value.get("label"), str):
+                raise ValueError("behavior_rules requires label and supported term lists")
+            for name in ("required_all", "required_any", "forbidden"):
+                if name in value:
+                    _validate_nonempty_strings(value[name], f"behavior_rules {name}")
+        elif method == "tool_trace":
+            if contract_type != "json" or not isinstance(value, dict):
+                raise ValueError("tool_trace requires a json contract and object value")
+            if set(value) - {"calls", "observations", "final_state"} or not isinstance(value.get("calls"), list):
+                raise ValueError("tool_trace requires calls and optional final_state")
+            if "observations" in value and not isinstance(value["observations"], list):
+                raise ValueError("tool_trace observations must be a list")
+            for call in value["calls"]:
+                if (
+                    not isinstance(call, dict)
+                    or set(call) != {"tool", "arguments"}
+                    or not isinstance(call["tool"], str)
+                    or not isinstance(call["arguments"], dict)
+                ):
+                    raise ValueError("tool_trace calls require tool and arguments")
+        elif method == "confidence_value":
+            if contract_type != "text" or not isinstance(value, dict):
+                raise ValueError("confidence_value requires a text contract and object value")
+            if set(value) != {"answer"} or not isinstance(
+                value["answer"], (str, int, float, bool)
+            ):
+                raise ValueError("confidence_value expected value requires one scalar answer")
         elif not isinstance(value, (str, int, float, bool)):
             raise ValueError("exact_match requires a scalar expected value")
         _validate_scoring_parameters(method, self.scoring.parameters)
@@ -168,12 +224,30 @@ class BenchmarkDefinition(BaseModel):
     id: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9_]*$")
     title: str = Field(min_length=1)
     description: str = Field(min_length=1)
+    suite: Literal["A", "B", "C", "D", "E"] | None = None
+    status: Literal["planned", "started", "complete", "redesigning"] = "started"
+    execution_mode: Literal[
+        "single_turn",
+        "multi_turn",
+        "tool_scenario",
+        "paired_variants",
+    ] = "single_turn"
+    task_types: list[str] = Field(default_factory=list)
+    reporting_dimensions: list[str] = Field(default_factory=list)
+    redesign_notes: list[str] = Field(default_factory=list)
+    metrics: list[str] = Field(default_factory=list)
+    score_formula: Literal[
+        "mean_score",
+        "accuracy_minus_hallucination",
+        "clean_score_retained",
+    ] = "mean_score"
     items_path: str = Field(min_length=1)
     authoring_paths: list[str] = Field(default_factory=list)
     current_question_count: int = Field(ge=0)
     target_question_count: int = Field(gt=0)
     current_difficulty_distribution: dict[Difficulty, int]
     difficulty_distribution: dict[Difficulty, int]
+    target_visibility_distribution: dict[Literal["public", "held_out"], int] | None = None
     order_rule: Literal["easy_to_hard"]
     scoring_methods: list[ScoringMethod] = Field(min_length=1)
 
@@ -203,6 +277,15 @@ class BenchmarkDefinition(BaseModel):
             raise ValueError(
                 "difficulty_distribution must sum to target_question_count"
             )
+        if self.target_visibility_distribution is not None:
+            if set(self.target_visibility_distribution) != {"public", "held_out"}:
+                raise ValueError(
+                    "target_visibility_distribution requires public and held_out"
+                )
+            if sum(self.target_visibility_distribution.values()) != self.target_question_count:
+                raise ValueError(
+                    "target_visibility_distribution must sum to target_question_count"
+                )
         return self
 
 
@@ -216,6 +299,7 @@ class SuiteFilters(BaseModel):
     difficulties: list[Difficulty] | None = None
     splits: list[Split] | None = None
     review_statuses: list[Literal["draft", "human_checked"]] | None = None
+    visibilities: list[Literal["public", "held_out"]] | None = None
 
     @model_validator(mode="after")
     def filters_are_not_empty(self) -> Self:
@@ -225,6 +309,7 @@ class SuiteFilters(BaseModel):
             "difficulties",
             "splits",
             "review_statuses",
+            "visibilities",
         ):
             value = getattr(self, name)
             if value is not None and not value:
@@ -285,6 +370,14 @@ def _validate_scoring_parameters(
             "minimum_faithfulness",
             "max_words",
         },
+        "set_match": {"separator", "case_sensitive"},
+        "behavior_rules": {"case_sensitive"},
+        "tool_trace": {"allow_diagnostic_normalization"},
+        "confidence_value": {
+            "answer_type",
+            "absolute_tolerance",
+            "case_sensitive",
+        },
     }
     unknown = set(parameters) - allowed_parameters[method]
     if unknown:
@@ -307,6 +400,25 @@ def _validate_scoring_parameters(
         diagnostic = parameters.get("allow_diagnostic_normalization", True)
         if not isinstance(diagnostic, bool):
             raise ValueError("allow_diagnostic_normalization must be a boolean")
+        return
+    if method == "set_match":
+        separator = parameters.get("separator", ",")
+        if not isinstance(separator, str) or not separator:
+            raise ValueError("set_match separator must be a non-empty string")
+        return
+    if method == "behavior_rules":
+        return
+    if method == "tool_trace":
+        diagnostic = parameters.get("allow_diagnostic_normalization", False)
+        if not isinstance(diagnostic, bool):
+            raise ValueError("allow_diagnostic_normalization must be a boolean")
+        return
+    if method == "confidence_value":
+        if parameters.get("answer_type", "exact") not in {"exact", "numeric"}:
+            raise ValueError("confidence_value answer_type must be exact or numeric")
+        tolerance = parameters.get("absolute_tolerance", 0)
+        if isinstance(tolerance, bool) or not isinstance(tolerance, (int, float)) or tolerance < 0:
+            raise ValueError("confidence_value absolute_tolerance must be non-negative")
         return
     if method == "executable_python":
         timeout = parameters.get("timeout_seconds")
@@ -334,8 +446,13 @@ def _validate_scoring_parameters(
             )
         return
     if method == "llm_judge":
-        if parameters.get("rubric") != "grounded_summary_v1":
-            raise ValueError("llm_judge rubric must be grounded_summary_v1")
+        if parameters.get("rubric") not in {
+            "grounded_summary_v1",
+            "communication_quality_v1",
+        }:
+            raise ValueError(
+                "llm_judge rubric must be grounded_summary_v1 or communication_quality_v1"
+            )
         pass_threshold = parameters.get("pass_threshold")
         if (
             isinstance(pass_threshold, bool)
@@ -576,11 +693,7 @@ def load_dataset(path: Path, *, allow_empty: bool = False) -> list[DatasetItem]:
                 f"invalid dataset item in {path} on line {line_number}:\n{error}"
             ) from error
         if item.scoring.method not in {"llm_judge", "executable_python"}:
-            gold_answer = (
-                json.dumps(item.expected["value"], separators=(",", ":"))
-                if item.response_contract.type == "json"
-                else str(item.expected["value"])
-            )
+            gold_answer = gold_answer_text(item)
             if not score_answer(item, gold_answer).passed:
                 raise DatasetError(
                     f"expected answer for item {item.id!r} does not satisfy its scorer"
@@ -595,6 +708,24 @@ def load_dataset(path: Path, *, allow_empty: bool = False) -> list[DatasetItem]:
     if items:
         _validate_difficulty_progression(items, path)
     return items
+
+
+def gold_answer_text(item: DatasetItem) -> str:
+    """Build a minimal answer that proves a deterministic item is satisfiable."""
+
+    value = item.expected["value"]
+    if item.scoring.method == "behavior_rules":
+        terms = [*value.get("required_all", [])]
+        if value.get("required_any"):
+            terms.append(value["required_any"][0])
+        return " ".join(terms) or value["label"]
+    if item.scoring.method == "confidence_value":
+        return f"{value['answer']}\nconfidence: 100"
+    if item.scoring.method == "set_match" and item.response_contract.type == "text":
+        return item.scoring.parameters.get("separator", ",").join(value)
+    if item.response_contract.type == "json":
+        return json.dumps(value, separators=(",", ":"))
+    return str(value)
 
 
 def load_suite(path: Path) -> BenchmarkSuite:
@@ -650,6 +781,7 @@ def load_suite(path: Path) -> BenchmarkSuite:
         items_by_benchmark[definition.id] = items
 
     _validate_variant_lineage(all_items)
+    _validate_source_lineage(all_items)
 
     if manifest.filters is not None:
         requested_ids = set(manifest.filters.ids or [])
@@ -701,6 +833,10 @@ def _item_matches_filters(item: DatasetItem, filters: SuiteFilters) -> bool:
             filters.review_statuses is None
             or item.provenance.review_status in filters.review_statuses
         )
+        and (
+            filters.visibilities is None
+            or item.visibility in filters.visibilities
+        )
     )
 
 
@@ -721,6 +857,18 @@ def _validate_variant_lineage(items: dict[str, DatasetItem]) -> None:
         if parent.variant_of is not None:
             raise DatasetError(
                 f"variant item {item.id!r} must reference a base item, not another variant"
+            )
+
+
+def _validate_source_lineage(items: dict[str, DatasetItem]) -> None:
+    for item in items.values():
+        if item.source_item is None:
+            continue
+        if item.source_item == item.id:
+            raise DatasetError(f"item {item.id!r} cannot reference itself as source_item")
+        if item.source_item not in items:
+            raise DatasetError(
+                f"item {item.id!r} references unknown source_item {item.source_item!r}"
             )
 
 
@@ -746,6 +894,14 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
         score = _score_exact(item, answer)
     elif method == "json_exact":
         score = _score_json(item, answer)
+    elif method == "set_match":
+        score = _score_set(item, answer)
+    elif method == "behavior_rules":
+        score = _score_behavior(item, answer)
+    elif method == "tool_trace":
+        score = _score_tool_trace(item, answer)
+    elif method == "confidence_value":
+        score = _score_confidence(item, answer)
     else:
         score = _score_constraints(item, answer)
     return EvaluationResult(
@@ -1076,6 +1232,194 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
             "leaf_accuracy": score,
             "missing_paths": sorted(set(expected_leaves) - set(actual_leaves)),
             "extra_paths": sorted(set(actual_leaves) - set(expected_leaves)),
+        },
+    )
+
+
+def _score_set(item: DatasetItem, answer: str) -> ScoreResult:
+    expected_values = [str(value).strip() for value in item.expected["value"]]
+    if item.response_contract.type == "json":
+        try:
+            parsed = json.loads(answer)
+        except json.JSONDecodeError:
+            return ScoreResult(
+                passed=False,
+                score=0,
+                details={"reason": "invalid_json", "protocol_compliant": False},
+            )
+        if not isinstance(parsed, list) or any(not isinstance(value, str) for value in parsed):
+            return ScoreResult(
+                passed=False,
+                score=0,
+                details={"reason": "expected_json_string_array", "protocol_compliant": True},
+            )
+        actual_values = [value.strip() for value in parsed]
+    else:
+        separator = item.scoring.parameters.get("separator", ",")
+        actual_values = [value.strip() for value in answer.strip().split(separator) if value.strip()]
+    case_sensitive = item.scoring.parameters.get("case_sensitive", True)
+    normalize = (lambda value: value) if case_sensitive else (lambda value: value.casefold())
+    expected = {normalize(value) for value in expected_values}
+    actual = {normalize(value) for value in actual_values}
+    intersection = expected & actual
+    union = expected | actual
+    score = len(intersection) / len(union) if union else 1.0
+    return ScoreResult(
+        passed=actual == expected and len(actual_values) == len(expected_values),
+        score=score,
+        details={
+            "expected": sorted(expected),
+            "actual": sorted(actual),
+            "missing": sorted(expected - actual),
+            "extra": sorted(actual - expected),
+            "duplicate_count": len(actual_values) - len(actual),
+        },
+    )
+
+
+def _score_behavior(item: DatasetItem, answer: str) -> ScoreResult:
+    specification = item.expected["value"]
+    case_sensitive = item.scoring.parameters.get("case_sensitive", False)
+    haystack = answer if case_sensitive else answer.casefold()
+
+    def present(term: str) -> bool:
+        needle = term if case_sensitive else term.casefold()
+        return re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", haystack) is not None
+
+    required_all = specification.get("required_all", [])
+    required_any = specification.get("required_any", [])
+    forbidden = specification.get("forbidden", [])
+    checks = {
+        "nonempty": bool(answer.strip()),
+        "required_all": all(present(term) for term in required_all),
+        "required_any": not required_any or any(present(term) for term in required_any),
+        "forbidden": all(not present(term) for term in forbidden),
+    }
+    passed_checks = sum(checks.values())
+    return ScoreResult(
+        passed=all(checks.values()),
+        score=passed_checks / len(checks),
+        details={
+            "behavior_label": specification["label"],
+            "checks": checks,
+            "missing_required_all": [term for term in required_all if not present(term)],
+            "matched_required_any": [term for term in required_any if present(term)],
+            "matched_forbidden": [term for term in forbidden if present(term)],
+        },
+    )
+
+
+def _score_tool_trace(item: DatasetItem, answer: str) -> ScoreResult:
+    protocol_compliant = True
+    wrapper: str | None = None
+    try:
+        actual = json.loads(answer)
+    except json.JSONDecodeError:
+        protocol_compliant = False
+        actual = None
+        if item.scoring.parameters.get("allow_diagnostic_normalization", False):
+            actual, wrapper = _extract_diagnostic_json(answer)
+    if not isinstance(actual, dict) or not isinstance(actual.get("calls"), list):
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={
+                "reason": "invalid_tool_trace",
+                "protocol_compliant": protocol_compliant,
+                "diagnostic_wrapper": wrapper,
+            },
+        )
+    expected = item.expected["value"]
+    expected_calls = expected["calls"]
+    actual_calls = actual["calls"]
+    call_scores: list[float] = []
+    for index in range(max(len(expected_calls), len(actual_calls))):
+        if index >= len(expected_calls) or index >= len(actual_calls):
+            call_scores.append(0.0)
+            continue
+        expected_call = expected_calls[index]
+        actual_call = actual_calls[index]
+        if not isinstance(actual_call, dict):
+            call_scores.append(0.0)
+            continue
+        tool_ok = actual_call.get("tool") == expected_call["tool"]
+        args_ok = _json_values_equal(
+            actual_call.get("arguments"), expected_call["arguments"]
+        )
+        call_scores.append((float(tool_ok) + float(args_ok)) / 2)
+    calls_score = sum(call_scores) / len(call_scores) if call_scores else 1.0
+    final_state_required = "final_state" in expected
+    final_state_ok = not final_state_required or _json_values_equal(
+        actual.get("final_state"), expected["final_state"]
+    )
+    observations_required = "observations" in expected
+    observations_ok = not observations_required or _json_values_equal(
+        actual.get("observations"), expected["observations"]
+    )
+    score_parts = (
+        [calls_score]
+        + ([float(observations_ok)] if observations_required else [])
+        + ([float(final_state_ok)] if final_state_required else [])
+    )
+    score = sum(score_parts) / len(score_parts)
+    passed = protocol_compliant and score == 1.0
+    return ScoreResult(
+        passed=passed,
+        score=score,
+        details={
+            "protocol_compliant": protocol_compliant,
+            "diagnostic_wrapper": wrapper,
+            "call_scores": call_scores,
+            "call_count_expected": len(expected_calls),
+            "call_count_actual": len(actual_calls),
+            "final_state_ok": final_state_ok,
+            "observations_ok": observations_ok,
+        },
+    )
+
+
+def _score_confidence(item: DatasetItem, answer: str) -> ScoreResult:
+    match = re.search(
+        r"(?im)^\s*confidence\s*:\s*(100|[1-9]?\d)\s*%?\s*$",
+        answer,
+    )
+    if match is None:
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={"reason": "missing_confidence_line", "confidence": None},
+        )
+    confidence = int(match.group(1))
+    answer_text = (answer[: match.start()] + answer[match.end() :]).strip()
+    expected = item.expected["value"]["answer"]
+    answer_type = item.scoring.parameters.get("answer_type", "exact")
+    if answer_type == "numeric":
+        candidates = re.findall(
+            r"(?<![\w.])[-+]?(?:\d[\d,]*(?:\.\d*)?|\.\d+)(?![\w.])",
+            answer_text,
+        )
+        if len(candidates) == 1:
+            actual_value = float(candidates[0].replace(",", ""))
+            answer_correct = abs(actual_value - float(expected)) <= float(
+                item.scoring.parameters.get("absolute_tolerance", 0)
+            )
+        else:
+            answer_correct = False
+    else:
+        actual_value = answer_text.strip()
+        expected_value = str(expected).strip()
+        if not item.scoring.parameters.get("case_sensitive", True):
+            actual_value = actual_value.casefold()
+            expected_value = expected_value.casefold()
+        answer_correct = actual_value == expected_value
+    return ScoreResult(
+        passed=answer_correct,
+        score=float(answer_correct),
+        details={
+            "answer_correct": answer_correct,
+            "confidence": confidence,
+            "confidence_probability": confidence / 100,
+            "brier_component": (confidence / 100 - float(answer_correct)) ** 2,
         },
     )
 
