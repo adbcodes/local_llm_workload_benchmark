@@ -1,0 +1,13 @@
+schema_version: 1
+id: benchmark_reporting_v1
+headline_scores:
+  capability: [A, B]
+  control: [C, D]
+  trust: [E]
+rules:
+  - Capability and Control use absolute scores.
+  - Trust is reported as percent of the matched clean score retained.
+  - Never average retained-score deltas with absolute scores.
+  - Every binomial pass rate includes a 95 percent Wilson confidence interval.
+  - Models with overlapping confidence intervals are not ranked against each other.
+  - Integration friction is reported separately from answer correctness.

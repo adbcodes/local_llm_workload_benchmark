@@ -1,6 +1,17 @@
 id: code_debug_repair
 title: Code, Debug, and Repair
 description: Original Python implementation, bug-diagnosis, and code-repair tasks checked with restricted execution or deterministic labels.
+suite: A
+status: complete
+task_types:
+  - data structure and algorithm implementation
+  - practical Python function implementation
+  - bug diagnosis
+  - code repair
+  - edge-case handling
+  - output prediction and stack-trace understanding
+metrics: [pass_rate, tests_passed, timeout_rate]
+score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
@@ -14,6 +25,7 @@ difficulty_distribution:
   easy: 16
   medium: 24
   hard: 8
+target_visibility_distribution: {public: 24, held_out: 24}
 order_rule: easy_to_hard
 scoring_methods:
   - executable_python

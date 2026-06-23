@@ -1,0 +1,39 @@
+id: tables_to_decisions
+title: Tables to Decisions
+description: Planned tables to decisions question set from the final benchmark plan.
+suite: B
+status: planned
+execution_mode: single_turn
+task_types:
+- totals and differences
+- small joins
+- trends with exception rows
+- duplicated rows
+- inconsistent rows
+- decision from table evidence
+metrics:
+- answer_accuracy
+- row_selection_accuracy
+- set_accuracy
+score_formula: mean_score
+items_path: items.jsonl
+authoring_paths:
+- questions.yaml
+current_question_count: 0
+target_question_count: 30
+current_difficulty_distribution:
+  easy: 0
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 8
+  medium: 15
+  hard: 7
+target_visibility_distribution:
+  public: 15
+  held_out: 15
+order_rule: easy_to_hard
+scoring_methods:
+- numeric_tolerance
+- exact_match
+- set_match

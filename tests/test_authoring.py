@@ -19,7 +19,7 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
 
     first = build_authoring_suite(suite_path)
     assert not first.written
-    assert len(first.unchanged) == 5
+    assert len(first.unchanged) == 22
 
     source_path = (
         data_root / "applied_reasoning" / "generated.yaml"
@@ -34,7 +34,7 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
 
     rebuilt = build_authoring_suite(suite_path)
     assert rebuilt.written == (data_root / "applied_reasoning" / "items.jsonl",)
-    assert len(rebuilt.unchanged) == 4
+    assert len(rebuilt.unchanged) == 21
     assert "20% of 600" in rebuilt.written[0].read_text(encoding="utf-8")
 
 

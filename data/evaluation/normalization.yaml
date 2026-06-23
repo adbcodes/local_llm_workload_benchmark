@@ -1,0 +1,15 @@
+schema_version: 1
+id: shared_answer_normalization_v1
+steps:
+  - preserve the raw response unchanged
+  - remove trailing whitespace for evaluation only
+  - detect Markdown fences and surrounding chatter before any diagnostic extraction
+  - use Unicode-aware whole-word case-insensitive lexical checks
+  - use the repository sentence splitter and word tokenizer
+outcomes:
+  - scored
+  - missing_answer
+  - unparseable_output
+  - markdown_fence
+  - surrounding_text
+rule: Integration failures are reported separately from wrong, scorable answers.

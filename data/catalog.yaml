@@ -1,23 +1,60 @@
-schema_version: 1
+schema_version: 2
 name: local-llm-benchmark-catalog
+suites:
+  - id: A
+    title: Core Capability
+    question: Can it think, compute, and code?
+    scoring: Exact match and code execution
+  - id: B
+    title: Structured Work
+    question: Can it do real desk work with data?
+    scoring: JSON, table, label, and tool checks
+  - id: C
+    title: Instruction Control
+    question: Does it obey rules and formats?
+    scoring: Data-driven rule checks
+  - id: D
+    title: Communication
+    question: Can it write and summarize safely?
+    scoring: Fact checks, judge panel, and preference voting
+  - id: E
+    title: Reliability and Trust
+    question: Does it stay correct under stress?
+    scoring: Retained score against matched clean items
+  - id: F
+    title: Local Runtime Effects
+    question: What changes under quantization, sampling, and context pressure?
+    scoring: Frozen probe set reruns
 benchmarks:
-  - {id: applied_reasoning, title: Applied Reasoning, kind: question_set, status: started, definition_path: applied_reasoning/benchmark.yaml}
-  - {id: messy_text_to_schema, title: Messy Text to Schema, kind: question_set, status: started, definition_path: messy_text_to_schema/benchmark.yaml}
-  - {id: constraint_load_curve, title: Following Multiple Rules, kind: question_set, status: started, definition_path: constraint_load_curve/benchmark.yaml}
-  - {id: code_debug_repair, title: Code Debug and Repair, kind: question_set, status: started, definition_path: code_debug_repair/benchmark.yaml}
-  - {id: grounded_compression, title: Fact-Safe Summaries, kind: question_set, status: started, definition_path: grounded_compression/benchmark.yaml}
-  - {id: tables_to_decisions, title: Tables to Decisions, kind: question_set, status: planned, definition_path: planned/tables_to_decisions.yaml}
-  - {id: inbox_routing, title: Inbox Routing, kind: question_set, status: planned, definition_path: planned/inbox_routing.yaml}
-  - {id: tool_use, title: Tool Use, kind: question_set, status: planned, definition_path: planned/tool_use.yaml}
-  - {id: practical_writing, title: Practical Writing, kind: question_set, status: planned, definition_path: planned/practical_writing.yaml}
-  - {id: personal_model_preference, title: Personal Model Preference, kind: question_set, status: planned, definition_path: planned/personal_model_preference.yaml}
-  - {id: long_text_retrieval, title: Finding Information in Long Text, kind: question_set, status: planned, definition_path: planned/long_text_retrieval.yaml}
-  - {id: conversation_memory, title: Remembering a Conversation, kind: question_set, status: planned, definition_path: planned/conversation_memory.yaml}
-  - {id: noisy_text_robustness, title: Clean Text vs Noisy Text, kind: question_set, status: planned, definition_path: planned/noisy_text_robustness.yaml}
-  - {id: false_or_missing_information, title: False or Missing Information, kind: question_set, status: planned, definition_path: planned/false_or_missing_information.yaml}
-  - {id: answer_stability, title: Answer Stability, kind: question_set, status: planned, definition_path: planned/answer_stability.yaml}
-  - {id: confidence_calibration, title: Confidence vs Correctness, kind: question_set, status: planned, definition_path: planned/confidence_calibration.yaml}
-  - {id: shuffled_choices, title: Shuffled Choices, kind: question_set, status: planned, definition_path: planned/shuffled_choices.yaml}
-  - {id: india_focused_tasks, title: India-Focused Tasks, kind: question_set, status: planned, definition_path: planned/india_focused_tasks.yaml}
-  - {id: quantization_survival_curve, title: Model Size Reduction Comparison, kind: derived, status: planned, definition_path: derived/quantization_survival_curve.yaml}
-  - {id: laptop_value_frontier, title: Best Model for the Laptop, kind: derived, status: planned, definition_path: derived/laptop_value_frontier.yaml}
+  - {id: applied_reasoning, suite: A, status: complete, kind: question_set, definition_path: applied_reasoning/benchmark.yaml}
+  - {id: code_debug_repair, suite: A, status: complete, kind: question_set, definition_path: code_debug_repair/benchmark.yaml}
+  - {id: knowledge_abstention, suite: A, status: planned, kind: question_set, definition_path: knowledge_abstention/benchmark.yaml}
+  - {id: messy_text_to_schema, suite: B, status: started, kind: question_set, definition_path: messy_text_to_schema/benchmark.yaml}
+  - {id: tables_to_decisions, suite: B, status: planned, kind: question_set, definition_path: tables_to_decisions/benchmark.yaml}
+  - {id: inbox_routing, suite: B, status: planned, kind: question_set, definition_path: inbox_routing/benchmark.yaml}
+  - {id: tool_use, suite: B, status: planned, kind: question_set, definition_path: tool_use/benchmark.yaml}
+  - {id: constraint_load_curve, suite: C, status: complete, kind: question_set, definition_path: constraint_load_curve/benchmark.yaml}
+  - {id: negative_instructions, suite: C, status: planned, kind: question_set, definition_path: negative_instructions/benchmark.yaml}
+  - {id: instruction_hierarchy, suite: C, status: planned, kind: question_set, definition_path: instruction_hierarchy/benchmark.yaml}
+  - {id: raw_output_discipline, suite: C, status: planned, kind: question_set, definition_path: raw_output_discipline/benchmark.yaml}
+  - {id: grounded_compression, suite: D, status: started, kind: question_set, definition_path: grounded_compression/benchmark.yaml}
+  - {id: personal_model_preference, suite: D, status: started, kind: evaluation_track, definition_path: personal_model_preference/plan.yaml}
+  - {id: india_focused_tasks, suite: D, status: planned, kind: question_set, definition_path: india_focused_tasks/benchmark.yaml}
+  - {id: long_text_retrieval, suite: E, status: planned, kind: question_set, definition_path: long_text_retrieval/benchmark.yaml}
+  - {id: conversation_memory, suite: E, status: planned, kind: question_set, definition_path: conversation_memory/benchmark.yaml}
+  - {id: clean_vs_noisy, suite: E, status: planned, kind: question_set, definition_path: clean_vs_noisy/benchmark.yaml}
+  - {id: false_missing_information, suite: E, status: planned, kind: question_set, definition_path: false_missing_information/benchmark.yaml}
+  - {id: answer_stability, suite: E, status: planned, kind: question_set, definition_path: answer_stability/benchmark.yaml}
+  - {id: confidence_correctness, suite: E, status: planned, kind: question_set, definition_path: confidence_correctness/benchmark.yaml}
+  - {id: shuffled_choices, suite: E, status: planned, kind: question_set, definition_path: shuffled_choices/benchmark.yaml}
+  - {id: prompt_format_sensitivity, suite: E, status: planned, kind: question_set, definition_path: prompt_format_sensitivity/benchmark.yaml}
+  - {id: over_refusal, suite: E, status: planned, kind: question_set, definition_path: over_refusal/benchmark.yaml}
+  - {id: local_runtime_effects, suite: F, status: planned, kind: experiment_group, definition_path: runtime_effects/plan.yaml}
+evaluation_files:
+  scoring_contracts: evaluation/scoring_contracts.yaml
+  normalization: evaluation/normalization.yaml
+  judge_panel: evaluation/judge_panel.yaml
+  reporting: evaluation/reporting.yaml
+  frontier_anchor: evaluation/frontier_anchor.yaml
+probe_sets:
+  - probes/frozen_probe_v1.yaml

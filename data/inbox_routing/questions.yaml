@@ -1,0 +1,23 @@
+schema_version: 1
+benchmark: inbox_routing
+item_template:
+  id: inbox_routing_replace_001
+  subcategory: replace_with_one_declared_task_type
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Replace with the complete question shown to the model.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: replace_with_gold_answer
+  scoring:
+    method: set_match
+    parameters: {}
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - replace_tag
+items: []

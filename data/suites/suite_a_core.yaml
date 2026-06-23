@@ -1,0 +1,8 @@
+schema_version: 1
+name: suite-a-core
+version: 1
+status: pilot
+benchmark_files:
+- ../applied_reasoning/benchmark.yaml
+- ../code_debug_repair/benchmark.yaml
+- ../knowledge_abstention/benchmark.yaml

@@ -1,0 +1,39 @@
+id: tool_use
+title: Tool Use
+description: Planned tool use question set from the final benchmark plan.
+suite: B
+status: planned
+execution_mode: tool_scenario
+task_types:
+- no-tool-needed traps
+- two-call chains
+- using one call result in the next
+- error recovery
+- argument conversion
+- unnecessary-call avoidance
+metrics:
+- tool_selection_accuracy
+- argument_accuracy
+- call_order_accuracy
+- unnecessary_call_rate
+- final_state_accuracy
+score_formula: mean_score
+items_path: items.jsonl
+authoring_paths:
+- questions.yaml
+current_question_count: 0
+target_question_count: 20
+current_difficulty_distribution:
+  easy: 0
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 5
+  medium: 10
+  hard: 5
+target_visibility_distribution:
+  public: 10
+  held_out: 10
+order_rule: easy_to_hard
+scoring_methods:
+- tool_trace

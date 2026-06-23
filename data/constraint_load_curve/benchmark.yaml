@@ -1,6 +1,27 @@
 id: constraint_load_curve
-title: Instruction Following Constraint Curve
-description: Ten task carriers measured across one to four cumulative deterministic constraints.
+title: Following Multiple Rules
+description: Ten task carriers measured across one to four cumulative rule levels.
+suite: C
+status: complete
+task_types:
+  - prose explanation
+  - extraction and filtering
+  - list generation
+  - JSON transformation
+  - CSV transformation
+  - constrained rewriting
+  - classification and prioritisation
+  - professional email
+  - YAML configuration
+  - ordering and tie-breaking
+reporting_dimensions:
+  - core task accuracy
+  - compliance with each added instruction
+  - score drop as instructions accumulate
+  - first failed instruction
+  - interacting constraint pair
+metrics: [strict_all_pass_rate, mean_rule_compliance, first_failed_rule]
+score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
@@ -14,6 +35,7 @@ difficulty_distribution:
   easy: 10
   medium: 20
   hard: 10
+target_visibility_distribution: {public: 20, held_out: 20}
 order_rule: easy_to_hard
 scoring_methods:
   - constraint_rules

@@ -1,0 +1,32 @@
+schema_version: 1
+id: local_runtime_effects
+title: Local Runtime Effects
+kind: experiment_group
+status: planned
+probe_set: ../probes/frozen_probe_v1.yaml
+experiments:
+  - id: quantization_survival
+    variants: [Q8, Q6, Q4, Q3]
+    controls: [same_model_family, same_probe_version, same_generation_settings]
+    metrics: [score_by_suite, quality_retained_vs_q8, peak_memory_bytes, model_file_bytes]
+    required_probe_types: [large_number_arithmetic, rare_proper_nouns, long_code_identifiers, non_ascii_text, tool_use]
+  - id: sampler_sensitivity
+    variants:
+      - {temperature: 0.0, repeat_penalty: default}
+      - {temperature: 0.7, repeat_penalty: default}
+      - {temperature: 0.0, repeat_penalty: disabled}
+      - {temperature: 0.7, repeat_penalty: disabled}
+    metrics: [score_by_suite, run_to_run_flip_rate, output_tokens]
+  - id: long_generation_degradation
+    variants: [structured_output_1500_plus_tokens]
+    metrics: [overall_format_accuracy, final_third_format_accuracy, repetition_rate]
+  - id: context_overflow
+    variants: [context_90_percent, context_100_percent, context_110_percent]
+    metrics: [early_instruction_retention, completion_status, truncation_rate]
+  - id: constrained_decoding_tradeoff
+    variants: [plain_generation, json_mode_or_grammar]
+    metrics: [parseability, value_accuracy, latency_seconds]
+  - id: runner_regression
+    variants: [engine_version]
+    controls: [same_model_file, same_probe_version, same_settings]
+    metrics: [score_delta, latency_delta, memory_delta, integration_friction_delta]

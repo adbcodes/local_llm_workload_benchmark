@@ -1,0 +1,18 @@
+schema_version: 1
+id: frozen_probe_v1
+status: draft
+target_question_count: 40
+source_suites: [A, B, C]
+selection:
+  applied_reasoning: 10
+  code_debug_repair: 8
+  messy_text_to_schema: 6
+  tables_to_decisions: 4
+  inbox_routing: 3
+  tool_use: 3
+  constraint_load_curve: 6
+requirements:
+  tool_use_is_mandatory: true
+  quant_sensitive_items: [large_number_arithmetic, rare_proper_nouns, long_code_identifiers, non_ascii_text]
+item_ids: []
+freeze_rule: Fill item_ids only after every required source benchmark has enough reviewed questions.

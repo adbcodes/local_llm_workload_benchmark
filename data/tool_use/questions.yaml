@@ -1,0 +1,31 @@
+schema_version: 1
+benchmark: tool_use
+item_template:
+  id: tool_use_replace_001
+  subcategory: replace_with_one_declared_task_type
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Replace with the complete question shown to the model.
+  response_contract:
+    type: json
+    format: null
+  expected:
+    value:
+      calls:
+      - tool: replace_tool
+        arguments:
+          replace_argument: value
+      observations:
+      - replace_result: value_returned_by_fake_tool
+      final_state:
+        replace_state: true
+  scoring:
+    method: tool_trace
+    parameters: {}
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - replace_tag
+items: []

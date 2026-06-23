@@ -1,6 +1,19 @@
 id: messy_text_to_schema
 title: Messy Text to Schema
 description: Structured extraction from clean, incomplete, noisy, and nested text.
+suite: B
+status: started
+task_types:
+  - clean records
+  - missing and optional fields
+  - distracting and conflicting values
+  - OCR-like noise
+  - mixed and multiline formats
+  - lists and nested objects
+  - multiple records and revisions
+  - unit conversion and derived values
+metrics: [exact_match_rate, leaf_accuracy, integration_friction_rate]
+score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
@@ -14,6 +27,7 @@ difficulty_distribution:
   easy: 8
   medium: 15
   hard: 7
+target_visibility_distribution: {public: 15, held_out: 15}
 order_rule: easy_to_hard
 scoring_methods:
   - json_exact

@@ -1,0 +1,40 @@
+id: raw_output_discipline
+title: Raw Output Discipline
+description: Planned raw output discipline question set from the final benchmark plan.
+suite: C
+status: planned
+execution_mode: single_turn
+task_types:
+- raw JSON
+- raw CSV
+- single labels
+- no preamble
+- no code fences
+- no trailing explanation
+metrics:
+- parseability
+- fence_wrapping_rate
+- extra_chatter_rate
+- value_accuracy
+score_formula: mean_score
+items_path: items.jsonl
+authoring_paths:
+- questions.yaml
+current_question_count: 0
+target_question_count: 10
+current_difficulty_distribution:
+  easy: 0
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 3
+  medium: 5
+  hard: 2
+target_visibility_distribution:
+  public: 5
+  held_out: 5
+order_rule: easy_to_hard
+scoring_methods:
+- json_exact
+- exact_match
+- constraint_rules

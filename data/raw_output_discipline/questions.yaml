@@ -1,0 +1,23 @@
+schema_version: 1
+benchmark: raw_output_discipline
+item_template:
+  id: raw_output_discipline_replace_001
+  subcategory: replace_with_one_declared_task_type
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Replace with the complete question shown to the model.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: replace_with_gold_answer
+  scoring:
+    method: json_exact
+    parameters: {}
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - replace_tag
+items: []

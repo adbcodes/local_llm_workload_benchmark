@@ -192,4 +192,10 @@ def test_temporary_markdown_review_matches_dataset(tmp_path: Path) -> None:
     assert "| Prose | 3 |" in review
     assert "| Extraction | 1 |" in review
     assert "| Classification | 1 |" in review
+    assert "[Following Multiple Rules](#following-multiple-rules)" in review
+    assert "[Messy Text to Schema](#messy-text-to-schema)" in review
+    assert "[Fact-Safe Summaries](#fact-safe-summaries)" in review
+    assert "Messy Text to Schema — 30 questions" in review
+    assert "Fact-Safe Summaries — 20 questions" in review
+    assert review.count("<details") == 53
     assert not Path("docs/TEMP_CODE_DEBUG_REPAIR_REVIEW.html").exists()

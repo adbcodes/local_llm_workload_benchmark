@@ -1,0 +1,27 @@
+schema_version: 1
+benchmark: confidence_correctness
+item_template:
+  id: confidence_correctness_replace_001
+  subcategory: replace_with_one_declared_task_type
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Replace with the complete question shown to the model.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      answer: replace_with_gold_answer
+  scoring:
+    method: confidence_value
+    parameters:
+      answer_type: exact
+      case_sensitive: true
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - replace_tag
+  source_item: replace_with_clean_item_id
+items: []

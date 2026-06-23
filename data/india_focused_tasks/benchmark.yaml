@@ -1,0 +1,39 @@
+id: india_focused_tasks
+title: India-Focused Tasks
+description: Planned india-focused tasks question set from the final benchmark plan.
+suite: D
+status: planned
+execution_mode: single_turn
+task_types:
+- lakh and crore arithmetic
+- GST
+- Indian dates
+- Indian addresses
+- Hinglish instructions
+metrics:
+- accuracy
+- format_accuracy
+- judge_score
+score_formula: mean_score
+items_path: items.jsonl
+authoring_paths:
+- questions.yaml
+current_question_count: 0
+target_question_count: 20
+current_difficulty_distribution:
+  easy: 0
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 5
+  medium: 10
+  hard: 5
+target_visibility_distribution:
+  public: 10
+  held_out: 10
+order_rule: easy_to_hard
+scoring_methods:
+- numeric_tolerance
+- date_value
+- json_exact
+- llm_judge

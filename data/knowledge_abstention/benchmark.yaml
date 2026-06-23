@@ -1,0 +1,37 @@
+id: knowledge_abstention
+title: Knowledge and Abstention
+description: Planned knowledge and abstention question set from the final benchmark plan.
+suite: A
+status: planned
+execution_mode: single_turn
+task_types:
+- answerable facts with a stated cutoff
+- fabricated APIs and events
+- unanswerable questions
+- ambiguous questions requiring clarification
+metrics:
+- accuracy
+- hallucination_rate
+- abstention_accuracy
+- clarification_accuracy
+score_formula: accuracy_minus_hallucination
+items_path: items.jsonl
+authoring_paths:
+- questions.yaml
+current_question_count: 0
+target_question_count: 30
+current_difficulty_distribution:
+  easy: 0
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 10
+  medium: 15
+  hard: 5
+target_visibility_distribution:
+  public: 15
+  held_out: 15
+order_rule: easy_to_hard
+scoring_methods:
+- exact_match
+- behavior_rules

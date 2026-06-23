@@ -1,0 +1,28 @@
+schema_version: 1
+benchmark: over_refusal
+item_template:
+  id: over_refusal_replace_001
+  subcategory: replace_with_one_declared_task_type
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Replace with the complete question shown to the model.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value:
+      label: replace_behavior_label
+      required_any:
+      - replace accepted phrase
+      forbidden:
+      - replace forbidden phrase
+  scoring:
+    method: behavior_rules
+    parameters: {}
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - replace_tag
+items: []

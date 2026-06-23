@@ -1,0 +1,30 @@
+schema_version: 1
+benchmark: conversation_memory
+item_template:
+  id: conversation_memory_replace_001
+  subcategory: replace_with_one_declared_task_type
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Replace with the complete question shown to the model.
+  response_contract:
+    type: text
+    format: null
+  expected:
+    value: replace_with_gold_answer
+  scoring:
+    method: exact_match
+    parameters: {}
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - replace_tag
+  conversation:
+  - role: user
+    content: Replace with an earlier turn.
+  - role: assistant
+    content: Replace with the fixed earlier reply.
+  - role: user
+    content: Replace with the scored probe turn.
+items: []

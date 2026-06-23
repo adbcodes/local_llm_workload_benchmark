@@ -1,0 +1,8 @@
+schema_version: 1
+id: frontier_difficulty_anchor_v1
+status: planned
+rules:
+  - Run one frontier API model on the frozen probe set once.
+  - Store it with model role difficulty_anchor.
+  - Show it only as a difficulty reference.
+  - Never include it in local-model rankings or Pareto selection.

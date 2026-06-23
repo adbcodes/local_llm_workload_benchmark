@@ -1,6 +1,19 @@
 id: grounded_compression
 title: Grounded Compression
 description: Concise summaries that preserve source facts, priorities, and uncertainty.
+suite: D
+status: started
+task_types:
+  - project and operational updates
+  - customer and policy messages
+  - incidents and outages
+  - experiments and research findings
+  - budgets, contracts, and migrations
+  - security and launch decisions
+  - conflicting evidence and uncertain causes
+  - audit and compliance findings
+metrics: [judge_pass_rate, faithfulness, coverage, word_limit_compliance]
+score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
@@ -14,6 +27,7 @@ difficulty_distribution:
   easy: 5
   medium: 10
   hard: 5
+target_visibility_distribution: {public: 10, held_out: 10}
 order_rule: easy_to_hard
 scoring_methods:
   - llm_judge

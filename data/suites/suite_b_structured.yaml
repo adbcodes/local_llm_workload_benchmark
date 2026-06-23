@@ -1,0 +1,9 @@
+schema_version: 1
+name: suite-b-structured
+version: 1
+status: pilot
+benchmark_files:
+- ../messy_text_to_schema/benchmark.yaml
+- ../tables_to_decisions/benchmark.yaml
+- ../inbox_routing/benchmark.yaml
+- ../tool_use/benchmark.yaml

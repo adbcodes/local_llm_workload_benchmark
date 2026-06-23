@@ -1,6 +1,19 @@
 id: applied_reasoning
 title: Applied Reasoning Gauntlet
 description: Practical numerical, calendar, logical, and constraint reasoning.
+suite: A
+status: complete
+task_types:
+  - arithmetic and percentages
+  - ratios, rates, and work problems
+  - algebraic word problems
+  - number properties and sequences
+  - calendar and time calculations
+  - probability and counting
+  - deductive logic
+  - ordering and constraint puzzles
+metrics: [accuracy, mean_score]
+score_formula: mean_score
 items_path: items.jsonl
 authoring_paths:
   - external.yaml
@@ -15,6 +28,7 @@ difficulty_distribution:
   easy: 12
   medium: 24
   hard: 12
+target_visibility_distribution: {public: 24, held_out: 24}
 order_rule: easy_to_hard
 scoring_methods:
   - numeric_tolerance

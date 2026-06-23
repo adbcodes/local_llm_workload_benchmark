@@ -1,0 +1,24 @@
+schema_version: 1
+benchmark: india_focused_tasks
+item_template:
+  id: india_focused_tasks_replace_001
+  subcategory: replace_with_one_declared_task_type
+  difficulty: easy
+  split: dev
+  visibility: public
+  prompt: Replace with the complete question shown to the model.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 0
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 0
+  provenance:
+    kind: hand_authored
+    review_status: draft
+  tags:
+  - replace_tag
+items: []

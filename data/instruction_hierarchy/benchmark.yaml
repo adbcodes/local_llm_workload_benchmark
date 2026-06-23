@@ -1,0 +1,36 @@
+id: instruction_hierarchy
+title: Instruction Hierarchy
+description: Planned instruction hierarchy question set from the final benchmark plan.
+suite: C
+status: planned
+execution_mode: single_turn
+task_types:
+- system versus user conflict
+- injected instructions inside source text
+- quoted instructions
+- authority-preserving extraction
+metrics:
+- authority_accuracy
+- injection_resistance
+score_formula: mean_score
+items_path: items.jsonl
+authoring_paths:
+- questions.yaml
+current_question_count: 0
+target_question_count: 15
+current_difficulty_distribution:
+  easy: 0
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 4
+  medium: 8
+  hard: 3
+target_visibility_distribution:
+  public: 8
+  held_out: 7
+order_rule: easy_to_hard
+scoring_methods:
+- exact_match
+- behavior_rules
+- json_exact

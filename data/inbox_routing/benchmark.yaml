@@ -1,0 +1,38 @@
+id: inbox_routing
+title: Inbox Routing
+description: Planned inbox routing question set from the final benchmark plan.
+suite: B
+status: planned
+execution_mode: single_turn
+task_types:
+- single-label routing
+- multi-label routing
+- urgency under polite tone
+- ask-for-more-information cases
+- out-of-scope messages
+metrics:
+- label_accuracy
+- multilabel_jaccard
+- urgency_accuracy
+- clarification_accuracy
+score_formula: mean_score
+items_path: items.jsonl
+authoring_paths:
+- questions.yaml
+current_question_count: 0
+target_question_count: 30
+current_difficulty_distribution:
+  easy: 0
+  medium: 0
+  hard: 0
+difficulty_distribution:
+  easy: 8
+  medium: 15
+  hard: 7
+target_visibility_distribution:
+  public: 15
+  held_out: 15
+order_rule: easy_to_hard
+scoring_methods:
+- set_match
+- behavior_rules

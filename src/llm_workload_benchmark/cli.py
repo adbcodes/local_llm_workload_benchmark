@@ -6,6 +6,7 @@ import typer
 
 from llm_workload_benchmark import __version__
 from llm_workload_benchmark.authoring import build_authoring_suite
+from llm_workload_benchmark.catalog import CatalogError, validate_catalog
 from llm_workload_benchmark.config import ConfigError, load_config
 from llm_workload_benchmark.dataset import DatasetError
 from llm_workload_benchmark.preference import (
@@ -79,6 +80,33 @@ def dataset_build_command(
         typer.echo(f"Built {len(result.written)} JSONL file(s).")
     else:
         typer.echo("Dataset JSONL is already up to date.")
+
+
+@dataset_app.command("validate")
+def dataset_validate_command(
+    catalog_path: Path = typer.Option(
+        Path("data/catalog.yaml"),
+        "--catalog",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Final benchmark catalog to validate.",
+    ),
+) -> None:
+    """Validate the six-suite catalog, templates, resources, and all suite."""
+    try:
+        result = validate_catalog(catalog_path)
+    except (CatalogError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(
+        f"Valid: {result.benchmark_count} catalog entries, "
+        f"{result.question_set_count} question sets, "
+        f"{result.current_question_count} current questions, "
+        f"{result.planned_question_set_count} empty templates."
+    )
 
 
 @app.command("run")
