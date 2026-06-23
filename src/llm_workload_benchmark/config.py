@@ -40,7 +40,7 @@ class ModelConfig(BaseModel):
     flash_attention: bool = False
     kv_cache_type: str | None = None
     chat_format: str | None = None
-    response_cleanup: Literal["none", "strip_empty_think"] = "none"
+    response_cleanup: Literal["none", "strip_empty_think", "strip_think"] = "none"
     verbose: bool = False
     system_prompt: str = Field(
         default=(

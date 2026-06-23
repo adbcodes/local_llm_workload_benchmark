@@ -79,22 +79,52 @@ def test_numeric_and_exact_answer_verifiers() -> None:
     assert percentage_result.passed
     assert percentage_result.type == "deterministic"
     assert percentage_result.evaluator == "numeric_tolerance"
-    assert percentage_result.version == 1
+    assert percentage_result.version == 2
     assert score_answer(percentage, "120.0").passed
     assert score_answer(percentage, '"120"').passed
     assert score_answer(percentage, "The answer is 120.").passed
+    derivation = score_answer(
+        percentage,
+        "Start with 80. A 50% increase adds 40.\nFINAL: 120",
+    )
+    assert derivation.passed
+    assert derivation.details["answer_extraction"] == "final_marker"
+    assert derivation.details["final_marker_compliant"] is True
     assert not score_answer(percentage, "121").passed
     assert not score_answer(percentage, "It could be 120 or 121.").passed
+    assert not score_answer(percentage, "FINAL: 120 or 121").passed
+    duplicate_final = score_answer(percentage, "FINAL: 120\nFINAL: 121")
+    assert not duplicate_final.passed
+    assert duplicate_final.details["reason"] == "multiple_final_answers"
     assert score_answer(calendar, "The date is 2026-04-01.").passed
     assert score_answer(calendar, "The answer is April 1, 2026.").passed
+    assert score_answer(
+        calendar,
+        "Occurrence 1 is 2026-01-07. After four three-week intervals, "
+        "the final date is 2026-04-01.\nFINAL: 2026-04-01",
+    ).passed
     assert not score_answer(calendar, "The answer is 2026-04-02.").passed
     assert score_answer(ordering, "D,A,B,E,C").passed
     assert score_answer(ordering, "Therefore: D, A, B, E, C.").passed
     assert not score_answer(ordering, "A,B,D,E,C").passed
     assert score_answer(rational, "4/7").passed
     assert score_answer(rational, r"The answer is \frac{4}{7}.").passed
+    assert score_answer(
+        rational,
+        "There are 3 winning and 4 losing outcomes.\nFINAL: 4/7",
+    ).passed
     assert score_answer(rational, "0.5714285714285714").passed
     assert not score_answer(rational, "3/7").passed
+
+    date_choice = items["anchor_bbh_date_visit_001"]
+    assert score_answer(date_choice, "FINAL: (B)").passed
+    assert not score_answer(date_choice, "(B) 02/16/2009").passed
+    assert not score_answer(date_choice, "02/16/2009").passed
+    assert not score_answer(date_choice, "It could be (A) or (B).").passed
+    assert not score_answer(
+        date_choice,
+        "The remaining possibilities are (A) 08/16/2009 and (B) 02/16/2009.",
+    ).passed
 
 
 def test_reasoning_and_order_gold_answers_are_independently_derived() -> None:
@@ -175,9 +205,11 @@ def test_json_verifier_reports_partial_leaf_accuracy() -> None:
 
     fenced = score_answer(invoice, f"```json\n{correct}\n```")
     assert not fenced.passed
-    assert fenced.score == 1.0
+    assert fenced.score == 0.75
     assert fenced.details["protocol_compliant"] is False
     assert fenced.details["content_exact"] is True
+    assert fenced.details["content_score"] == 0.75
+    assert fenced.details["protocol_score"] == 0.0
     assert fenced.details["diagnostic_wrapper"] == "markdown_fence"
 
     wrong_type = json.dumps({**invoice.expected["value"], "total": True})

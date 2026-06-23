@@ -46,8 +46,11 @@ def _correct_answers() -> dict[str, str]:
     for items in suite.items.values():
         for item in items:
             value = item.expected["value"]
-            answers[item.prompt] = (
+            answer = (
                 json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+            )
+            answers[item.prompt] = (
+                f"FINAL: {answer}" if item.benchmark == "applied_reasoning" else answer
             )
     return answers
 
@@ -142,7 +145,11 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert all(record["schema_version"] == 2 for record in records)
     assert all(record["evaluation"]["passed"] for record in records)
     assert all(record["evaluation"]["type"] == "deterministic" for record in records)
-    assert all(record["evaluation"]["version"] == 1 for record in records)
+    assert all(
+        record["evaluation"]["version"]
+        == (2 if record["benchmark"] == "applied_reasoning" else 1)
+        for record in records
+    )
     assert all(record["integration_outcome"] == "scored" for record in records)
     assert all(record["prompt_tokens"] == 20 for record in records)
     assert all(record["time_to_first_token_seconds"] == 0.05 for record in records)
@@ -250,6 +257,10 @@ def test_runner_applies_only_configured_empty_think_cleanup(tmp_path: Path) -> N
     assert _prepare_response_for_scoring(nonempty, "strip_empty_think") == (
         nonempty,
         None,
+    )
+    assert _prepare_response_for_scoring(nonempty, "strip_think") == (
+        "120",
+        "strip_think",
     )
 
 

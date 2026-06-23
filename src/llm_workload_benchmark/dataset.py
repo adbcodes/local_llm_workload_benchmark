@@ -884,14 +884,28 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
         raise DatasetError(
             f"item {item.id!r} requires restricted Python execution, not score_answer"
         )
+    extraction_details: dict[str, Any] = {}
+    scoring_answer = answer
+    if item.benchmark == "applied_reasoning":
+        extracted_answer, extraction_details = _extract_applied_reasoning_answer(answer)
+        if extracted_answer is None:
+            return EvaluationResult(
+                type="deterministic",
+                evaluator=method,
+                version=2,
+                passed=False,
+                score=0,
+                details=extraction_details,
+            )
+        scoring_answer = extracted_answer
     if method == "numeric_tolerance":
-        score = _score_numeric(item, answer)
+        score = _score_numeric(item, scoring_answer)
     elif method == "rational_value":
-        score = _score_rational(item, answer)
+        score = _score_rational(item, scoring_answer)
     elif method == "date_value":
-        score = _score_date(item, answer)
+        score = _score_date(item, scoring_answer)
     elif method == "exact_match":
-        score = _score_exact(item, answer)
+        score = _score_exact(item, scoring_answer)
     elif method == "json_exact":
         score = _score_json(item, answer)
     elif method == "set_match":
@@ -907,10 +921,10 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
     return EvaluationResult(
         type="deterministic",
         evaluator=method,
-        version=1,
+        version=2 if item.benchmark == "applied_reasoning" else 1,
         passed=score.passed,
         score=score.score,
-        details=score.details,
+        details={**score.details, **extraction_details},
     )
 
 
@@ -937,20 +951,75 @@ def _load_yaml_model(path: Path, model_type: type[BaseModel]) -> Any:
         raise DatasetError(f"invalid dataset metadata in {path}:\n{error}") from error
 
 
+def _extract_applied_reasoning_answer(
+    answer: str,
+) -> tuple[str | None, dict[str, Any]]:
+    """Extract the explicit FINAL field or use one narrow last-line fallback."""
+
+    marked_answers = re.findall(
+        r"(?im)^\s*FINAL\s*:\s*(.*?)\s*$",
+        answer,
+    )
+    if len(marked_answers) > 1:
+        return None, {
+            "reason": "multiple_final_answers",
+            "final_marker_compliant": False,
+            "final_answer_candidates": marked_answers,
+        }
+    if marked_answers:
+        final_answer = marked_answers[0].strip()
+        if not final_answer:
+            return None, {
+                "reason": "empty_final_answer",
+                "final_marker_compliant": False,
+                "final_answer_candidates": marked_answers,
+            }
+        return final_answer, {
+            "answer_extraction": "final_marker",
+            "final_marker_compliant": True,
+            "final_answer": final_answer,
+        }
+
+    lines = [line.strip() for line in answer.splitlines() if line.strip()]
+    if not lines:
+        return None, {
+            "reason": "missing_final_answer",
+            "final_marker_compliant": False,
+        }
+    fallback = re.sub(
+        r"(?i)^(?:the\s+)?(?:final\s+)?answer\s*(?::|=|is)\s*",
+        "",
+        lines[-1],
+    ).strip()
+    fallback = fallback[:-1].rstrip() if fallback.endswith(".") else fallback
+    return fallback, {
+        "answer_extraction": "last_line_fallback",
+        "final_marker_compliant": False,
+        "final_answer": fallback,
+    }
+
+
+def _extract_numeric_values(answer: str) -> list[float]:
+    matches = re.findall(
+        r"(?<![\w.])[-+]?(?:\d[\d,]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
+        answer,
+    )
+    candidates: list[float] = []
+    for match in matches:
+        try:
+            value = float(match.replace(",", ""))
+        except ValueError:
+            continue
+        if math.isfinite(value):
+            candidates.append(value)
+    return candidates
+
+
 def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
+    expected = float(item.expected["value"])
+    tolerance = float(item.scoring.parameters.get("absolute_tolerance", 0))
     if item.scoring.parameters.get("allow_surrounding_text", False):
-        matches = re.findall(
-            r"(?<![\w.])[-+]?(?:\d[\d,]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
-            answer,
-        )
-        candidates = []
-        for match in matches:
-            try:
-                value = float(match.replace(",", ""))
-            except ValueError:
-                continue
-            if math.isfinite(value):
-                candidates.append(value)
+        candidates = _extract_numeric_values(answer)
         unique_candidates = set(candidates)
         if len(unique_candidates) != 1:
             return ScoreResult(
@@ -970,8 +1039,6 @@ def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
         if not math.isfinite(actual):
             return ScoreResult(passed=False, score=0, details={"reason": "not_finite"})
 
-    expected = float(item.expected["value"])
-    tolerance = float(item.scoring.parameters.get("absolute_tolerance", 0))
     difference = abs(actual - expected)
     passed = difference <= tolerance
     return ScoreResult(
@@ -1219,7 +1286,12 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
         and path in actual_leaves
         and _json_values_equal(expected_leaves[path], actual_leaves[path])
     }
-    score = len(matched_paths) / len(all_paths) if all_paths else 1.0
+    leaf_accuracy = len(matched_paths) / len(all_paths) if all_paths else 1.0
+    content_weight = 0.75
+    protocol_weight = 0.25
+    content_score = content_weight * leaf_accuracy
+    protocol_score = protocol_weight * float(protocol_compliant)
+    score = content_score + protocol_score
     content_exact = _json_values_equal(actual, expected)
     passed = protocol_compliant and content_exact
     return ScoreResult(
@@ -1229,7 +1301,10 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
             "protocol_compliant": protocol_compliant,
             "content_exact": content_exact,
             "diagnostic_wrapper": wrapper,
-            "leaf_accuracy": score,
+            "leaf_accuracy": leaf_accuracy,
+            "content_score": content_score,
+            "protocol_score": protocol_score,
+            "score_weights": {"content": content_weight, "protocol": protocol_weight},
             "missing_paths": sorted(set(expected_leaves) - set(actual_leaves)),
             "extra_paths": sorted(set(actual_leaves) - set(expected_leaves)),
         },

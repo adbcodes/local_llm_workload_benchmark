@@ -538,6 +538,7 @@ def _evaluate_item(
                 backend=backend,
                 generation=model.generation,
                 seed=seed,
+                response_cleanup=model.response_cleanup,
             )
         elif item.conversation is not None:
             generate_messages = getattr(backend, "generate_messages", None)
@@ -709,6 +710,7 @@ def _run_tool_scenario(
     backend: ModelBackend,
     generation: GenerationConfig,
     seed: int,
+    response_cleanup: str = "none",
 ) -> GenerationOutput:
     generate_messages = getattr(backend, "generate_messages", None)
     if not callable(generate_messages):
@@ -736,8 +738,12 @@ def _run_tool_scenario(
     for turn in range(max(2, len(expected_calls) + 2)):
         output = generate_messages(messages, generation, seed=seed + turn)
         outputs.append(output)
+        action_text, _ = _prepare_response_for_scoring(
+            output.text,
+            response_cleanup,
+        )
         try:
-            action = json.loads(output.text)
+            action = json.loads(action_text)
         except json.JSONDecodeError:
             return _combine_generation_outputs(outputs, output.text)
         if not isinstance(action, dict):
@@ -761,7 +767,7 @@ def _run_tool_scenario(
             observations.append(observation)
             messages.extend(
                 [
-                    {"role": "assistant", "content": output.text},
+                    {"role": "assistant", "content": action_text},
                     {
                         "role": "user",
                         "content": "Tool result: " + json.dumps(observation),
@@ -924,11 +930,7 @@ def _failed_summary(
 
 def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     completed = [record for record in records if record["status"] == "completed"]
-    scored = [
-        record
-        for record in completed
-        if record.get("integration_outcome", "scored") == "scored"
-    ]
+    scored = [record for record in completed if record.get("evaluation") is not None]
     scores = [record["evaluation"]["score"] for record in scored]
     latencies = [record["latency_seconds"] for record in completed]
     time_to_first_token_values = [
@@ -961,9 +963,18 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         "completed": len(completed),
         "scored": len(scored),
         "errors": len(records) - len(completed),
-        "integration_failures": len(completed) - len(scored),
+        "integration_failures": sum(
+            record.get("integration_outcome", "scored") != "scored"
+            for record in completed
+        ),
         "integration_friction_rate": (
-            (len(completed) - len(scored)) / len(completed) if completed else None
+            sum(
+                record.get("integration_outcome", "scored") != "scored"
+                for record in completed
+            )
+            / len(completed)
+            if completed
+            else None
         ),
         "integration_outcomes": dict(sorted(integration_outcomes.items())),
         "passed": passed,
@@ -1034,6 +1045,11 @@ def _integration_outcome(
 ) -> str:
     if not answer.strip():
         return "missing_answer"
+    if item.benchmark == "applied_reasoning":
+        if details.get("reason") == "multiple_final_answers":
+            return "ambiguous_final_marker"
+        if details.get("final_marker_compliant") is False:
+            return "missing_final_marker"
     if item.response_contract.type == "json":
         if details.get("protocol_compliant") is False:
             wrapper = details.get("diagnostic_wrapper")
@@ -1310,6 +1326,16 @@ def _prepare_response_for_scoring(
     response: str,
     cleanup: str,
 ) -> tuple[str, str | None]:
+    if cleanup == "strip_think":
+        cleaned = re.sub(
+            r"^(?:\s*<think\b[^>]*>.*?</think>\s*)+",
+            "",
+            response,
+            count=1,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if cleaned != response:
+            return cleaned, "strip_think"
     if cleanup == "strip_empty_think":
         cleaned = re.sub(
             r"^\s*<think>\s*</think>\s*",

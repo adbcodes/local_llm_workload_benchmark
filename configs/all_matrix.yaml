@@ -53,7 +53,7 @@ models:
     enabled: true
     context_window: 4096
     gpu_layers: -1
-    response_cleanup: strip_empty_think
+    response_cleanup: strip_think
     system_prompt: |-
       /no_think
       Follow the user's instructions precisely. Return only the requested answer without commentary.

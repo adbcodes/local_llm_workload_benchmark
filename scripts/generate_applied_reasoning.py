@@ -17,6 +17,10 @@ DEFAULT_SEED = 20260721
 DEFAULT_OUTPUT = Path(
     "data/applied_reasoning/generated.yaml"
 )
+FINAL_ANSWER_INSTRUCTION = (
+    "You may show concise working. End with exactly one final line in this format: "
+    "FINAL: <answer>"
+)
 
 
 def generate_items(seed: int = DEFAULT_SEED) -> list[dict[str, Any]]:
@@ -474,6 +478,7 @@ def write_dataset(path: Path, seed: int = DEFAULT_SEED) -> None:
         "benchmark": "applied_reasoning",
         "generated_by": GENERATOR,
         "seed": seed,
+        "prompt_suffix": FINAL_ANSWER_INSTRUCTION,
         "items": generate_items(seed),
     }
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -110,6 +110,7 @@ def _load_authoring_items(
             "generated_by",
             "seed",
             "item_template",
+            "prompt_suffix",
             "items",
         }
         if unknown_keys:
@@ -125,6 +126,9 @@ def _load_authoring_items(
                 f"{definition.id!r}"
             )
         raw_items = raw_document.get("items")
+        prompt_suffix = raw_document.get("prompt_suffix", "")
+        if not isinstance(prompt_suffix, str):
+            raise DatasetError(f"prompt_suffix must be text in {authoring_path}")
         if not isinstance(raw_items, list) or (
             not raw_items and definition.current_question_count != 0
         ):
@@ -139,6 +143,13 @@ def _load_authoring_items(
                     f"item {item_number} in {authoring_path} must be a YAML object"
                 )
             complete_item: dict[str, Any] = {"benchmark": definition.id, **raw_item}
+            if prompt_suffix:
+                prompt = complete_item.get("prompt")
+                if not isinstance(prompt, str):
+                    raise DatasetError(
+                        f"item {item_number} in {authoring_path} requires a text prompt"
+                    )
+                complete_item["prompt"] = prompt.rstrip() + "\n\n" + prompt_suffix.strip()
             try:
                 item = DatasetItem.model_validate(complete_item)
             except ValidationError as error:

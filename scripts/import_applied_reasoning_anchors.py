@@ -13,6 +13,10 @@ import yaml
 
 MATH_URL = "https://huggingface.co/datasets/qwedsacf/competition_math"
 BBH_URL = "https://github.com/suzgunmirac/BIG-Bench-Hard"
+FINAL_ANSWER_INSTRUCTION = (
+    "You may show concise working. End with exactly one final line in this format: "
+    "FINAL: <answer>"
+)
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,7 @@ def write_anchors(output: Path, math_parquet: Path, bbh_root: Path) -> None:
     document = {
         "schema_version": 1,
         "benchmark": "applied_reasoning",
+        "prompt_suffix": FINAL_ANSWER_INSTRUCTION,
         "items": import_anchors(math_parquet, bbh_root),
     }
     output.parent.mkdir(parents=True, exist_ok=True)

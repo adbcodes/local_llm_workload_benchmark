@@ -1,5 +1,7 @@
 schema_version: 1
 benchmark: applied_reasoning
+prompt_suffix: 'You may show concise working. End with exactly one final line in this
+  format: FINAL: <answer>'
 items:
 - id: anchor_math_average_001
   subcategory: arithmetic_percentages

@@ -18,6 +18,12 @@ def test_applied_reasoning_has_balanced_hybrid_dataset() -> None:
     items = load_suite(SUITE_PATH).items["applied_reasoning"]
 
     assert len(items) == 48
+    assert all(
+        item.prompt.endswith(
+            "End with exactly one final line in this format: FINAL: <answer>"
+        )
+        for item in items
+    )
     assert Counter(item.subcategory for item in items) == {
         "arithmetic_percentages": 6,
         "ratios_rates_work": 6,

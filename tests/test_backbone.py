@@ -78,7 +78,12 @@ def test_reusable_set_behavior_tool_and_confidence_evaluators() -> None:
     assert result.details["brier_component"] == pytest.approx(0.04)
 
 
-def _write_single_item_run(tmp_path: Path, item: dict) -> tuple[Path, Path]:
+def _write_single_item_run(
+    tmp_path: Path,
+    item: dict,
+    *,
+    response_cleanup: str = "none",
+) -> tuple[Path, Path]:
     data = tmp_path / "data"
     benchmark = data / "benchmark"
     suites = data / "suites"
@@ -116,7 +121,12 @@ def _write_single_item_run(tmp_path: Path, item: dict) -> tuple[Path, Path]:
                     "name": "backbone", "workload_path": str(suite_path),
                     "output_root": str(tmp_path / "runs"),
                 },
-                "models": [{"id": "fake", "backend": "llama_cpp", "model_path": str(model_path)}],
+                "models": [{
+                    "id": "fake",
+                    "backend": "llama_cpp",
+                    "model_path": str(model_path),
+                    "response_cleanup": response_cleanup,
+                }],
             },
             sort_keys=False,
         )
@@ -165,11 +175,12 @@ def test_json_fence_is_integration_friction_not_a_wrong_scorable_answer(tmp_path
     record = json.loads((run / "results.jsonl").read_text())
     totals = json.loads((run / "summary.json").read_text())["totals"]
     assert record["integration_outcome"] == "markdown_fence"
-    assert record["evaluation"]["score"] == 1.0
-    assert totals["scored"] == 0
+    assert record["evaluation"]["score"] == 0.75
+    assert totals["scored"] == 1
     assert totals["integration_failures"] == 1
     assert totals["integration_friction_rate"] == 1.0
-    assert totals["pass_rate"] is None
+    assert totals["pass_rate"] == 0.0
+    assert totals["mean_score"] == 0.75
 
 
 def test_runner_executes_fake_tool_results_between_model_turns(tmp_path: Path) -> None:
@@ -208,3 +219,40 @@ def test_runner_executes_fake_tool_results_between_model_turns(tmp_path: Path) -
     record = json.loads((run / "results.jsonl").read_text())
     assert record["evaluation"]["passed"] is True
     assert record["evaluation"]["details"]["observations_ok"] is True
+
+
+def test_runner_cleans_think_blocks_before_parsing_tool_actions(tmp_path: Path) -> None:
+    expected = {
+        "calls": [{"tool": "get_weather", "arguments": {"city": "Pune"}}],
+        "observations": [{"temperature_c": 29}],
+        "final_state": {"temperature_c": 29},
+    }
+    item = _item("tool_trace", expected, contract_type="json").model_dump(mode="json")
+    config_path, _ = _write_single_item_run(
+        tmp_path,
+        item,
+        response_cleanup="strip_think",
+    )
+
+    class ThinkingToolBackend:
+        turn = 0
+
+        def generate_messages(self, messages, generation, *, seed):
+            replies = [
+                '<think>choose the weather tool</think>\n'
+                '{"tool":"get_weather","arguments":{"city":"Pune"}}',
+                '<think>use the observation</think>\n'
+                '{"final_state":{"temperature_c":29}}',
+            ]
+            response = replies[self.turn]
+            self.turn += 1
+            return GenerationOutput(text=response, output_tokens=5)
+
+    run = run_benchmark(
+        load_config(config_path),
+        config_path,
+        backend_factory=lambda model, path, seed: ThinkingToolBackend(),
+    )
+    record = json.loads((run / "results.jsonl").read_text())
+    assert record["evaluation"]["passed"] is True
+    assert record["evaluation"]["details"]["call_count_actual"] == 1

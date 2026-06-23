@@ -2,6 +2,8 @@ schema_version: 1
 benchmark: applied_reasoning
 generated_by: applied_reasoning_v1
 seed: 20260721
+prompt_suffix: 'You may show concise working. End with exactly one final line in this
+  format: FINAL: <answer>'
 items:
 - id: reason_percentage_001
   subcategory: arithmetic_percentages
