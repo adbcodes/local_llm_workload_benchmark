@@ -15,6 +15,12 @@ from llm_workload_benchmark.preference import (
 )
 from llm_workload_benchmark.preference_terminal import run_terminal_preferences
 from llm_workload_benchmark.report import ReportError, generate_comparison_report
+from llm_workload_benchmark.runtime_matrix import (
+    RuntimeMatrixError,
+    combination_count,
+    load_runtime_matrix,
+    run_runtime_matrix,
+)
 from llm_workload_benchmark.runner import (
     EvaluationError,
     RunProgress,
@@ -205,6 +211,58 @@ def benchmark_command(
             raise typer.Exit(code=1) from error
 
     typer.echo(f"\nExperiment saved to {experiment_directory}")
+
+
+@app.command("runtime-matrix")
+def runtime_matrix_command(
+    config_path: Path = typer.Option(
+        Path("configs/runtime_matrix.yaml"),
+        "--config",
+        "-c",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Quantization and runtime-axis matrix configuration.",
+    ),
+) -> None:
+    """Run every configured quantization and setting combination."""
+
+    def show_progress(progress: RunProgress) -> None:
+        typer.echo(
+            f"[{progress.model_number}/{progress.model_count}] "
+            f"{progress.model_id} | {progress.benchmark} | "
+            f"{progress.completed_items}/{progress.total_items} | "
+            f"{progress.elapsed_seconds:.1f}s"
+        )
+
+    try:
+        runtime_config = load_runtime_matrix(config_path)
+        _build_configured_dataset(runtime_config.benchmark.workload_path)
+        typer.echo(
+            f"Running {combination_count(runtime_config)} runtime combinations."
+        )
+        experiment = run_runtime_matrix(
+            runtime_config,
+            config_path,
+            progress_callback=show_progress,
+        )
+        report_path = generate_comparison_report(experiment)
+    except (
+        RuntimeMatrixError,
+        ConfigError,
+        DatasetError,
+        EvaluationError,
+        ReportError,
+        OSError,
+    ) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    typer.echo(f"Runtime results: {experiment / 'runtime_results.json'}")
+    typer.echo(f"Graph-ready CSV: {experiment / 'runtime_runs.csv'}")
+    typer.echo(f"Comparison report: {report_path}")
 
 
 def _build_configured_dataset(workload_path: Path) -> None:

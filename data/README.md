@@ -27,3 +27,12 @@ use `source_item` to point to their clean version. Multi-turn items use
 `conversation`; `{{source_response}}` inserts an earlier model answer into a
 later challenge. Runtime-effect experiments live in `runtime_effects/plan.yaml`
 and reuse `probes/frozen_probe_v1.yaml`.
+
+## Runtime matrix
+
+```bash
+uv run llm-benchmark runtime-matrix
+```
+
+Each experiment saves graph-ready JSON and CSV, machine details, per-item
+results, and one-second telemetry samples.

@@ -90,6 +90,19 @@ def _environment_details() -> dict[str, Any]:
         "logical_cpu_count": os.cpu_count(),
         "llama_cpp_python_version": _package_version("llama-cpp-python"),
         "power_source": _power_source(),
+        "graphics": _graphics_details(),
+        "sensor_capabilities": {
+            "process_cpu_utilization": "available",
+            "process_memory": "available",
+            "apple_gpu_utilization": (
+                "available" if platform.system() == "Darwin" else "unsupported"
+            ),
+            "temperature_and_power": (
+                "requires_root_powermetrics"
+                if platform.system() == "Darwin"
+                else "unsupported"
+            ),
+        },
     }
 
 
@@ -129,6 +142,35 @@ def _power_source() -> str | None:
         return None
     first_line = result.stdout.splitlines()[0] if result.stdout.splitlines() else ""
     return first_line.strip() or None
+
+
+def _graphics_details() -> list[dict[str, Any]]:
+    if platform.system() != "Darwin":
+        return []
+    try:
+        result = subprocess.run(
+            ["system_profiler", "SPDisplaysDataType", "-json"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        payload = json.loads(result.stdout)
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+        return []
+    displays = payload.get("SPDisplaysDataType")
+    if not isinstance(displays, list):
+        return []
+    return [
+        {
+            "name": display.get("sppci_model"),
+            "vendor": display.get("spdisplays_vendor"),
+            "cores": display.get("sppci_cores"),
+            "metal_support": display.get("spdisplays_metal"),
+        }
+        for display in displays
+        if isinstance(display, dict)
+    ]
 
 
 def _sysctl_value(name: str) -> str | None:

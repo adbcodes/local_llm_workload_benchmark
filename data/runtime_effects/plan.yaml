@@ -3,6 +3,15 @@ id: local_runtime_effects
 title: Local Runtime Effects
 kind: experiment_group
 status: planned
+runner_status: implemented
+run_command: uv run llm-benchmark runtime-matrix
+saved_artifacts:
+  - runtime_results.json
+  - runtime_runs.csv
+  - runtime_benchmarks.csv
+  - runtime_items.csv
+  - machine.json
+  - models/*/telemetry.jsonl
 probe_set: ../probes/frozen_probe_v1.yaml
 experiments:
   - id: quantization_survival
@@ -12,10 +21,10 @@ experiments:
     required_probe_types: [large_number_arithmetic, rare_proper_nouns, long_code_identifiers, non_ascii_text, tool_use]
   - id: sampler_sensitivity
     variants:
-      - {temperature: 0.0, repeat_penalty: default}
-      - {temperature: 0.7, repeat_penalty: default}
-      - {temperature: 0.0, repeat_penalty: disabled}
-      - {temperature: 0.7, repeat_penalty: disabled}
+      - {temperature: 0.0, repeat_penalty: 1.0}
+      - {temperature: 0.7, repeat_penalty: 1.0}
+      - {temperature: 0.0, repeat_penalty: 1.1}
+      - {temperature: 0.7, repeat_penalty: 1.1}
     metrics: [score_by_suite, run_to_run_flip_rate, output_tokens]
   - id: long_generation_degradation
     variants: [structured_output_1500_plus_tokens]

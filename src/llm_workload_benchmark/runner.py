@@ -37,6 +37,7 @@ from llm_workload_benchmark.judge import (
     evaluate_summary_panel,
 )
 from llm_workload_benchmark.manifest import create_run
+from llm_workload_benchmark.telemetry import RuntimeTelemetry
 
 
 class EvaluationError(RuntimeError):
@@ -228,7 +229,6 @@ def run_benchmark(
     """Evaluate one enabled model and save per-item results plus a summary."""
 
     root = (project_root or Path.cwd()).resolve()
-    memory_reader = peak_memory_reader or _process_peak_memory_bytes
     suite_path = _resolve_from_root(root, config.benchmark.workload_path)
     suite = load_suite(suite_path)
     enabled_models = [model for model in config.models if model.enabled]
@@ -276,6 +276,13 @@ def run_benchmark(
         project_root=root,
         run_directory=run_directory,
     )
+    telemetry: RuntimeTelemetry | None = None
+    if peak_memory_reader is None:
+        telemetry = RuntimeTelemetry(run_directory / "telemetry.jsonl")
+        telemetry.start()
+        memory_reader = telemetry.peak_rss_bytes
+    else:
+        memory_reader = peak_memory_reader
     results_path = run_directory / "results.jsonl"
     summary_path = run_directory / "summary.json"
 
@@ -284,6 +291,7 @@ def run_benchmark(
         backend = backend_factory(model, model_path, config.benchmark.seed)
     except Exception as error:
         load_seconds = time.perf_counter() - load_started
+        telemetry_summary = telemetry.stop() if telemetry is not None else None
         _write_json(
             summary_path,
             _failed_summary(
@@ -292,6 +300,7 @@ def run_benchmark(
                 suite_path=suite_path,
                 load_seconds=load_seconds,
                 peak_memory_after_model_load_bytes=memory_reader(),
+                telemetry=telemetry_summary,
                 error=error,
             ),
         )
@@ -308,6 +317,7 @@ def run_benchmark(
         * config.benchmark.repetitions
     )
     run_started = time.perf_counter()
+    telemetry_summary: dict[str, Any] | None = None
     try:
         with results_path.open("w", encoding="utf-8") as results_file:
             for repetition in range(1, config.benchmark.repetitions + 1):
@@ -362,7 +372,11 @@ def run_benchmark(
                                 )
                             )
     finally:
-        _release_backend(backend)
+        try:
+            _release_backend(backend)
+        finally:
+            if telemetry is not None:
+                telemetry_summary = telemetry.stop()
 
     _write_json(
         summary_path,
@@ -374,6 +388,7 @@ def run_benchmark(
             definitions=suite.definitions,
             load_seconds=load_seconds,
             peak_memory_after_model_load_bytes=peak_memory_after_model_load_bytes,
+            telemetry=telemetry_summary,
         ),
     )
     return run_directory
@@ -534,11 +549,12 @@ def _evaluate_item(
     evaluated_response: str | None = None
     cleanup_applied: str | None = None
     try:
+        generation = _generation_for_item(model.generation, item)
         if item.scoring.method == "tool_trace":
             output = _run_tool_scenario(
                 item,
                 backend=backend,
-                generation=model.generation,
+                generation=generation,
                 seed=seed,
                 response_cleanup=model.response_cleanup,
             )
@@ -567,11 +583,11 @@ def _evaluate_item(
                 ]
             output = generate_messages(
                 messages,
-                model.generation,
+                generation,
                 seed=seed,
             )
         else:
-            output = backend.generate(item.prompt, model.generation, seed=seed)
+            output = backend.generate(item.prompt, generation, seed=seed)
         latency_seconds = time.perf_counter() - started
         peak_process_memory_bytes = peak_memory_reader()
         evaluated_response, cleanup_applied = _prepare_response_for_scoring(
@@ -611,6 +627,8 @@ def _evaluate_item(
             if output.output_tokens is not None and latency_seconds > 0
             else None
         )
+        wall_seconds = time.perf_counter() - started
+        cpu_seconds = time.process_time() - cpu_started
         return {
             "schema_version": 2,
             "status": "completed",
@@ -643,11 +661,17 @@ def _evaluate_item(
             "output_characters": len(output.text),
             "output_tokens_per_second_end_to_end": output_tokens_per_second,
             "peak_process_memory_bytes": peak_process_memory_bytes,
-            "process_cpu_seconds": time.process_time() - cpu_started,
+            "process_wall_seconds": wall_seconds,
+            "process_cpu_seconds": cpu_seconds,
+            "process_cpu_utilization_percent": (
+                cpu_seconds / wall_seconds * 100 if wall_seconds > 0 else None
+            ),
             "finish_reason": output.finish_reason,
             "error": None,
         }
     except Exception as error:
+        wall_seconds = time.perf_counter() - started
+        cpu_seconds = time.process_time() - cpu_started
         return {
             "schema_version": 2,
             "status": "error",
@@ -697,7 +721,11 @@ def _evaluate_item(
                 if peak_process_memory_bytes is not None
                 else peak_memory_reader()
             ),
-            "process_cpu_seconds": time.process_time() - cpu_started,
+            "process_wall_seconds": wall_seconds,
+            "process_cpu_seconds": cpu_seconds,
+            "process_cpu_utilization_percent": (
+                cpu_seconds / wall_seconds * 100 if wall_seconds > 0 else None
+            ),
             "finish_reason": output.finish_reason if output is not None else None,
             "error": {
                 "type": type(error).__name__,
@@ -819,6 +847,7 @@ def _build_summary(
     definitions: dict[str, Any],
     load_seconds: float,
     peak_memory_after_model_load_bytes: int | None,
+    telemetry: dict[str, Any] | None,
 ) -> dict[str, Any]:
     _attach_paired_metrics(records)
     completed = [record for record in records if record["status"] == "completed"]
@@ -877,6 +906,7 @@ def _build_summary(
         "peak_process_memory_after_model_load_bytes": (
             peak_memory_after_model_load_bytes
         ),
+        "telemetry": telemetry,
         "totals": _aggregate(records),
         "suites": {
             suite_id: _aggregate(suite_group)
@@ -912,6 +942,7 @@ def _failed_summary(
     suite_path: Path,
     load_seconds: float,
     peak_memory_after_model_load_bytes: int | None,
+    telemetry: dict[str, Any] | None,
     error: Exception,
 ) -> dict[str, Any]:
     return {
@@ -926,6 +957,7 @@ def _failed_summary(
         "peak_process_memory_after_model_load_bytes": (
             peak_memory_after_model_load_bytes
         ),
+        "telemetry": telemetry,
         "error": {"type": type(error).__name__, "message": str(error)},
     }
 
@@ -997,8 +1029,14 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         "mean_latency_seconds": _mean(latencies),
         "mean_time_to_first_token_seconds": _mean(time_to_first_token_values),
         "mean_output_tokens_per_second_end_to_end": _mean(output_rates),
+        "mean_process_wall_seconds": _mean(
+            [record.get("process_wall_seconds") for record in records]
+        ),
         "mean_process_cpu_seconds": _mean(
             [record["process_cpu_seconds"] for record in records]
+        ),
+        "mean_process_cpu_utilization_percent": _mean(
+            [record.get("process_cpu_utilization_percent") for record in records]
         ),
         "peak_process_memory_bytes": max(peak_memory_values, default=None),
     }
@@ -1322,6 +1360,16 @@ def _release_backend(backend: ModelBackend) -> None:
 
 def _optional_int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _generation_for_item(
+    generation: GenerationConfig,
+    item: DatasetItem,
+) -> GenerationConfig:
+    if generation.constrained_decoding != "json_when_requested":
+        return generation
+    mode = "json" if item.response_contract.type == "json" else "none"
+    return generation.model_copy(update={"constrained_decoding": mode})
 
 
 def _prepare_response_for_scoring(

@@ -19,7 +19,7 @@ class GenerationConfig(BaseModel):
     top_p: float = Field(default=1.0, gt=0.0, le=1.0)
     top_k: int = Field(default=40, ge=0)
     repeat_penalty: float = Field(default=1.0, gt=0.0)
-    constrained_decoding: Literal["none", "json"] = "none"
+    constrained_decoding: Literal["none", "json", "json_when_requested"] = "none"
 
 
 class ModelConfig(BaseModel):
