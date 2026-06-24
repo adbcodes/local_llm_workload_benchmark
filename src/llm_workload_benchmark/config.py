@@ -68,6 +68,9 @@ class JudgeConfig(BaseModel):
     max_completion_tokens: int = Field(default=4096, ge=1, le=8192)
     timeout_seconds: float = Field(default=60.0, gt=0)
     max_retries: int = Field(default=3, ge=0, le=10)
+    rate_limit_cooldown_retries: int = Field(default=1, ge=0, le=3)
+    rate_limit_fallback_wait_seconds: float = Field(default=60.0, gt=0)
+    rate_limit_max_wait_seconds: float = Field(default=3600.0, gt=0)
     max_candidate_characters: int = Field(default=12_000, ge=1)
     cache_path: Path | None = None
     input_price_per_million_tokens: float = Field(default=0.15, ge=0)

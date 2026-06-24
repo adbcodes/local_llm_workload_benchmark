@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import shutil
+from types import SimpleNamespace
 
 import pytest
 
@@ -12,6 +13,7 @@ from llm_workload_benchmark.judge import (
     JudgeCallResult,
     JudgeError,
     SummaryJudgeDecision,
+    _rate_limit_retry_after_seconds,
     evaluate_summary,
     evaluate_summary_panel,
 )
@@ -86,6 +88,98 @@ def test_judge_defaults_leave_room_for_reasoning_and_structured_output() -> None
     assert config.reasoning_effort == "medium"
     assert config.max_completion_tokens == 4096
     assert config.cache_path is None
+    assert config.rate_limit_cooldown_retries == 1
+    assert config.rate_limit_fallback_wait_seconds == 60
+    assert config.rate_limit_max_wait_seconds == 3600
+
+
+class FakeRateLimitError(Exception):
+    status_code = 429
+
+    def __init__(self, message: str, *, retry_after: str | None = None) -> None:
+        super().__init__(message)
+        headers = {} if retry_after is None else {"retry-after": retry_after}
+        self.response = SimpleNamespace(headers=headers)
+
+
+def test_groq_judge_waits_for_rate_limit_reset_then_retries() -> None:
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=_decision().model_dump_json()),
+                finish_reason="stop",
+            )
+        ],
+        usage=SimpleNamespace(
+            prompt_tokens=100,
+            completion_tokens=50,
+            prompt_tokens_details=None,
+            completion_tokens_details=None,
+        ),
+        id="judge-after-cooldown",
+        model="openai/gpt-oss-120b",
+        system_fingerprint="test-fingerprint",
+    )
+
+    class Completions:
+        calls = 0
+
+        def create(self, **arguments):
+            self.calls += 1
+            if self.calls == 1:
+                raise FakeRateLimitError("rate limited", retry_after="2.5")
+            return completion
+
+    completions = Completions()
+    backend = GroqJudgeBackend.__new__(GroqJudgeBackend)
+    backend._config = JudgeConfig()
+    backend._client = SimpleNamespace(
+        chat=SimpleNamespace(completions=completions)
+    )
+    sleeps: list[float] = []
+    notices: list[str] = []
+    backend._sleep = sleeps.append
+    backend._retry_notifier = notices.append
+
+    result = backend.evaluate(
+        system_prompt="judge policy",
+        user_prompt="candidate answer",
+        response_schema=SummaryJudgeDecision.model_json_schema(),
+        seed=42,
+    )
+
+    assert completions.calls == 2
+    assert sleeps == [2.5]
+    assert notices and "waiting 2.5s" in notices[0]
+    assert result.rate_limit_retries == 1
+    assert result.rate_limit_wait_seconds == 2.5
+
+
+def test_groq_judge_parses_long_reset_and_respects_wait_cap() -> None:
+    error = FakeRateLimitError("Please try again in 25m11.568s.")
+    assert _rate_limit_retry_after_seconds(error) == pytest.approx(1511.568)
+
+    class Completions:
+        def create(self, **arguments):
+            raise error
+
+    backend = GroqJudgeBackend.__new__(GroqJudgeBackend)
+    backend._config = JudgeConfig(rate_limit_max_wait_seconds=60)
+    backend._client = SimpleNamespace(
+        chat=SimpleNamespace(completions=Completions())
+    )
+    sleeps: list[float] = []
+    backend._sleep = sleeps.append
+    backend._retry_notifier = lambda message: None
+
+    with pytest.raises(JudgeError, match="above the configured maximum"):
+        backend.evaluate(
+            system_prompt="judge policy",
+            user_prompt="candidate answer",
+            response_schema=SummaryJudgeDecision.model_json_schema(),
+            seed=42,
+        )
+    assert not sleeps
 
 
 def test_judge_cache_reuses_exact_decisions_without_request_cost(tmp_path: Path) -> None:

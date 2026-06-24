@@ -4,10 +4,11 @@ import hashlib
 import json
 import os
 import re
+import sys
 import time
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -56,6 +57,8 @@ class JudgeCallResult:
     latency_seconds: float
     finish_reason: str | None
     cache_hit: bool = False
+    rate_limit_retries: int = 0
+    rate_limit_wait_seconds: float = 0.0
 
 
 class JudgeBackend(Protocol):
@@ -98,6 +101,8 @@ class CachedJudgeBackend:
                 reasoning_tokens=0,
                 latency_seconds=0.0,
                 cache_hit=True,
+                rate_limit_retries=0,
+                rate_limit_wait_seconds=0.0,
             )
         call = self._backend.evaluate(
             system_prompt=system_prompt,
@@ -154,6 +159,10 @@ class CachedJudgeBackend:
                     reasoning_tokens=call.get("reasoning_tokens"),
                     latency_seconds=call["latency_seconds"],
                     finish_reason=call.get("finish_reason"),
+                    rate_limit_retries=call.get("rate_limit_retries", 0),
+                    rate_limit_wait_seconds=call.get(
+                        "rate_limit_wait_seconds", 0.0
+                    ),
                 )
             except (KeyError, TypeError, ValueError, ValidationError, json.JSONDecodeError):
                 continue
@@ -176,6 +185,8 @@ class CachedJudgeBackend:
                 "reasoning_tokens": call.reasoning_tokens,
                 "latency_seconds": call.latency_seconds,
                 "finish_reason": call.finish_reason,
+                "rate_limit_retries": call.rate_limit_retries,
+                "rate_limit_wait_seconds": call.rate_limit_wait_seconds,
             },
         }
         with self._path.open("a", encoding="utf-8") as cache_file:
@@ -240,7 +251,13 @@ that the benchmark already handles.
 class GroqJudgeBackend:
     """Pointwise summary judge using Groq's strict structured-output API."""
 
-    def __init__(self, config: JudgeConfig) -> None:
+    def __init__(
+        self,
+        config: JudgeConfig,
+        *,
+        sleep: Callable[[float], None] = time.sleep,
+        retry_notifier: Callable[[str], None] | None = None,
+    ) -> None:
         try:
             from groq import Groq
         except ImportError as error:
@@ -255,6 +272,8 @@ class GroqJudgeBackend:
                 f"judge API key environment variable {config.api_key_env!r} is not set"
             )
         self._config = config
+        self._sleep = sleep
+        self._retry_notifier = retry_notifier or _notify_rate_limit_retry
         self._client = Groq(
             api_key=api_key,
             timeout=config.timeout_seconds,
@@ -270,29 +289,14 @@ class GroqJudgeBackend:
         seed: int,
     ) -> JudgeCallResult:
         started = time.perf_counter()
-        try:
-            completion = self._client.chat.completions.create(
-                model=self._config.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                reasoning_effort=self._config.reasoning_effort,
-                include_reasoning=False,
-                max_completion_tokens=self._config.max_completion_tokens,
+        completion, rate_limit_retries, rate_limit_wait_seconds = (
+            self._create_completion_with_rate_limit_cooldown(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                response_schema=response_schema,
                 seed=seed,
-                stream=False,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "summary_judge_decision",
-                        "strict": True,
-                        "schema": response_schema,
-                    },
-                },
             )
-        except Exception as error:
-            raise JudgeError(f"Groq judge request failed: {error}") from error
+        )
         latency_seconds = time.perf_counter() - started
 
         if not completion.choices:
@@ -329,7 +333,70 @@ class GroqJudgeBackend:
             ),
             latency_seconds=latency_seconds,
             finish_reason=_optional_str(getattr(choice, "finish_reason", None)),
+            rate_limit_retries=rate_limit_retries,
+            rate_limit_wait_seconds=rate_limit_wait_seconds,
         )
+
+    def _create_completion_with_rate_limit_cooldown(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: dict[str, Any],
+        seed: int,
+    ) -> tuple[Any, int, float]:
+        retries = 0
+        waited_seconds = 0.0
+        while True:
+            try:
+                completion = self._client.chat.completions.create(
+                    model=self._config.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    reasoning_effort=self._config.reasoning_effort,
+                    include_reasoning=False,
+                    max_completion_tokens=self._config.max_completion_tokens,
+                    seed=seed,
+                    stream=False,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "summary_judge_decision",
+                            "strict": True,
+                            "schema": response_schema,
+                        },
+                    },
+                )
+                return completion, retries, waited_seconds
+            except Exception as error:
+                if not _is_rate_limit_error(error):
+                    raise JudgeError(f"Groq judge request failed: {error}") from error
+                if retries >= self._config.rate_limit_cooldown_retries:
+                    raise JudgeError(
+                        "Groq judge rate limit persisted after "
+                        f"{retries} cooldown retries: {error}"
+                    ) from error
+
+                wait_seconds = _rate_limit_retry_after_seconds(error)
+                if wait_seconds is None:
+                    wait_seconds = self._config.rate_limit_fallback_wait_seconds
+                if wait_seconds > self._config.rate_limit_max_wait_seconds:
+                    raise JudgeError(
+                        "Groq judge rate limit requires waiting approximately "
+                        f"{wait_seconds:.1f}s, above the configured maximum of "
+                        f"{self._config.rate_limit_max_wait_seconds:.1f}s: {error}"
+                    ) from error
+
+                retries += 1
+                waited_seconds += wait_seconds
+                self._retry_notifier(
+                    "Groq judge rate limit reached; waiting "
+                    f"{wait_seconds:.1f}s before cooldown retry "
+                    f"{retries}/{self._config.rate_limit_cooldown_retries}."
+                )
+                self._sleep(wait_seconds)
 
 
 def evaluate_summary(
@@ -441,6 +508,8 @@ def evaluate_summary(
                 "reasoning_tokens": call.reasoning_tokens,
                 "latency_seconds": call.latency_seconds,
                 "finish_reason": call.finish_reason,
+                "rate_limit_retries": call.rate_limit_retries,
+                "rate_limit_wait_seconds": call.rate_limit_wait_seconds,
                 "estimated_cost_usd": cost,
             },
         },
@@ -517,3 +586,42 @@ def _optional_int(value: Any) -> int | None:
 
 def _optional_str(value: Any) -> str | None:
     return value if isinstance(value, str) else None
+
+
+def _notify_rate_limit_retry(message: str) -> None:
+    print(message, file=sys.stderr, flush=True)
+
+
+def _is_rate_limit_error(error: Exception) -> bool:
+    return getattr(error, "status_code", None) == 429
+
+
+def _rate_limit_retry_after_seconds(error: Exception) -> float | None:
+    response = getattr(error, "response", None)
+    headers = getattr(response, "headers", None)
+    if headers is not None:
+        value = headers.get("retry-after")
+        if value is not None:
+            try:
+                seconds = float(value)
+            except (TypeError, ValueError):
+                pass
+            else:
+                if seconds > 0:
+                    return seconds
+
+    match = re.search(
+        r"please try again in\s+"
+        r"(?:(?P<hours>\d+(?:\.\d+)?)h)?"
+        r"(?:(?P<minutes>\d+(?:\.\d+)?)m)?"
+        r"(?:(?P<seconds>\d+(?:\.\d+)?)s)?",
+        str(error),
+        flags=re.IGNORECASE,
+    )
+    if match is None or not any(match.groupdict().values()):
+        return None
+    return (
+        float(match.group("hours") or 0) * 3600
+        + float(match.group("minutes") or 0) * 60
+        + float(match.group("seconds") or 0)
+    )

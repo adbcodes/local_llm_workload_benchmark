@@ -16,6 +16,9 @@ judge:
   max_completion_tokens: 4096
   timeout_seconds: 60
   max_retries: 3
+  rate_limit_cooldown_retries: 1
+  rate_limit_fallback_wait_seconds: 60
+  rate_limit_max_wait_seconds: 3600
   max_candidate_characters: 12000
   cache_path: runs/judge_cache.jsonl
   input_price_per_million_tokens: 0.15
