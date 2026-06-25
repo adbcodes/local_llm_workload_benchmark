@@ -11,6 +11,9 @@ saved_artifacts:
   - artifacts/data/suites.csv
   - artifacts/data/benchmarks.csv
   - artifacts/data/items.csv
+  - artifacts/data/plots/*.csv
+  - artifacts/plots/*.png
+  - artifacts/plots/*.svg
   - models/*/telemetry.jsonl
 probe_set: ../probes/frozen_probe_v1.yaml
 experiments:

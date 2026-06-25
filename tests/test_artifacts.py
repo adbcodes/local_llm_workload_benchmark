@@ -196,6 +196,7 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     assert manifest["experiment_status"] == "partial_failure"
     assert manifest["machine"]["environment"]["machine_model"] == "test-machine"
     assert manifest["plots"]["quantization_survival"]["status"] == "skipped"
+    assert manifest["plots"]["workload_fit_heatmap"]["status"] == "skipped"
     assert manifest["tables"] == {
         "benchmarks": {"path": "data/benchmarks.csv", "row_count": 1},
         "configurations": {"path": "data/configurations.csv", "row_count": 2},
@@ -267,6 +268,52 @@ def test_pareto_frontier_excludes_dominated_configurations() -> None:
     frontier = _pareto_frontier(rows, x_field="cost", minimize_x=True)
 
     assert {row["variant_id"] for row in frontier} == {"balanced", "quality"}
+
+
+def test_export_experiment_artifacts_writes_workload_fit_heatmap(
+    tmp_path: Path,
+) -> None:
+    experiment = _write_quantization_experiment(tmp_path)
+    q8_summary_path = experiment / "models" / "model-q8" / "summary.json"
+    q8_summary = json.loads(q8_summary_path.read_text())
+    missing_skill = dict(q8_summary["suites"]["A"])
+    missing_skill.update({"passed": 0, "pass_rate": 0.0, "mean_score": 0.0})
+    q8_summary["suites"]["B"] = missing_skill
+    q8_summary_path.write_text(json.dumps(q8_summary), encoding="utf-8")
+
+    paths = export_experiment_artifacts(experiment)
+
+    manifest = json.loads(paths["manifest"].read_text())
+    assert set(manifest["plots"]) == {
+        "quantization_survival",
+        "memory_quality_frontier",
+        "speed_quality_frontier",
+        "workload_fit_heatmap",
+    }
+    plot = manifest["plots"]["workload_fit_heatmap"]
+    assert plot["status"] == "generated"
+    assert plot["configuration_count"] == 2
+    assert plot["suite_count"] == 2
+    assert plot["observed_count"] == 3
+    assert plot["missing_count"] == 1
+    assert (paths["root"] / plot["png"]).read_bytes().startswith(
+        b"\x89PNG\r\n\x1a\n"
+    )
+    assert ET.parse(paths["root"] / plot["svg"]).getroot().tag.endswith("svg")
+    with (paths["root"] / plot["data"]).open(newline="") as source:
+        rows = list(csv.DictReader(source))
+    zero = next(
+        row for row in rows
+        if row["variant_id"] == "model-q8" and row["suite"] == "B"
+    )
+    missing = next(
+        row for row in rows
+        if row["variant_id"] == "model-q4" and row["suite"] == "B"
+    )
+    assert zero["available"] == "True"
+    assert zero["score_percent"] == "0.0"
+    assert missing["available"] == "False"
+    assert missing["score_percent"] == ""
 
 
 def test_export_experiment_artifacts_replaces_only_managed_bundle(

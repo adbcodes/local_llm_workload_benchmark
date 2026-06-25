@@ -12,6 +12,8 @@ MEMORY_PLOT_ID = "memory_quality_frontier"
 MEMORY_PLOT_STEM = "memory-quality-frontier"
 SPEED_PLOT_ID = "speed_quality_frontier"
 SPEED_PLOT_STEM = "speed-quality-frontier"
+HEATMAP_PLOT_ID = "workload_fit_heatmap"
+HEATMAP_PLOT_STEM = "workload-fit-heatmap"
 SETTING_FIELDS = (
     "temperature",
     "top_p",
@@ -57,13 +59,25 @@ FRONTIER_DATA_FIELDS = [
     "is_pareto",
 ]
 QUANTIZATION_MARKERS = {8: "o", 6: "s", 4: "D", 3: "^"}
+HEATMAP_DATA_FIELDS = [
+    "variant_id",
+    "architecture",
+    "family",
+    "quantization",
+    "quantization_label",
+    "suite",
+    "mean_score",
+    "score_percent",
+    "available",
+]
 
 
 def generate_plots(
     artifact_root: Path,
     configuration_rows: list[dict[str, Any]],
+    suite_rows: list[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
-    """Generate every configuration-level plot supported by this artifact bundle."""
+    """Generate every plot supported by this artifact bundle."""
 
     return {
         QUANTIZATION_PLOT_ID: generate_quantization_survival(
@@ -89,6 +103,7 @@ def generate_plots(
             title="Speed–Quality Frontier",
             minimize_x=False,
         ),
+        HEATMAP_PLOT_ID: _generate_workload_heatmap(artifact_root, suite_rows),
     }
 
 
@@ -241,6 +256,107 @@ def _pareto_frontier(
         if not dominated:
             frontier.append(candidate)
     return frontier
+
+
+def _generate_workload_heatmap(
+    artifact_root: Path,
+    suite_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    observed: dict[tuple[str, str], dict[str, Any]] = {}
+    configurations: dict[str, dict[str, Any]] = {}
+    suites: set[str] = set()
+    for row in suite_rows:
+        variant_id = row.get("variant_id")
+        suite = row.get("suite")
+        score = row.get("mean_score")
+        if (
+            not isinstance(variant_id, str)
+            or not isinstance(suite, str)
+            or not isinstance(score, int | float)
+        ):
+            continue
+        key = (variant_id, suite)
+        if key in observed:
+            raise ValueError(
+                f"duplicate workload heatmap score for {variant_id!r} and {suite!r}"
+            )
+        quantization = _quantization(row.get("quantization")) or {
+            "quantization_label": row.get("quantization") or "unknown",
+            "quantization_bits": None,
+        }
+        normalized = {**row, **quantization, "score_percent": float(score) * 100}
+        observed[key] = normalized
+        configurations.setdefault(variant_id, normalized)
+        suites.add(suite)
+
+    if len(configurations) < 2 or not suites:
+        return {
+            "status": "skipped",
+            "reason": (
+                "requires suite scores for at least two completed configurations"
+            ),
+        }
+
+    ordered_variants = sorted(
+        configurations,
+        key=lambda variant_id: (
+            _model_label(configurations[variant_id]),
+            -(configurations[variant_id].get("quantization_bits") or -1),
+            variant_id,
+        ),
+    )
+    ordered_suites = sorted(suites)
+    plot_rows: list[dict[str, Any]] = []
+    matrix: list[list[float]] = []
+    missing_count = 0
+    for variant_id in ordered_variants:
+        configuration = configurations[variant_id]
+        matrix_row: list[float] = []
+        for suite in ordered_suites:
+            score_row = observed.get((variant_id, suite))
+            available = score_row is not None
+            score_percent = score_row["score_percent"] if score_row else None
+            if not available:
+                missing_count += 1
+            matrix_row.append(float(score_percent) if available else float("nan"))
+            plot_rows.append(
+                {
+                    **configuration,
+                    "suite": suite,
+                    "mean_score": score_row.get("mean_score") if score_row else None,
+                    "score_percent": score_percent,
+                    "available": available,
+                }
+            )
+        matrix.append(matrix_row)
+
+    data_path = artifact_root / "data" / "plots" / f"{HEATMAP_PLOT_STEM}.csv"
+    png_path = artifact_root / "plots" / f"{HEATMAP_PLOT_STEM}.png"
+    svg_path = artifact_root / "plots" / f"{HEATMAP_PLOT_STEM}.svg"
+    data_path.parent.mkdir(parents=True, exist_ok=True)
+    png_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_rows(data_path, HEATMAP_DATA_FIELDS, plot_rows)
+    _render_workload_heatmap(
+        matrix,
+        [configurations[variant_id] for variant_id in ordered_variants],
+        ordered_suites,
+        png_path,
+        svg_path,
+    )
+    return {
+        "status": "generated",
+        "png": str(png_path.relative_to(artifact_root)),
+        "svg": str(svg_path.relative_to(artifact_root)),
+        "data": str(data_path.relative_to(artifact_root)),
+        "row_count": len(plot_rows),
+        "configuration_count": len(ordered_variants),
+        "suite_count": len(ordered_suites),
+        "observed_count": len(plot_rows) - missing_count,
+        "missing_count": missing_count,
+        "rows": "variant_id",
+        "columns": "suite",
+        "value": "mean_score",
+    }
 
 
 def _select_plot_rows(
@@ -455,6 +571,83 @@ def _render_frontier(
     figure.savefig(png_path, dpi=180, facecolor="white")
     figure.savefig(svg_path, facecolor="white")
     plt.close(figure)
+
+
+def _render_workload_heatmap(
+    matrix: list[list[float]],
+    configurations: list[dict[str, Any]],
+    suites: list[str],
+    png_path: Path,
+    svg_path: Path,
+) -> None:
+    import math
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+
+    plt.style.use("seaborn-v0_8-whitegrid")
+    height = max(4.5, 1.8 + len(configurations) * 0.36)
+    width = max(8.0, 4.5 + len(suites) * 1.1)
+    figure, axis = plt.subplots(figsize=(width, height), layout="constrained")
+    colour_map = plt.get_cmap("viridis").with_extremes(bad="#e5e7eb")
+    image = axis.imshow(matrix, cmap=colour_map, vmin=0, vmax=100, aspect="auto")
+
+    labels = _heatmap_labels(configurations)
+    axis.set_title("Workload Fit", fontsize=16, fontweight="bold", loc="left")
+    axis.set_xlabel("Workload suite")
+    axis.set_ylabel("Model configuration")
+    axis.set_xticks(range(len(suites)), suites, rotation=25, ha="right")
+    axis.set_yticks(range(len(labels)), labels)
+    axis.set_xticks([index - 0.5 for index in range(1, len(suites))], minor=True)
+    axis.set_yticks(
+        [index - 0.5 for index in range(1, len(configurations))],
+        minor=True,
+    )
+    axis.grid(which="minor", color="white", linewidth=1.5)
+    axis.grid(which="major", visible=False)
+    axis.tick_params(which="minor", bottom=False, left=False)
+
+    for row_index, row in enumerate(matrix):
+        for column_index, value in enumerate(row):
+            missing = math.isnan(value)
+            axis.text(
+                column_index,
+                row_index,
+                "—" if missing else f"{value:.0f}",
+                ha="center",
+                va="center",
+                fontsize=8,
+                color=(
+                    "#6b7280"
+                    if missing
+                    else "#111827"
+                    if value >= 65
+                    else "white"
+                ),
+            )
+    colour_bar = figure.colorbar(image, ax=axis, shrink=0.82)
+    colour_bar.set_label("Mean workload score (%)")
+    axis.spines[:].set_visible(False)
+    figure.savefig(png_path, dpi=180, facecolor="white")
+    figure.savefig(svg_path, facecolor="white")
+    plt.close(figure)
+
+
+def _heatmap_labels(configurations: list[dict[str, Any]]) -> list[str]:
+    base_labels = [
+        f"{_model_label(row)} · {row.get('quantization_label', 'unknown')}"
+        for row in configurations
+    ]
+    counts = {label: base_labels.count(label) for label in set(base_labels)}
+    return [
+        (
+            f"{label} · {_short_label(str(row.get('variant_id')), maximum=24)}"
+            if counts[label] > 1
+            else label
+        )
+        for label, row in zip(base_labels, configurations)
+    ]
 
 
 def _model_label(row: dict[str, Any]) -> str:

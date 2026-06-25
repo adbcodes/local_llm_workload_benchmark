@@ -102,7 +102,11 @@ def export_experiment_artifacts(
             }
 
         try:
-            plot_manifest = generate_plots(temporary, rows["configurations"])
+            plot_manifest = generate_plots(
+                temporary,
+                rows["configurations"],
+                rows["suites"],
+            )
         except Exception as error:
             raise ArtifactError(f"could not generate plots: {error}") from error
 
