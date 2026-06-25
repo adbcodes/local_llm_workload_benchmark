@@ -14,7 +14,6 @@ from llm_workload_benchmark.preference import (
     completed_model_ids,
 )
 from llm_workload_benchmark.preference_terminal import run_terminal_preferences
-from llm_workload_benchmark.report import ReportError, generate_comparison_report
 from llm_workload_benchmark.runtime_matrix import (
     RuntimeMatrixError,
     combination_count,
@@ -248,13 +247,11 @@ def runtime_matrix_command(
             config_path,
             progress_callback=show_progress,
         )
-        report_path = generate_comparison_report(experiment)
     except (
         RuntimeMatrixError,
         ConfigError,
         DatasetError,
         EvaluationError,
-        ReportError,
         OSError,
     ) as error:
         typer.echo(f"Error: {error}", err=True)
@@ -262,7 +259,6 @@ def runtime_matrix_command(
 
     typer.echo(f"Runtime results: {experiment / 'runtime_results.json'}")
     typer.echo(f"Graph-ready CSV: {experiment / 'runtime_runs.csv'}")
-    typer.echo(f"Comparison report: {report_path}")
 
 
 def _build_configured_dataset(workload_path: Path) -> None:
@@ -270,42 +266,6 @@ def _build_configured_dataset(workload_path: Path) -> None:
         workload_path if workload_path.is_absolute() else Path.cwd() / workload_path
     )
     build_authoring_suite(suite_path)
-
-
-@app.command("report")
-def report_command(
-    experiment_directory: Path = typer.Option(
-        ...,
-        "--experiment",
-        "-e",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        resolve_path=True,
-        help="Saved matrix experiment directory to summarize.",
-    ),
-    output_path: Path | None = typer.Option(
-        None,
-        "--output",
-        "-o",
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-        help="Markdown destination; defaults to <experiment>/comparison.md.",
-    ),
-) -> None:
-    """Generate a Markdown comparison from a saved matrix experiment."""
-    try:
-        report_path = generate_comparison_report(
-            experiment_directory,
-            output_path=output_path,
-        )
-    except (ReportError, OSError) as error:
-        typer.echo(f"Error: {error}", err=True)
-        raise typer.Exit(code=1) from error
-
-    typer.echo(report_path)
 
 
 @app.command("prefer")
