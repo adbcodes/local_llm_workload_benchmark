@@ -257,8 +257,11 @@ def runtime_matrix_command(
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
 
-    typer.echo(f"Runtime results: {experiment / 'runtime_results.json'}")
-    typer.echo(f"Graph-ready CSV: {experiment / 'runtime_runs.csv'}")
+    typer.echo(f"Artifact manifest: {experiment / 'artifacts' / 'manifest.json'}")
+    typer.echo(
+        f"Configuration CSV: "
+        f"{experiment / 'artifacts' / 'data' / 'configurations.csv'}"
+    )
 
 
 def _build_configured_dataset(workload_path: Path) -> None:

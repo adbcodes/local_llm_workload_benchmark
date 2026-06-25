@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import itertools
 import json
 from pathlib import Path
@@ -10,6 +9,7 @@ from typing import Any, Callable, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 import yaml
 
+from llm_workload_benchmark.artifacts import ArtifactError, export_experiment_artifacts
 from llm_workload_benchmark.config import (
     BenchmarkConfig,
     BenchmarkSettings,
@@ -212,138 +212,25 @@ def run_runtime_matrix(
         peak_memory_reader=peak_memory_reader,
         progress_callback=progress_callback,
     )
-    export_runtime_artifacts(experiment, runtime_config)
-    return experiment
-
-
-def export_runtime_artifacts(
-    experiment: Path,
-    config: RuntimeMatrixConfig,
-) -> dict[str, Path]:
-    index = _read_json(experiment / "experiment.json")
-    run_rows: list[dict[str, Any]] = []
-    benchmark_rows: list[dict[str, Any]] = []
-    item_rows: list[dict[str, Any]] = []
-    machine: dict[str, Any] | None = None
-
-    for model_entry in index.get("models", []):
-        run_directory = experiment / model_entry["run_directory"]
-        manifest_path = run_directory / "manifest.json"
-        summary_path = run_directory / "summary.json"
-        if manifest_path.is_file() and machine is None:
-            manifest = _read_json(manifest_path)
-            machine = {
-                "environment": manifest.get("environment"),
-                "git": manifest.get("git"),
-                "project_version": manifest.get("project_version"),
-            }
-        summary = _read_json(summary_path) if summary_path.is_file() else {}
-        base = _model_axes(summary.get("model", {}), model_entry["model_id"])
-        totals = summary.get("totals", {})
-        telemetry = summary.get("telemetry") or {}
-        run_rows.append(
-            {
-                **base,
-                "status": model_entry.get("status"),
-                "summary_status": summary.get("status"),
-                "model_load_seconds": summary.get("model_load_seconds"),
-                "model_file_bytes": summary.get("model", {}).get("file_size_bytes"),
-                "attempted": totals.get("attempted"),
-                "completed": totals.get("completed"),
-                "pass_rate": totals.get("pass_rate"),
-                "mean_score": totals.get("mean_score"),
-                "mean_latency_seconds": totals.get("mean_latency_seconds"),
-                "mean_ttft_seconds": totals.get("mean_time_to_first_token_seconds"),
-                "mean_output_tokens_per_second": totals.get("mean_output_tokens_per_second_end_to_end"),
-                "mean_process_cpu_seconds": totals.get("mean_process_cpu_seconds"),
-                "mean_process_cpu_utilization_percent": totals.get("mean_process_cpu_utilization_percent"),
-                "peak_process_memory_bytes": totals.get("peak_process_memory_bytes"),
-                "integration_friction_rate": totals.get("integration_friction_rate"),
-                "run_to_run_flip_rate": totals.get("run_to_run_flip_rate"),
-                "mean_system_gpu_utilization_percent": telemetry.get("mean_system_gpu_utilization_percent"),
-                "peak_system_gpu_utilization_percent": telemetry.get("peak_system_gpu_utilization_percent"),
-                "mean_cpu_power_watts": telemetry.get("mean_cpu_power_watts"),
-                "mean_gpu_power_watts": telemetry.get("mean_gpu_power_watts"),
-                "mean_system_power_watts": telemetry.get("mean_system_power_watts"),
-                "mean_cpu_temperature_c": telemetry.get("mean_cpu_temperature_c"),
-                "telemetry_sample_count": telemetry.get("sample_count"),
-                "error": model_entry.get("error"),
-            }
+    try:
+        export_experiment_artifacts(
+            experiment,
+            experiment_metadata={
+                "kind": "runtime_matrix",
+                "combination_count": combination_count(runtime_config),
+                "axes": runtime_config.axes.model_dump(mode="json"),
+                "quantizations": [
+                    variant.model_dump(mode="json")
+                    for variant in runtime_config.quantizations
+                ],
+            },
         )
-        for benchmark, group in summary.get("benchmarks", {}).items():
-            overall = group.get("overall", {})
-            benchmark_rows.append(
-                {
-                    **base,
-                    "benchmark": benchmark,
-                    "reported_score": group.get("reported_score"),
-                    "score_formula": group.get("score_formula"),
-                    "attempted": overall.get("attempted"),
-                    "pass_rate": overall.get("pass_rate"),
-                    "mean_score": overall.get("mean_score"),
-                    "mean_latency_seconds": overall.get("mean_latency_seconds"),
-                    "mean_ttft_seconds": overall.get("mean_time_to_first_token_seconds"),
-                    "mean_output_tokens_per_second": overall.get("mean_output_tokens_per_second_end_to_end"),
-                    "peak_process_memory_bytes": overall.get("peak_process_memory_bytes"),
-                }
-            )
-        results_path = run_directory / "results.jsonl"
-        if results_path.is_file():
-            for record in _read_jsonl(results_path):
-                evaluation = record.get("evaluation") or {}
-                item_rows.append(
-                    {
-                        **base,
-                        "benchmark": record.get("benchmark"),
-                        "suite": record.get("suite"),
-                        "item_id": record.get("item_id"),
-                        "difficulty": record.get("difficulty"),
-                        "repetition": record.get("repetition"),
-                        "status": record.get("status"),
-                        "passed": evaluation.get("passed"),
-                        "score": evaluation.get("score"),
-                        "latency_seconds": record.get("latency_seconds"),
-                        "ttft_seconds": record.get("time_to_first_token_seconds"),
-                        "output_tokens_per_second": record.get("output_tokens_per_second_end_to_end"),
-                        "process_cpu_seconds": record.get("process_cpu_seconds"),
-                        "process_cpu_utilization_percent": record.get("process_cpu_utilization_percent"),
-                        "process_memory_bytes": record.get("peak_process_memory_bytes"),
-                        "integration_outcome": record.get("integration_outcome"),
-                    }
-                )
-
-    _attach_q8_baselines(run_rows)
-    _attach_q8_baselines(benchmark_rows, include_benchmark=True)
-    paths = {
-        "json": experiment / "runtime_results.json",
-        "runs_csv": experiment / "runtime_runs.csv",
-        "benchmarks_csv": experiment / "runtime_benchmarks.csv",
-        "items_csv": experiment / "runtime_items.csv",
-        "machine_json": experiment / "machine.json",
-    }
-    machine = machine or {"environment": None, "git": None, "project_version": None}
-    _write_json(paths["machine_json"], machine)
-    _write_csv(paths["runs_csv"], run_rows)
-    _write_csv(paths["benchmarks_csv"], benchmark_rows)
-    _write_csv(paths["items_csv"], item_rows)
-    _write_json(
-        paths["json"],
-        {
-            "schema_version": 1,
-            "experiment_id": index.get("experiment_id"),
-            "status": index.get("status"),
-            "combination_count": combination_count(config),
-            "axes": config.axes.model_dump(mode="json"),
-            "quantizations": [
-                variant.model_dump(mode="json") for variant in config.quantizations
-            ],
-            "machine": machine,
-            "runs": run_rows,
-            "benchmarks": benchmark_rows,
-            "artifacts": {name: path.name for name, path in paths.items()},
-        },
-    )
-    return paths
+    except ArtifactError as error:
+        raise RuntimeMatrixError(
+            f"runtime inference completed but artifact export failed: {error}; "
+            f"raw experiment: {experiment}"
+        ) from error
+    return experiment
 
 
 def _axis_values(config: RuntimeMatrixConfig) -> dict[str, list[Any]]:
@@ -387,108 +274,5 @@ def _variant_id(quantization_id: str, settings: dict[str, Any]) -> str:
     return re.sub(r"[^a-zA-Z0-9._-]", "-", "-".join(parts))
 
 
-def _model_axes(model: dict[str, Any], fallback_id: str) -> dict[str, Any]:
-    generation = model.get("generation", {})
-    return {
-        "variant_id": model.get("id", fallback_id),
-        "quantization": model.get("quantization"),
-        "temperature": generation.get("temperature"),
-        "top_p": generation.get("top_p"),
-        "top_k": generation.get("top_k"),
-        "repeat_penalty": generation.get("repeat_penalty"),
-        "max_output_tokens": generation.get("max_output_tokens"),
-        "constrained_decoding": generation.get("constrained_decoding"),
-        "context_window": model.get("context_window"),
-        "threads": model.get("threads"),
-        "batch_size": model.get("batch_size"),
-        "gpu_layers": model.get("gpu_layers"),
-        "flash_attention": model.get("flash_attention"),
-        "kv_cache_type": model.get("kv_cache_type"),
-    }
-
-
-def _attach_q8_baselines(
-    rows: list[dict[str, Any]],
-    *,
-    include_benchmark: bool = False,
-) -> None:
-    axis_names = (
-        "temperature", "top_p", "top_k", "repeat_penalty",
-        "max_output_tokens", "constrained_decoding", "context_window",
-        "threads", "batch_size", "gpu_layers", "flash_attention",
-        "kv_cache_type",
-    )
-
-    def key(row: dict[str, Any]) -> tuple[Any, ...]:
-        values: tuple[Any, ...] = tuple(row.get(name) for name in axis_names)
-        return values + ((row.get("benchmark"),) if include_benchmark else ())
-
-    baselines = {
-        key(row): row
-        for row in rows
-        if str(row.get("quantization", "")).upper().startswith("Q8")
-    }
-    for row in rows:
-        baseline = baselines.get(key(row))
-        score_name = "reported_score" if include_benchmark else "mean_score"
-        score = row.get(score_name)
-        baseline_score = baseline.get(score_name) if baseline else None
-        row["score_delta_vs_q8"] = _difference(score, baseline_score)
-        row["score_retained_vs_q8"] = _ratio(score, baseline_score)
-        if not include_benchmark:
-            row["memory_saved_vs_q8_bytes"] = _difference(
-                baseline.get("peak_process_memory_bytes") if baseline else None,
-                row.get("peak_process_memory_bytes"),
-            )
-            row["speed_ratio_vs_q8"] = _ratio(
-                row.get("mean_output_tokens_per_second"),
-                baseline.get("mean_output_tokens_per_second") if baseline else None,
-            )
-
-
-def _difference(value: Any, baseline: Any) -> float | None:
-    if not isinstance(value, int | float) or not isinstance(baseline, int | float):
-        return None
-    return float(value - baseline)
-
-
-def _ratio(value: Any, baseline: Any) -> float | None:
-    if (
-        not isinstance(value, int | float)
-        or not isinstance(baseline, int | float)
-        or baseline == 0
-    ):
-        return None
-    return float(value / baseline)
-
-
 def _resolve(root: Path, path: Path) -> Path:
     return path if path.is_absolute() else root / path
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-
-
-def _write_json(path: Path, value: dict[str, Any]) -> None:
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-
-def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
-    fieldnames = list(dict.fromkeys(key for row in rows for key in row))
-    with path.open("w", encoding="utf-8", newline="") as output:
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(
-                {
-                    key: json.dumps(value, sort_keys=True)
-                    if isinstance(value, dict | list)
-                    else value
-                    for key, value in row.items()
-                }
-            )

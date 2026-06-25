@@ -6,11 +6,11 @@ status: planned
 runner_status: implemented
 run_command: uv run llm-benchmark runtime-matrix
 saved_artifacts:
-  - runtime_results.json
-  - runtime_runs.csv
-  - runtime_benchmarks.csv
-  - runtime_items.csv
-  - machine.json
+  - artifacts/manifest.json
+  - artifacts/data/configurations.csv
+  - artifacts/data/suites.csv
+  - artifacts/data/benchmarks.csv
+  - artifacts/data/items.csv
   - models/*/telemetry.jsonl
 probe_set: ../probes/frozen_probe_v1.yaml
 experiments:

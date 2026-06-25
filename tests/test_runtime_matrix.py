@@ -143,22 +143,21 @@ def test_runtime_matrix_runs_all_combinations_and_exports_graph_rows(
         peak_memory_reader=lambda: 123_456,
     )
 
-    results = json.loads((experiment / "runtime_results.json").read_text())
-    assert results["combination_count"] == 4
-    assert len(results["runs"]) == 4
-    assert len(results["benchmarks"]) == 4
-    assert all(row["status"] == "completed" for row in results["runs"])
-    assert all(row["score_retained_vs_q8"] == 1.0 for row in results["runs"])
-    assert all(row["score_delta_vs_q8"] == 0.0 for row in results["benchmarks"])
-    assert (experiment / "machine.json").is_file()
-    assert (experiment / "runtime_benchmarks.csv").is_file()
+    artifact_root = experiment / "artifacts"
+    artifact_manifest = json.loads((artifact_root / "manifest.json").read_text())
+    assert artifact_manifest["experiment_metadata"]["combination_count"] == 4
+    assert artifact_manifest["tables"]["configurations"]["row_count"] == 4
+    assert artifact_manifest["tables"]["benchmarks"]["row_count"] == 4
+    assert artifact_manifest["tables"]["items"]["row_count"] == 4
 
-    with (experiment / "runtime_runs.csv").open(newline="") as source:
+    with (artifact_root / "data" / "configurations.csv").open(newline="") as source:
         run_rows = list(csv.DictReader(source))
-    with (experiment / "runtime_items.csv").open(newline="") as source:
+    with (artifact_root / "data" / "items.csv").open(newline="") as source:
         item_rows = list(csv.DictReader(source))
     assert len(run_rows) == 4
     assert len(item_rows) == 4
+    assert all(row["status"] == "completed" for row in run_rows)
+    assert all(row["score_retained_vs_q8"] == "1.0" for row in run_rows)
     assert {row["quantization"] for row in run_rows} == {"Q8_0", "Q4_K_M"}
     assert {row["temperature"] for row in run_rows} == {"0.0", "0.7"}
     assert all(row["ttft_seconds"] == "0.01" for row in item_rows)
