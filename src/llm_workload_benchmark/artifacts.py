@@ -7,10 +7,7 @@ import shutil
 import tempfile
 from typing import Any
 
-from llm_workload_benchmark.plots import (
-    PLOT_ID,
-    generate_quantization_survival,
-)
+from llm_workload_benchmark.plots import generate_plots
 
 
 class ArtifactError(ValueError):
@@ -105,16 +102,9 @@ def export_experiment_artifacts(
             }
 
         try:
-            plot_manifest = {
-                PLOT_ID: generate_quantization_survival(
-                    temporary,
-                    rows["configurations"],
-                )
-            }
+            plot_manifest = generate_plots(temporary, rows["configurations"])
         except Exception as error:
-            raise ArtifactError(
-                f"could not generate {PLOT_ID} plot: {error}"
-            ) from error
+            raise ArtifactError(f"could not generate plots: {error}") from error
 
         _write_json(
             temporary / "manifest.json",

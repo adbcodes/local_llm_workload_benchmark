@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 
 from llm_workload_benchmark.artifacts import ArtifactError, export_experiment_artifacts
 from llm_workload_benchmark.cli import app
+from llm_workload_benchmark.plots import _pareto_frontier
 
 
 def _write_experiment(tmp_path: Path) -> Path:
@@ -47,7 +48,7 @@ def _write_experiment(tmp_path: Path) -> Path:
         "mean_latency_seconds": 0.2,
         "mean_time_to_first_token_seconds": 0.05,
         "mean_output_tokens_per_second_end_to_end": 20.0,
-        "peak_process_memory_bytes": 2_000,
+        "peak_process_memory_bytes": 2 * 1024**3,
         "integration_friction_rate": 0.0,
     }
     (completed / "summary.json").write_text(
@@ -93,7 +94,7 @@ def _write_experiment(tmp_path: Path) -> Path:
                 "latency_seconds": 0.2,
                 "time_to_first_token_seconds": 0.05,
                 "output_tokens_per_second_end_to_end": 20.0,
-                "peak_process_memory_bytes": 2_000,
+                "peak_process_memory_bytes": 2 * 1024**3,
             }
         )
         + "\n",
@@ -147,6 +148,8 @@ def _write_quantization_experiment(tmp_path: Path) -> Path:
         aggregate["passed"] = 0
         aggregate["pass_rate"] = 0.0
         aggregate["mean_score"] = 0.75
+        aggregate["peak_process_memory_bytes"] = int(1.2 * 1024**3)
+        aggregate["mean_output_tokens_per_second_end_to_end"] = 30.0
     q4_summary["benchmarks"]["reasoning"]["reported_score"] = 0.75
     q4_directory = experiment / "models" / "model-q4"
     (q4_directory / "summary.json").write_text(
@@ -231,6 +234,41 @@ def test_export_experiment_artifacts_writes_quantization_plot_and_data(
     assert [row["score_percent"] for row in plot_rows] == ["100.0", "75.0"]
 
 
+def test_export_experiment_artifacts_writes_quality_frontiers(
+    tmp_path: Path,
+) -> None:
+    experiment = _write_quantization_experiment(tmp_path)
+
+    paths = export_experiment_artifacts(experiment)
+
+    manifest = json.loads(paths["manifest"].read_text())
+    for plot_id in ["memory_quality_frontier", "speed_quality_frontier"]:
+        plot = manifest["plots"][plot_id]
+        assert plot["status"] == "generated"
+        assert plot["row_count"] == 2
+        assert plot["pareto_count"] == 2
+        assert (paths["root"] / plot["png"]).read_bytes().startswith(
+            b"\x89PNG\r\n\x1a\n"
+        )
+        assert ET.parse(paths["root"] / plot["svg"]).getroot().tag.endswith("svg")
+        with (paths["root"] / plot["data"]).open(newline="") as source:
+            rows = list(csv.DictReader(source))
+        assert len(rows) == 2
+        assert {row["is_pareto"] for row in rows} == {"True"}
+
+
+def test_pareto_frontier_excludes_dominated_configurations() -> None:
+    rows = [
+        {"variant_id": "balanced", "cost": 2.0, "score_percent": 80.0},
+        {"variant_id": "dominated", "cost": 3.0, "score_percent": 70.0},
+        {"variant_id": "quality", "cost": 4.0, "score_percent": 90.0},
+    ]
+
+    frontier = _pareto_frontier(rows, x_field="cost", minimize_x=True)
+
+    assert {row["variant_id"] for row in frontier} == {"balanced", "quality"}
+
+
 def test_export_experiment_artifacts_replaces_only_managed_bundle(
     tmp_path: Path,
 ) -> None:
@@ -262,7 +300,7 @@ def test_plot_failure_preserves_previous_artifact_bundle(
         raise RuntimeError("renderer failed")
 
     monkeypatch.setattr(
-        "llm_workload_benchmark.artifacts.generate_quantization_survival",
+        "llm_workload_benchmark.artifacts.generate_plots",
         fail_plot,
     )
 
