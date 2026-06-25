@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 from llm_workload_benchmark.artifacts import ArtifactError, export_experiment_artifacts
+from llm_workload_benchmark.cli import app
 
 
 def _write_experiment(tmp_path: Path) -> Path:
@@ -154,12 +156,17 @@ def test_export_experiment_artifacts_replaces_only_managed_bundle(
     tmp_path: Path,
 ) -> None:
     experiment = _write_experiment(tmp_path)
-    first = export_experiment_artifacts(experiment)
+    first = export_experiment_artifacts(
+        experiment,
+        experiment_metadata={"kind": "runtime_matrix"},
+    )
     (first["root"] / "stale.txt").write_text("stale", encoding="utf-8")
 
     second = export_experiment_artifacts(experiment)
 
     assert not (second["root"] / "stale.txt").exists()
+    second_manifest = json.loads(second["manifest"].read_text())
+    assert second_manifest["experiment_metadata"] == {"kind": "runtime_matrix"}
     assert (experiment / "experiment.json").is_file()
     assert (experiment / "models" / "model-q8" / "results.jsonl").is_file()
 
@@ -175,3 +182,31 @@ def test_export_experiment_artifacts_rejects_escaping_references(
 
     with pytest.raises(ArtifactError, match="escapes experiment directory"):
         export_experiment_artifacts(experiment)
+
+
+def test_artifacts_cli_regenerates_saved_experiment(tmp_path: Path) -> None:
+    experiment = _write_experiment(tmp_path)
+
+    result = CliRunner().invoke(
+        app,
+        ["artifacts", "--experiment", str(experiment)],
+    )
+
+    assert result.exit_code == 0
+    assert "Artifact manifest:" in result.output
+    assert "Configuration CSV:" in result.output
+    assert (experiment / "artifacts" / "manifest.json").is_file()
+
+
+def test_artifacts_cli_reports_invalid_saved_experiment(tmp_path: Path) -> None:
+    experiment = tmp_path / "broken-experiment"
+    experiment.mkdir()
+    (experiment / "experiment.json").write_text("{}", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        ["artifacts", "--experiment", str(experiment)],
+    )
+
+    assert result.exit_code == 1
+    assert "Error: experiment index must contain at least one model entry" in result.output

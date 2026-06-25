@@ -59,11 +59,24 @@ def _write_experiment(
             "\n".join(json.dumps(record) for record in records) + "\n",
             encoding="utf-8",
         )
+        (run_directory / "summary.json").write_text(
+            json.dumps(
+                {
+                    "status": "completed",
+                    "model": {"id": model_id, "generation": {}},
+                    "totals": {},
+                    "suites": {},
+                    "benchmarks": {},
+                }
+            ),
+            encoding="utf-8",
+        )
         model_entries.append(
             {
                 "model_id": model_id,
                 "status": "completed",
                 "run_directory": f"models/{model_id}",
+                "summary": f"models/{model_id}/summary.json",
             }
         )
     (experiment / "experiment.json").write_text(
@@ -337,6 +350,7 @@ def test_benchmark_cli_runs_one_three_answer_arena_automatically(
     assert calls == [model_ids]
     assert "HUMAN PREFERENCE  3 anonymous answers" in result.output
     assert "PAIR" not in result.output
+    assert (experiment / "artifacts" / "manifest.json").is_file()
 
 
 def test_benchmark_cli_can_skip_interactive_human_evaluation(
@@ -358,3 +372,37 @@ def test_benchmark_cli_can_skip_interactive_human_evaluation(
 
     assert result.exit_code == 0
     assert "HUMAN PREFERENCE" not in result.output
+    assert (experiment / "artifacts" / "manifest.json").is_file()
+
+
+def test_benchmark_cli_preserves_raw_experiment_when_artifact_export_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from llm_workload_benchmark.artifacts import ArtifactError
+
+    model_ids = ("first", "second")
+    experiment = _write_experiment(tmp_path, model_ids)
+    config_path = _write_matrix_config(tmp_path, model_ids)
+    monkeypatch.setattr(
+        "llm_workload_benchmark.cli.run_matrix",
+        lambda *args, **kwargs: experiment,
+    )
+
+    def fail_export(*args, **kwargs):
+        raise ArtifactError("broken derived data")
+
+    monkeypatch.setattr(
+        "llm_workload_benchmark.cli.export_experiment_artifacts",
+        fail_export,
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["benchmark", "--config", str(config_path), "--skip-human-eval"],
+    )
+
+    assert result.exit_code == 1
+    assert "inference completed but artifact export failed" in result.output
+    assert f"raw experiment: {experiment}" in result.output
+    assert (experiment / "experiment.json").is_file()

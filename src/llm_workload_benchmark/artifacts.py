@@ -65,6 +65,10 @@ def export_experiment_artifacts(
     entries = index.get("models")
     if not isinstance(entries, list) or not entries:
         raise ArtifactError("experiment index must contain at least one model entry")
+    if experiment_metadata is None:
+        experiment_metadata = _existing_experiment_metadata(
+            experiment / "artifacts" / "manifest.json"
+        )
 
     rows = _collect_rows(experiment, entries)
     _attach_q8_baselines(rows["configurations"])
@@ -102,7 +106,7 @@ def export_experiment_artifacts(
                 "experiment_id": index.get("experiment_id"),
                 "experiment_status": index.get("status"),
                 "source": "../experiment.json",
-                "experiment_metadata": experiment_metadata or {},
+                "experiment_metadata": experiment_metadata,
                 "machine": rows["machine"],
                 "tables": table_manifest,
                 "plots": {},
@@ -397,6 +401,17 @@ def _read_json_object(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ArtifactError(f"experiment artifact must contain a JSON object: {path}")
     return value
+
+
+def _existing_experiment_metadata(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    metadata = manifest.get("experiment_metadata") if isinstance(manifest, dict) else None
+    return metadata if isinstance(metadata, dict) else {}
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:

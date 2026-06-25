@@ -5,6 +5,10 @@ from pathlib import Path
 import typer
 
 from llm_workload_benchmark import __version__
+from llm_workload_benchmark.artifacts import (
+    ArtifactError,
+    export_experiment_artifacts,
+)
 from llm_workload_benchmark.authoring import build_authoring_suite
 from llm_workload_benchmark.catalog import CatalogError, validate_catalog
 from llm_workload_benchmark.config import ConfigError, load_config
@@ -186,6 +190,19 @@ def benchmark_command(
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
 
+    try:
+        artifact_paths = export_experiment_artifacts(
+            experiment_directory,
+            experiment_metadata={"kind": "model_matrix"},
+        )
+    except (ArtifactError, OSError) as error:
+        typer.echo(
+            f"Error: inference completed but artifact export failed: {error}; "
+            f"raw experiment: {experiment_directory}",
+            err=True,
+        )
+        raise typer.Exit(code=1) from error
+
     if human_eval:
         try:
             model_ids = completed_model_ids(experiment_directory)
@@ -210,6 +227,7 @@ def benchmark_command(
             raise typer.Exit(code=1) from error
 
     typer.echo(f"\nExperiment saved to {experiment_directory}")
+    _show_artifact_paths(artifact_paths)
 
 
 @app.command("runtime-matrix")
@@ -269,6 +287,35 @@ def _build_configured_dataset(workload_path: Path) -> None:
         workload_path if workload_path.is_absolute() else Path.cwd() / workload_path
     )
     build_authoring_suite(suite_path)
+
+
+def _show_artifact_paths(paths: dict[str, Path]) -> None:
+    typer.echo(f"Artifact manifest: {paths['manifest']}")
+    typer.echo(f"Configuration CSV: {paths['configurations']}")
+
+
+@app.command("artifacts")
+def artifacts_command(
+    experiment_directory: Path = typer.Option(
+        ...,
+        "--experiment",
+        "-e",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+        help="Saved matrix experiment to export without rerunning inference.",
+    ),
+) -> None:
+    """Regenerate artifacts from a saved matrix experiment."""
+    try:
+        paths = export_experiment_artifacts(experiment_directory)
+    except (ArtifactError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    _show_artifact_paths(paths)
 
 
 @app.command("prefer")
