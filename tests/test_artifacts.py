@@ -1,6 +1,7 @@
 import csv
 import json
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import pytest
 from typer.testing import CliRunner
@@ -127,6 +128,60 @@ def _write_experiment(tmp_path: Path) -> Path:
     return experiment
 
 
+def _write_quantization_experiment(tmp_path: Path) -> Path:
+    experiment = _write_experiment(tmp_path)
+    q8_summary_path = experiment / "models" / "model-q8" / "summary.json"
+    q8_summary = json.loads(q8_summary_path.read_text())
+    q4_summary = json.loads(q8_summary_path.read_text())
+    q4_summary["model"] = {
+        **q4_summary["model"],
+        "id": "model-q4",
+        "quantization": "Q4_K_M",
+        "file_size_bytes": 600,
+    }
+    for aggregate in [
+        q4_summary["totals"],
+        q4_summary["suites"]["A"],
+        q4_summary["benchmarks"]["reasoning"]["overall"],
+    ]:
+        aggregate["passed"] = 0
+        aggregate["pass_rate"] = 0.0
+        aggregate["mean_score"] = 0.75
+    q4_summary["benchmarks"]["reasoning"]["reported_score"] = 0.75
+    q4_directory = experiment / "models" / "model-q4"
+    (q4_directory / "summary.json").write_text(
+        json.dumps(q4_summary),
+        encoding="utf-8",
+    )
+    (q4_directory / "results.jsonl").write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "benchmark": "reasoning",
+                "suite": "A",
+                "item_id": "reasoning_001",
+                "difficulty": "easy",
+                "repetition": 1,
+                "evaluation": {"passed": False, "score": 0.75},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    index_path = experiment / "experiment.json"
+    index = json.loads(index_path.read_text())
+    index["status"] = "completed"
+    index["models"][1].update(
+        {
+            "status": "completed",
+            "summary": "models/model-q4/summary.json",
+            "error": None,
+        }
+    )
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    return experiment
+
+
 def test_export_experiment_artifacts_writes_normalized_partial_results(
     tmp_path: Path,
 ) -> None:
@@ -137,6 +192,7 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     manifest = json.loads(paths["manifest"].read_text())
     assert manifest["experiment_status"] == "partial_failure"
     assert manifest["machine"]["environment"]["machine_model"] == "test-machine"
+    assert manifest["plots"]["quantization_survival"]["status"] == "skipped"
     assert manifest["tables"] == {
         "benchmarks": {"path": "data/benchmarks.csv", "row_count": 1},
         "configurations": {"path": "data/configurations.csv", "row_count": 2},
@@ -150,6 +206,29 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     assert json.loads(configurations[1]["error"])["message"] == "load failed"
     with paths["suites"].open(newline="") as source:
         assert list(csv.DictReader(source))[0]["suite"] == "A"
+
+
+def test_export_experiment_artifacts_writes_quantization_plot_and_data(
+    tmp_path: Path,
+) -> None:
+    experiment = _write_quantization_experiment(tmp_path)
+
+    paths = export_experiment_artifacts(experiment)
+
+    manifest = json.loads(paths["manifest"].read_text())
+    plot = manifest["plots"]["quantization_survival"]
+    assert plot["status"] == "generated"
+    assert plot["row_count"] == 2
+    assert plot["series_count"] == 1
+    png_path = paths["root"] / plot["png"]
+    svg_path = paths["root"] / plot["svg"]
+    data_path = paths["root"] / plot["data"]
+    assert png_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert ET.parse(svg_path).getroot().tag.endswith("svg")
+    with data_path.open(newline="") as source:
+        plot_rows = list(csv.DictReader(source))
+    assert [row["quantization_label"] for row in plot_rows] == ["Q8", "Q4"]
+    assert [row["score_percent"] for row in plot_rows] == ["100.0", "75.0"]
 
 
 def test_export_experiment_artifacts_replaces_only_managed_bundle(
@@ -169,6 +248,29 @@ def test_export_experiment_artifacts_replaces_only_managed_bundle(
     assert second_manifest["experiment_metadata"] == {"kind": "runtime_matrix"}
     assert (experiment / "experiment.json").is_file()
     assert (experiment / "models" / "model-q8" / "results.jsonl").is_file()
+
+
+def test_plot_failure_preserves_previous_artifact_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    experiment = _write_quantization_experiment(tmp_path)
+    first = export_experiment_artifacts(experiment)
+    original_manifest = first["manifest"].read_text()
+
+    def fail_plot(*args, **kwargs):
+        raise RuntimeError("renderer failed")
+
+    monkeypatch.setattr(
+        "llm_workload_benchmark.artifacts.generate_quantization_survival",
+        fail_plot,
+    )
+
+    with pytest.raises(ArtifactError, match="renderer failed"):
+        export_experiment_artifacts(experiment)
+
+    assert first["manifest"].read_text() == original_manifest
+    assert (first["root"] / "plots" / "quantization-survival.png").is_file()
 
 
 def test_export_experiment_artifacts_rejects_escaping_references(
