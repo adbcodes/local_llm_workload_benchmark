@@ -1,0 +1,56 @@
+schema_version: 1
+benchmark:
+  name: final-default-matrix
+  description: Twelve default configurations for the final benchmark figures.
+  workload_path: data/suites/all.yaml
+  output_root: runs
+  repetitions: 1
+  seed: 42
+judge: &judge
+  provider: groq
+  model: openai/gpt-oss-120b
+  family: openai
+  api_key_env: GROQ_API_KEY
+  cache_path: runs/judge_cache.jsonl
+models:
+  - &qwen25
+    id: qwen2.5-3b-q8
+    backend: llama_cpp
+    model_path: models/qwen2.5-3b-instruct-q8_0.gguf
+    quantization: Q8_0
+    architecture: qwen2.5-3b
+    family: qwen2.5
+    context_window: 16384
+    gpu_layers: -1
+    batch_size: 512
+    flash_attention: true
+    generation: &default_generation
+      {max_output_tokens: 512, temperature: 0.0, top_p: 1.0, top_k: 40,
+       repeat_penalty: 1.0, constrained_decoding: none}
+  - {<<: *qwen25, id: qwen2.5-3b-q6, model_path: models/qwen2.5-3b-instruct-q6_k.gguf, quantization: Q6_K}
+  - {<<: *qwen25, id: qwen2.5-3b-q4, model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf, quantization: Q4_K_M}
+  - {<<: *qwen25, id: qwen2.5-3b-q3, model_path: models/qwen2.5-3b-instruct-q3_k_m.gguf, quantization: Q3_K_M}
+  - &gemma3
+    <<: *qwen25
+    id: gemma-3-4b-q8
+    model_path: models/gemma-3-4b-it-Q8_0.gguf
+    quantization: Q8_0
+    architecture: gemma-3-4b
+    family: gemma3
+  - {<<: *gemma3, id: gemma-3-4b-q6, model_path: models/gemma-3-4b-it-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *gemma3, id: gemma-3-4b-q4, model_path: models/gemma-3-4b-it-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *gemma3, id: gemma-3-4b-q3, model_path: models/gemma-3-4b-it-Q3_K_M.gguf, quantization: Q3_K_M}
+  - &qwen3
+    <<: *qwen25
+    id: qwen3-8b-q8
+    model_path: models/Qwen3-8B-Q8_0.gguf
+    quantization: Q8_0
+    architecture: qwen3-8b
+    family: qwen3
+    response_cleanup: strip_think
+    system_prompt: |-
+      /no_think
+      Follow the user's instructions precisely. Return only the requested answer without commentary.
+  - {<<: *qwen3, id: qwen3-8b-q6, model_path: models/Qwen3-8B-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *qwen3, id: qwen3-8b-q4, model_path: models/Qwen3-8B-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *qwen3, id: qwen3-8b-q3, model_path: models/Qwen3-8B-Q3_K_M.gguf, quantization: Q3_K_M}

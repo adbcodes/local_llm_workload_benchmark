@@ -1,0 +1,54 @@
+schema_version: 1
+name: final-figure-tier2-probe
+version: 1
+status: frozen
+benchmark_files:
+  - ../applied_reasoning/benchmark.yaml
+  - ../code_debug_repair/benchmark.yaml
+  - ../messy_text_to_schema/benchmark.yaml
+  - ../tables_to_decisions/benchmark.yaml
+  - ../inbox_routing/benchmark.yaml
+  - ../tool_use/benchmark.yaml
+  - ../constraint_load_curve/benchmark.yaml
+filters:
+  ids:
+    - anchor_math_average_001
+    - anchor_math_ratio_001
+    - anchor_math_substitution_001
+    - anchor_math_primes_001
+    - anchor_bbh_boolean_001
+    - anchor_bbh_order_three_001
+    - reason_percentage_001
+    - reason_ratio_share_generated_001
+    - reason_linear_equation_generated_001
+    - reason_lcm_generated_001
+    - code_deduplicate_001
+    - code_pair_sum_indices_001
+    - code_sorted_squares_001
+    - code_balanced_brackets_001
+    - code_lower_bound_001
+    - code_follow_index_chain_001
+    - code_prefix_match_counts_001
+    - code_unique_xor_001
+    - schema_invoice_001
+    - schema_contact_001
+    - schema_shipment_001
+    - schema_booking_001
+    - schema_product_001
+    - schema_event_002
+    - tables_to_decisions_001
+    - tables_to_decisions_002
+    - tables_to_decisions_003
+    - tables_to_decisions_004
+    - inbox_routing_001
+    - inbox_routing_002
+    - inbox_routing_003
+    - tool_use_001
+    - tool_use_002
+    - tool_use_003
+    - constraint_api_rate_limiting_001
+    - constraint_order_extraction_001
+    - constraint_language_list_001
+    - constraint_employee_json_001
+    - constraint_book_csv_001
+    - constraint_paragraph_rewrite_001

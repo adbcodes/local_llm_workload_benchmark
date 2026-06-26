@@ -15,30 +15,30 @@ requirements:
   tool_use_is_mandatory: true
   quant_sensitive_items: [large_number_arithmetic, rare_proper_nouns, long_code_identifiers, non_ascii_text]
 item_ids:
-  - applied_reasoning_001
-  - applied_reasoning_002
-  - applied_reasoning_003
-  - applied_reasoning_004
-  - applied_reasoning_005
-  - applied_reasoning_006
-  - applied_reasoning_007
-  - applied_reasoning_008
-  - applied_reasoning_009
-  - applied_reasoning_010
-  - code_debug_repair_001
-  - code_debug_repair_002
-  - code_debug_repair_003
-  - code_debug_repair_004
-  - code_debug_repair_005
-  - code_debug_repair_006
-  - code_debug_repair_007
-  - code_debug_repair_008
-  - messy_text_to_schema_001
-  - messy_text_to_schema_002
-  - messy_text_to_schema_003
-  - messy_text_to_schema_004
-  - messy_text_to_schema_005
-  - messy_text_to_schema_006
+  - anchor_math_average_001
+  - anchor_math_ratio_001
+  - anchor_math_substitution_001
+  - anchor_math_primes_001
+  - anchor_bbh_boolean_001
+  - anchor_bbh_order_three_001
+  - reason_percentage_001
+  - reason_ratio_share_generated_001
+  - reason_linear_equation_generated_001
+  - reason_lcm_generated_001
+  - code_deduplicate_001
+  - code_pair_sum_indices_001
+  - code_sorted_squares_001
+  - code_balanced_brackets_001
+  - code_lower_bound_001
+  - code_follow_index_chain_001
+  - code_prefix_match_counts_001
+  - code_unique_xor_001
+  - schema_invoice_001
+  - schema_contact_001
+  - schema_shipment_001
+  - schema_booking_001
+  - schema_product_001
+  - schema_event_002
   - tables_to_decisions_001
   - tables_to_decisions_002
   - tables_to_decisions_003
@@ -49,10 +49,10 @@ item_ids:
   - tool_use_001
   - tool_use_002
   - tool_use_003
-  - constraint_load_curve_001
-  - constraint_load_curve_002
-  - constraint_load_curve_003
-  - constraint_load_curve_004
-  - constraint_load_curve_005
-  - constraint_load_curve_006
+  - constraint_api_rate_limiting_001
+  - constraint_order_extraction_001
+  - constraint_language_list_001
+  - constraint_employee_json_001
+  - constraint_book_csv_001
+  - constraint_paragraph_rewrite_001
 freeze_rule: Selection is immutable for final figure Tier 2 comparisons.

@@ -1,0 +1,74 @@
+schema_version: 1
+benchmark:
+  name: final-tier2-matrix
+  description: Three controlled deltas per configuration on the frozen 40-item probe.
+  workload_path: data/suites/tier2_probe.yaml
+  output_root: runs
+  repetitions: 1
+  seed: 42
+judge:
+  provider: groq
+  model: openai/gpt-oss-120b
+  family: openai
+  api_key_env: GROQ_API_KEY
+  cache_path: runs/judge_cache.jsonl
+models:
+  - &qwen25
+    id: qwen2.5-3b-q8-temp07
+    backend: llama_cpp
+    model_path: models/qwen2.5-3b-instruct-q8_0.gguf
+    quantization: Q8_0
+    architecture: qwen2.5-3b
+    family: qwen2.5
+    context_window: 16384
+    gpu_layers: -1
+    batch_size: 512
+    flash_attention: true
+    generation: &temp07
+      {max_output_tokens: 512, temperature: 0.7, top_p: 1.0, top_k: 40,
+       repeat_penalty: 1.0, constrained_decoding: none}
+  - {<<: *qwen25, id: qwen2.5-3b-q8-repeat11, generation: &repeat11 {max_output_tokens: 512, temperature: 0.0, top_p: 1.0, top_k: 40, repeat_penalty: 1.1, constrained_decoding: none}}
+  - {<<: *qwen25, id: qwen2.5-3b-q8-grammar, generation: &grammar {max_output_tokens: 512, temperature: 0.0, top_p: 1.0, top_k: 40, repeat_penalty: 1.0, constrained_decoding: json_when_requested}}
+  - &qwen25q6 {<<: *qwen25, id: qwen2.5-3b-q6-temp07, model_path: models/qwen2.5-3b-instruct-q6_k.gguf, quantization: Q6_K}
+  - {<<: *qwen25q6, id: qwen2.5-3b-q6-repeat11, generation: *repeat11}
+  - {<<: *qwen25q6, id: qwen2.5-3b-q6-grammar, generation: *grammar}
+  - &qwen25q4 {<<: *qwen25, id: qwen2.5-3b-q4-temp07, model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf, quantization: Q4_K_M}
+  - {<<: *qwen25q4, id: qwen2.5-3b-q4-repeat11, generation: *repeat11}
+  - {<<: *qwen25q4, id: qwen2.5-3b-q4-grammar, generation: *grammar}
+  - &qwen25q3 {<<: *qwen25, id: qwen2.5-3b-q3-temp07, model_path: models/qwen2.5-3b-instruct-q3_k_m.gguf, quantization: Q3_K_M}
+  - {<<: *qwen25q3, id: qwen2.5-3b-q3-repeat11, generation: *repeat11}
+  - {<<: *qwen25q3, id: qwen2.5-3b-q3-grammar, generation: *grammar}
+  - &gemmaq8 {<<: *qwen25, id: gemma-3-4b-q8-temp07, model_path: models/gemma-3-4b-it-Q8_0.gguf, quantization: Q8_0, architecture: gemma-3-4b, family: gemma3}
+  - {<<: *gemmaq8, id: gemma-3-4b-q8-repeat11, generation: *repeat11}
+  - {<<: *gemmaq8, id: gemma-3-4b-q8-grammar, generation: *grammar}
+  - &gemmaq6 {<<: *gemmaq8, id: gemma-3-4b-q6-temp07, model_path: models/gemma-3-4b-it-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *gemmaq6, id: gemma-3-4b-q6-repeat11, generation: *repeat11}
+  - {<<: *gemmaq6, id: gemma-3-4b-q6-grammar, generation: *grammar}
+  - &gemmaq4 {<<: *gemmaq8, id: gemma-3-4b-q4-temp07, model_path: models/gemma-3-4b-it-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *gemmaq4, id: gemma-3-4b-q4-repeat11, generation: *repeat11}
+  - {<<: *gemmaq4, id: gemma-3-4b-q4-grammar, generation: *grammar}
+  - &gemmaq3 {<<: *gemmaq8, id: gemma-3-4b-q3-temp07, model_path: models/gemma-3-4b-it-Q3_K_M.gguf, quantization: Q3_K_M}
+  - {<<: *gemmaq3, id: gemma-3-4b-q3-repeat11, generation: *repeat11}
+  - {<<: *gemmaq3, id: gemma-3-4b-q3-grammar, generation: *grammar}
+  - &qwen3q8
+    <<: *qwen25
+    id: qwen3-8b-q8-temp07
+    model_path: models/Qwen3-8B-Q8_0.gguf
+    quantization: Q8_0
+    architecture: qwen3-8b
+    family: qwen3
+    response_cleanup: strip_think
+    system_prompt: |-
+      /no_think
+      Follow the user's instructions precisely. Return only the requested answer without commentary.
+  - {<<: *qwen3q8, id: qwen3-8b-q8-repeat11, generation: *repeat11}
+  - {<<: *qwen3q8, id: qwen3-8b-q8-grammar, generation: *grammar}
+  - &qwen3q6 {<<: *qwen3q8, id: qwen3-8b-q6-temp07, model_path: models/Qwen3-8B-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *qwen3q6, id: qwen3-8b-q6-repeat11, generation: *repeat11}
+  - {<<: *qwen3q6, id: qwen3-8b-q6-grammar, generation: *grammar}
+  - &qwen3q4 {<<: *qwen3q8, id: qwen3-8b-q4-temp07, model_path: models/Qwen3-8B-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *qwen3q4, id: qwen3-8b-q4-repeat11, generation: *repeat11}
+  - {<<: *qwen3q4, id: qwen3-8b-q4-grammar, generation: *grammar}
+  - &qwen3q3 {<<: *qwen3q8, id: qwen3-8b-q3-temp07, model_path: models/Qwen3-8B-Q3_K_M.gguf, quantization: Q3_K_M}
+  - {<<: *qwen3q3, id: qwen3-8b-q3-repeat11, generation: *repeat11}
+  - {<<: *qwen3q3, id: qwen3-8b-q3-grammar, generation: *grammar}

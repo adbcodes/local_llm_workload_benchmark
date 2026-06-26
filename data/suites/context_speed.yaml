@@ -1,0 +1,37 @@
+schema_version: 1
+name: final-figure-context-speed
+version: 1
+status: frozen
+benchmark_files:
+  - ../applied_reasoning/benchmark.yaml
+  - ../long_text_retrieval/benchmark.yaml
+filters:
+  ids:
+    - reason_percentage_001
+    - long_text_retrieval_001
+    - long_text_retrieval_002
+    - long_text_retrieval_003
+    - long_text_retrieval_004
+    - long_text_retrieval_005
+    - long_text_retrieval_006
+    - long_text_retrieval_007
+    - long_text_retrieval_008
+    - long_text_retrieval_009
+    - long_text_retrieval_010
+    - long_text_retrieval_011
+    - long_text_retrieval_012
+    - long_text_retrieval_013
+    - long_text_retrieval_014
+    - long_text_retrieval_015
+    - long_text_retrieval_016
+    - long_text_retrieval_017
+    - long_text_retrieval_018
+    - long_text_retrieval_019
+    - long_text_retrieval_020
+    - long_text_retrieval_021
+    - long_text_retrieval_022
+    - long_text_retrieval_023
+    - long_text_retrieval_024
+    - long_text_retrieval_025
+    - long_text_retrieval_026
+    - long_text_retrieval_027
