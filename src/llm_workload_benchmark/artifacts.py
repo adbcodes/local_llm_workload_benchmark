@@ -7,9 +7,6 @@ import shutil
 import tempfile
 from typing import Any
 
-from llm_workload_benchmark.plots import generate_plots
-
-
 class ArtifactError(ValueError):
     """Raised when saved experiment data cannot produce an artifact bundle."""
 
@@ -109,15 +106,6 @@ def export_experiment_artifacts(
                 "row_count": len(table_rows),
             }
 
-        try:
-            plot_manifest = generate_plots(
-                temporary,
-                rows["configurations"],
-                rows["suites"],
-            )
-        except Exception as error:
-            raise ArtifactError(f"could not generate plots: {error}") from error
-
         _write_json(
             temporary / "manifest.json",
             {
@@ -128,7 +116,7 @@ def export_experiment_artifacts(
                 "experiment_metadata": experiment_metadata,
                 "machine": rows["machine"],
                 "tables": table_manifest,
-                "plots": plot_manifest,
+                "plots": {},
             },
         )
         _replace_directory(temporary, destination)

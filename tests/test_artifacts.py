@@ -1,14 +1,12 @@
 import csv
 import json
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import pytest
 from typer.testing import CliRunner
 
 from llm_workload_benchmark.artifacts import ArtifactError, export_experiment_artifacts
 from llm_workload_benchmark.cli import app
-from llm_workload_benchmark.plots import _pareto_frontier
 
 
 def _write_experiment(tmp_path: Path) -> Path:
@@ -204,8 +202,7 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     manifest = json.loads(paths["manifest"].read_text())
     assert manifest["experiment_status"] == "partial_failure"
     assert manifest["machine"]["environment"]["machine_model"] == "test-machine"
-    assert manifest["plots"]["quantization_survival"]["status"] == "skipped"
-    assert manifest["plots"]["workload_fit_heatmap"]["status"] == "skipped"
+    assert manifest["plots"] == {}
     assert manifest["tables"] == {
         "benchmarks": {"path": "data/benchmarks.csv", "row_count": 1},
         "configurations": {"path": "data/configurations.csv", "row_count": 2},
@@ -229,110 +226,6 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     assert json.loads(item["response_contract"])["type"] == "number"
 
 
-def test_export_experiment_artifacts_writes_quantization_plot_and_data(
-    tmp_path: Path,
-) -> None:
-    experiment = _write_quantization_experiment(tmp_path)
-
-    paths = export_experiment_artifacts(experiment)
-
-    manifest = json.loads(paths["manifest"].read_text())
-    plot = manifest["plots"]["quantization_survival"]
-    assert plot["status"] == "generated"
-    assert plot["row_count"] == 2
-    assert plot["series_count"] == 1
-    png_path = paths["root"] / plot["png"]
-    svg_path = paths["root"] / plot["svg"]
-    data_path = paths["root"] / plot["data"]
-    assert png_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
-    assert ET.parse(svg_path).getroot().tag.endswith("svg")
-    with data_path.open(newline="") as source:
-        plot_rows = list(csv.DictReader(source))
-    assert [row["quantization_label"] for row in plot_rows] == ["Q8", "Q4"]
-    assert [row["score_percent"] for row in plot_rows] == ["100.0", "75.0"]
-
-
-def test_export_experiment_artifacts_writes_quality_frontiers(
-    tmp_path: Path,
-) -> None:
-    experiment = _write_quantization_experiment(tmp_path)
-
-    paths = export_experiment_artifacts(experiment)
-
-    manifest = json.loads(paths["manifest"].read_text())
-    for plot_id in ["memory_quality_frontier", "speed_quality_frontier"]:
-        plot = manifest["plots"][plot_id]
-        assert plot["status"] == "generated"
-        assert plot["row_count"] == 2
-        assert plot["pareto_count"] == 2
-        assert (paths["root"] / plot["png"]).read_bytes().startswith(
-            b"\x89PNG\r\n\x1a\n"
-        )
-        assert ET.parse(paths["root"] / plot["svg"]).getroot().tag.endswith("svg")
-        with (paths["root"] / plot["data"]).open(newline="") as source:
-            rows = list(csv.DictReader(source))
-        assert len(rows) == 2
-        assert {row["is_pareto"] for row in rows} == {"True"}
-
-
-def test_pareto_frontier_excludes_dominated_configurations() -> None:
-    rows = [
-        {"variant_id": "balanced", "cost": 2.0, "score_percent": 80.0},
-        {"variant_id": "dominated", "cost": 3.0, "score_percent": 70.0},
-        {"variant_id": "quality", "cost": 4.0, "score_percent": 90.0},
-    ]
-
-    frontier = _pareto_frontier(rows, x_field="cost", minimize_x=True)
-
-    assert {row["variant_id"] for row in frontier} == {"balanced", "quality"}
-
-
-def test_export_experiment_artifacts_writes_workload_fit_heatmap(
-    tmp_path: Path,
-) -> None:
-    experiment = _write_quantization_experiment(tmp_path)
-    q8_summary_path = experiment / "models" / "model-q8" / "summary.json"
-    q8_summary = json.loads(q8_summary_path.read_text())
-    missing_skill = dict(q8_summary["suites"]["A"])
-    missing_skill.update({"passed": 0, "pass_rate": 0.0, "mean_score": 0.0})
-    q8_summary["suites"]["B"] = missing_skill
-    q8_summary_path.write_text(json.dumps(q8_summary), encoding="utf-8")
-
-    paths = export_experiment_artifacts(experiment)
-
-    manifest = json.loads(paths["manifest"].read_text())
-    assert set(manifest["plots"]) == {
-        "quantization_survival",
-        "memory_quality_frontier",
-        "speed_quality_frontier",
-        "workload_fit_heatmap",
-    }
-    plot = manifest["plots"]["workload_fit_heatmap"]
-    assert plot["status"] == "generated"
-    assert plot["configuration_count"] == 2
-    assert plot["suite_count"] == 2
-    assert plot["observed_count"] == 3
-    assert plot["missing_count"] == 1
-    assert (paths["root"] / plot["png"]).read_bytes().startswith(
-        b"\x89PNG\r\n\x1a\n"
-    )
-    assert ET.parse(paths["root"] / plot["svg"]).getroot().tag.endswith("svg")
-    with (paths["root"] / plot["data"]).open(newline="") as source:
-        rows = list(csv.DictReader(source))
-    zero = next(
-        row for row in rows
-        if row["variant_id"] == "model-q8" and row["suite"] == "B"
-    )
-    missing = next(
-        row for row in rows
-        if row["variant_id"] == "model-q4" and row["suite"] == "B"
-    )
-    assert zero["available"] == "True"
-    assert zero["score_percent"] == "0.0"
-    assert missing["available"] == "False"
-    assert missing["score_percent"] == ""
-
-
 def test_export_experiment_artifacts_replaces_only_managed_bundle(
     tmp_path: Path,
 ) -> None:
@@ -350,29 +243,6 @@ def test_export_experiment_artifacts_replaces_only_managed_bundle(
     assert second_manifest["experiment_metadata"] == {"kind": "runtime_matrix"}
     assert (experiment / "experiment.json").is_file()
     assert (experiment / "models" / "model-q8" / "results.jsonl").is_file()
-
-
-def test_plot_failure_preserves_previous_artifact_bundle(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    experiment = _write_quantization_experiment(tmp_path)
-    first = export_experiment_artifacts(experiment)
-    original_manifest = first["manifest"].read_text()
-
-    def fail_plot(*args, **kwargs):
-        raise RuntimeError("renderer failed")
-
-    monkeypatch.setattr(
-        "llm_workload_benchmark.artifacts.generate_plots",
-        fail_plot,
-    )
-
-    with pytest.raises(ArtifactError, match="renderer failed"):
-        export_experiment_artifacts(experiment)
-
-    assert first["manifest"].read_text() == original_manifest
-    assert (first["root"] / "plots" / "quantization-survival.png").is_file()
 
 
 def test_export_experiment_artifacts_rejects_escaping_references(
@@ -414,3 +284,24 @@ def test_artifacts_cli_reports_invalid_saved_experiment(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Error: experiment index must contain at least one model entry" in result.output
+
+
+def test_figures_cli_writes_manifest_and_conditional_reasons(tmp_path: Path) -> None:
+    experiment = _write_experiment(tmp_path)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "figures",
+            "--default-experiment", str(experiment),
+            "--tier2-experiment", str(experiment),
+            "--context-experiment", str(experiment),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Skipped calibration:" in result.output
+    assert "Skipped thermal_drift:" in result.output
+    manifest_path = experiment / "artifacts" / "final_figures" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    assert len(manifest["plots"]) == 10

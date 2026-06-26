@@ -2,12 +2,14 @@ import csv
 from pathlib import Path
 
 from llm_workload_benchmark.final_figures import (
+    calibration,
     deployment_risk,
     config_effects,
     context_speed,
     laptop_value_frontier,
     quant_survival,
     retrieval_depth,
+    thermal_drift,
     trust_profile,
     workload_decision_matrix,
 )
@@ -98,3 +100,17 @@ def test_retrieval_context_and_config_figures_generate(tmp_path: Path) -> None:
          "constrained_decoding": "json_when_requested"},
     ]
     assert config_effects(tmp_path, default, tier2)["status"] == "generated"
+
+
+def test_conditional_figures_report_gate_evidence(tmp_path: Path) -> None:
+    thin = calibration(tmp_path, [])
+    assert thin["status"] == "skipped"
+    assert len(thin["thin_bins"]) == 15
+    stable = [
+        {"variant_id": "stable", "family": "qwen3", "run_order": index + 1,
+         "output_tokens_per_second": 20.0}
+        for index in range(30)
+    ]
+    thermal = thermal_drift(tmp_path, stable)
+    assert thermal["status"] == "skipped"
+    assert thermal["diagnostics"][0]["predicted_drop_percent"] == 0

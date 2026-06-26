@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -13,6 +14,7 @@ from llm_workload_benchmark.authoring import build_authoring_suite
 from llm_workload_benchmark.catalog import CatalogError, validate_catalog
 from llm_workload_benchmark.config import ConfigError, load_config
 from llm_workload_benchmark.dataset import DatasetError
+from llm_workload_benchmark.final_figures import generate_final_figure_bundle
 from llm_workload_benchmark.preference import (
     PreferenceError,
     completed_model_ids,
@@ -316,6 +318,30 @@ def artifacts_command(
         raise typer.Exit(code=1) from error
 
     _show_artifact_paths(paths)
+
+
+@app.command("figures")
+def figures_command(
+    default_experiment: Path = typer.Option(..., "--default-experiment", exists=True,
+                                            file_okay=False, resolve_path=True),
+    tier2_experiment: Path = typer.Option(..., "--tier2-experiment", exists=True,
+                                          file_okay=False, resolve_path=True),
+    context_experiment: Path = typer.Option(..., "--context-experiment", exists=True,
+                                            file_okay=False, resolve_path=True),
+) -> None:
+    """Generate the finalized benchmark figure bundle from three saved experiments."""
+    try:
+        root = generate_final_figure_bundle(default_experiment, tier2_experiment,
+                                            context_experiment)
+    except (ArtifactError, OSError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    for name in ("calibration", "thermal_drift"):
+        result = manifest["plots"][name]
+        if result["status"] == "skipped":
+            typer.echo(f"Skipped {name}: {result['reason']}")
+    typer.echo(f"Final figure manifest: {root / 'manifest.json'}")
 
 
 @app.command("prefer")

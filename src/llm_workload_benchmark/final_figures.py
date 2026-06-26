@@ -4,6 +4,8 @@ import csv
 import json
 import math
 from pathlib import Path
+import random
+import shutil
 from typing import Any, Callable
 
 
@@ -323,7 +325,17 @@ def trust_profile(
         for metric, benchmark, subcategories in definitions:
             selected = [row for row in config_rows if row.get("benchmark") == benchmark
                         and (subcategories is None or row.get("subcategory") in subcategories)]
-            events = sum(_boolean(row.get("passed")) is False for row in selected)
+            if metric in {"sycophancy flip", "are-you-sure flip"}:
+                paired = [(row, _json_object(row.get("evaluation_details")).get("transition"))
+                          for row in selected]
+                selected = [row for row, transition in paired
+                            if transition in {"stood_by_correct", "flipped_correct_to_wrong"}]
+                events = sum(
+                    _json_object(row.get("evaluation_details")).get("transition")
+                    == "flipped_correct_to_wrong" for row in selected
+                )
+            else:
+                events = sum(_boolean(row.get("passed")) is False for row in selected)
             interval = wilson_interval(events, len(selected))
             if interval is None:
                 continue
@@ -507,7 +519,16 @@ def config_effects(
                          successes=len(parseable))
             _append_rate(rows, architecture, quant, "grammar", level, "value accuracy",
                          parseable)
-    if not rows:
+    has_pair = any(
+        {row["level"] for row in rows if row["architecture"] == architecture
+         and row["quantization"] == quant and row["effect"] == effect
+         and row["metric"] == metric} == {"off", "on"}
+        for architecture, quant in keys
+        for effect, metric in [("temperature", "probe pass rate"),
+                               ("repeat_penalty", "probe pass rate"),
+                               ("grammar", "parse rate")]
+    )
+    if not rows or not has_pair:
         return _skipped("requires matching default and Tier 2 probe results")
     _write_csv(root / "data" / "config_effects.csv", rows)
     import matplotlib
@@ -542,6 +563,158 @@ def config_effects(
     return _generated(paths, len(rows))
 
 
+def calibration(root: Path, item_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    bins = [(index / 5, (index + 1) / 5) for index in range(5)]
+    rows: list[dict[str, Any]] = []
+    thin: list[dict[str, Any]] = []
+    for family in FAMILY_COLORS:
+        confidence_rows = [row for row in item_rows if row.get("family") == family
+                           and row.get("benchmark") == "confidence_correctness"]
+        for index, (low, high) in enumerate(bins):
+            selected = []
+            for row in confidence_rows:
+                details = _json_object(row.get("evaluation_details"))
+                probability = _number_or_none(details.get("confidence_probability"))
+                if probability is not None and low <= probability <= (high if index == 4 else high - 1e-12):
+                    selected.append(details)
+            if len(selected) < 30:
+                thin.append({"family": family, "bin": f"{low:.1f}-{high:.1f}", "n": len(selected)})
+                continue
+            correct = sum(bool(details.get("answer_correct")) for details in selected)
+            interval = wilson_interval(correct, len(selected))
+            rows.append({
+                "family": family, "bin_low": low * 100, "bin_high": high * 100,
+                "confidence_midpoint_percent": (low + high) * 50,
+                "correct": correct, "n": len(selected), "accuracy_percent": correct / len(selected) * 100,
+                "ci_low_percent": interval[0] * 100, "ci_high_percent": interval[1] * 100,
+            })
+    if thin:
+        return _skipped("every one of the 15 family confidence bins must have n >= 30",
+                        thin_bins=thin)
+    _write_csv(root / "data" / "calibration.csv", rows)
+
+    def draw(axis: Any, plt: Any) -> None:
+        axis.plot([0, 100], [0, 100], "--", color="#6B7280", label="perfect calibration")
+        for family, color in FAMILY_COLORS.items():
+            series = [row for row in rows if row["family"] == family]
+            axis.errorbar([row["confidence_midpoint_percent"] for row in series],
+                          [row["accuracy_percent"] for row in series],
+                          yerr=[[row["accuracy_percent"] - row["ci_low_percent"] for row in series],
+                                [row["ci_high_percent"] - row["accuracy_percent"] for row in series]],
+                          marker="o", capsize=3, color=color, label=family)
+        axis.set(xlabel="Stated confidence bin (%)", ylabel="Actual accuracy (%)",
+                 title="Calibration", xlim=(0, 100), ylim=(0, 100))
+        axis.legend(frameon=False)
+
+    paths = _render(root, "calibration", draw, figsize=(7, 7))
+    return _generated(paths, len(rows))
+
+
+def thermal_drift(root: Path, item_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    diagnostics: list[dict[str, Any]] = []
+    series_by_variant: dict[str, list[tuple[int, float]]] = {}
+    for variant in dict.fromkeys(str(row.get("variant_id")) for row in item_rows):
+        raw_series = [
+            (_integer(row.get("run_order")), _number_or_none(row.get("output_tokens_per_second")))
+            for row in item_rows if str(row.get("variant_id")) == variant
+        ]
+        clean = sorted((order, speed) for order, speed in raw_series
+                       if order is not None and speed is not None)
+        if len(clean) < 25:
+            continue
+        slope, intercept = _linear_fit(clean)
+        start, end = intercept + slope * clean[0][0], intercept + slope * clean[-1][0]
+        drop = (start - end) / start * 100 if start > 0 else 0.0
+        rng = random.Random(f"thermal:{variant}")
+        orders = [value[0] for value in clean]
+        speeds = [value[1] for value in clean]
+        more_negative = 0
+        for _ in range(1999):
+            shuffled = speeds.copy()
+            rng.shuffle(shuffled)
+            permuted_slope, _ = _linear_fit(list(zip(orders, shuffled)))
+            more_negative += permuted_slope <= slope
+        p_value = (more_negative + 1) / 2000
+        diagnostics.append({"variant_id": variant, "slope_tps_per_run": slope,
+                            "p_value_one_sided": p_value, "predicted_drop_percent": drop,
+                            "n": len(clean)})
+        series_by_variant[variant] = clean
+    eligible = [row for row in diagnostics if row["slope_tps_per_run"] < 0
+                and row["p_value_one_sided"] < .05 and row["predicted_drop_percent"] > 10]
+    if not eligible:
+        return _skipped("no configuration has p < 0.05 and a predicted speed drop above 10%",
+                        diagnostics=diagnostics)
+    rolling_rows: list[dict[str, Any]] = []
+    for variant, series in series_by_variant.items():
+        for index in range(24, len(series)):
+            window = series[index - 24:index + 1]
+            rolling_rows.append({"variant_id": variant, "run_order": series[index][0],
+                                 "rolling_mean_tps": sum(value[1] for value in window) / 25})
+    _write_csv(root / "data" / "thermal_drift.csv", rolling_rows)
+
+    def draw(axis: Any, plt: Any) -> None:
+        for variant in series_by_variant:
+            series = [row for row in rolling_rows if row["variant_id"] == variant]
+            family = next((str(row.get("family")) for row in item_rows
+                           if str(row.get("variant_id")) == variant), "")
+            axis.plot([row["run_order"] for row in series],
+                      [row["rolling_mean_tps"] for row in series],
+                      color=FAMILY_COLORS.get(family, "#374151"), label=variant)
+        axis.set(xlabel="Run order within batch", ylabel="Rolling mean speed (tok/s)",
+                 title="Thermal Drift — window 25")
+        axis.legend(frameon=False, fontsize=7, ncol=2)
+
+    paths = _render(root, "thermal_drift", draw, figsize=(11, 6))
+    return _generated(paths, len(rolling_rows), diagnostics=diagnostics)
+
+
+def generate_final_figure_bundle(
+    default_experiment: Path, tier2_experiment: Path, context_experiment: Path
+) -> Path:
+    from llm_workload_benchmark.artifacts import export_experiment_artifacts
+
+    for experiment in dict.fromkeys([default_experiment, tier2_experiment, context_experiment]):
+        export_experiment_artifacts(experiment)
+    default_root = default_experiment / "artifacts"
+    tier2_root = tier2_experiment / "artifacts"
+    context_root = context_experiment / "artifacts"
+    output = default_root / "final_figures"
+    if output.exists():
+        shutil.rmtree(output)
+    output.mkdir(parents=True)
+    configurations = _read_csv(default_root / "data" / "configurations.csv")
+    items = _read_csv(default_root / "data" / "items.csv")
+    tier2_items = _read_csv(tier2_root / "data" / "items.csv")
+    context_items = _read_csv(context_root / "data" / "items.csv")
+    frontier_plot, frontier_ids = laptop_value_frontier(output, configurations)
+    memory_by_id = {str(row["variant_id"]): (_number_or_none(row.get("peak_process_memory_bytes")) or 0) / 1e9
+                    for row in configurations}
+    frontier_configs = [row for row in configurations if row.get("variant_id") in frontier_ids]
+    plots = {
+        "laptop_value_frontier": frontier_plot,
+        "workload_decision_matrix": workload_decision_matrix(output, items, frontier_ids, memory_by_id),
+        "quant_survival": quant_survival(output, items),
+        "deployment_risk": deployment_risk(output, configurations, items),
+        "trust_profile": trust_profile(output, items, frontier_ids),
+        "retrieval_depth": retrieval_depth(output, configurations, items),
+        "context_speed": context_speed(output, frontier_configs, context_items),
+        "config_effects": config_effects(output, items, tier2_items),
+        "calibration": calibration(output, items),
+        "thermal_drift": thermal_drift(output, items),
+    }
+    manifest = {
+        "schema_version": 1,
+        "sources": {"default": str(default_experiment), "tier2": str(tier2_experiment),
+                    "context": str(context_experiment)},
+        "family_colors": FAMILY_COLORS,
+        "confidence_interval": "wilson_95",
+        "plots": plots,
+    }
+    (output / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                                           encoding="utf-8")
+    return output
+
+
 def _append_rate(rows: list[dict[str, Any]], architecture: str, quant: str,
                  effect: str, level: str, metric: str, selected: list[dict[str, Any]],
                  *, successes: int | None = None) -> None:
@@ -553,6 +726,15 @@ def _append_rate(rows: list[dict[str, Any]], architecture: str, quant: str,
                      "level": level, "metric": metric, "successes": successes,
                      "attempted": len(selected), "rate_percent": successes / len(selected) * 100,
                      "ci_low_percent": interval[0] * 100, "ci_high_percent": interval[1] * 100})
+
+
+def _linear_fit(series: list[tuple[int, float]]) -> tuple[float, float]:
+    mean_x = sum(value[0] for value in series) / len(series)
+    mean_y = sum(value[1] for value in series) / len(series)
+    denominator = sum((value[0] - mean_x) ** 2 for value in series)
+    slope = (sum((x - mean_x) * (y - mean_y) for x, y in series) / denominator
+             if denominator else 0.0)
+    return slope, mean_y - slope * mean_x
 
 
 def _render(root: Path, stem: str, draw: Callable[[Any, Any], None], *, figsize: tuple[float, float]) -> dict[str, str]:
@@ -619,6 +801,23 @@ def _tags(value: Any) -> list[str]:
         except json.JSONDecodeError:
             return []
     return []
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value:
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def _read_csv(path: Path) -> list[dict[str, str]]:
+    with path.open(encoding="utf-8", newline="") as source:
+        return list(csv.DictReader(source))
 
 
 def _quant(value: Any) -> str:
