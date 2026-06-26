@@ -198,6 +198,172 @@ def workload_decision_matrix(
     return _generated(paths, len(plot_rows), configuration_count=len(variants))
 
 
+def quant_survival(root: Path, item_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    plot_rows: list[dict[str, Any]] = []
+    highlighted: set[str] = set()
+    for workload, benchmarks in WORKLOAD_GROUPS.items():
+        for family in FAMILY_COLORS:
+            family_rows: list[dict[str, Any]] = []
+            for quant in QUANT_ORDER:
+                selected = [row for row in item_rows if row.get("family") == family
+                            and _quant(row.get("quantization")) == quant
+                            and row.get("benchmark") in benchmarks]
+                passed = sum(_boolean(row.get("passed")) is True for row in selected)
+                interval = wilson_interval(passed, len(selected))
+                if not selected or interval is None:
+                    continue
+                family_rows.append({
+                    "workload": workload, "family": family, "quantization": quant,
+                    "passed": passed, "attempted": len(selected),
+                    "pass_rate_percent": passed / len(selected) * 100,
+                    "ci_low_percent": interval[0] * 100,
+                    "ci_high_percent": interval[1] * 100,
+                })
+            ordered = sorted(family_rows, key=lambda row: QUANT_ORDER.index(row["quantization"]))
+            if any(left["pass_rate_percent"] - right["pass_rate_percent"] > 15
+                   for left, right in zip(ordered, ordered[1:])):
+                highlighted.add(workload)
+            plot_rows.extend(family_rows)
+    if not plot_rows:
+        return _skipped("requires default per-item results across quantizations")
+    _write_csv(root / "data" / "quant_survival.csv", plot_rows)
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+    figure, axes = plt.subplots(3, 3, figsize=(13, 10), sharex=True, sharey=True,
+                                layout="constrained")
+    positions = range(len(QUANT_ORDER))
+    for axis, workload in zip(axes.flat, WORKLOAD_GROUPS):
+        for family, color in FAMILY_COLORS.items():
+            series = [row for row in plot_rows if row["workload"] == workload
+                      and row["family"] == family]
+            if not series:
+                continue
+            series.sort(key=lambda row: QUANT_ORDER.index(row["quantization"]))
+            x = [QUANT_ORDER.index(row["quantization"]) for row in series]
+            y = [row["pass_rate_percent"] for row in series]
+            axis.plot(x, y, marker="o", color=color, label=family)
+            axis.fill_between(x, [row["ci_low_percent"] for row in series],
+                              [row["ci_high_percent"] for row in series], color=color, alpha=.15)
+        axis.set_title(workload, color="#B91C1C" if workload in highlighted else "#111827")
+        if workload in highlighted:
+            axis.set_facecolor("#FEF2F2")
+        axis.set_xticks(list(positions), QUANT_ORDER)
+        axis.set_ylim(0, 105)
+    axes[1, 0].set_ylabel("Pass rate (%)")
+    axes[-1, 1].set_xlabel("Quantization")
+    axes[0, 0].legend(frameon=False, fontsize=8)
+    paths = _save_figure(root, "quant_survival", figure, plt)
+    return _generated(paths, len(plot_rows), highlighted_panels=sorted(highlighted))
+
+
+def deployment_risk(
+    root: Path, configuration_rows: list[dict[str, Any]], item_rows: list[dict[str, Any]]
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for config in configuration_rows:
+        variant = config.get("variant_id")
+        attempted, passed = _integer(config.get("attempted")), _integer(config.get("passed"))
+        structured = [row for row in item_rows if row.get("variant_id") == variant
+                      and row.get("benchmark") in {"messy_text_to_schema", "tool_use"}]
+        invalid = sum(str(row.get("integration_outcome")) != "scored" for row in structured)
+        if not attempted or passed is None or not structured:
+            continue
+        pass_ci = wilson_interval(passed, attempted)
+        invalid_ci = wilson_interval(invalid, len(structured))
+        rows.append({
+            **config, "pass_rate_percent": passed / attempted * 100,
+            "pass_ci_low_percent": pass_ci[0] * 100, "pass_ci_high_percent": pass_ci[1] * 100,
+            "invalid": invalid, "structured_attempted": len(structured),
+            "invalid_rate_percent": invalid / len(structured) * 100,
+            "invalid_ci_low_percent": invalid_ci[0] * 100,
+            "invalid_ci_high_percent": invalid_ci[1] * 100,
+        })
+    if not rows:
+        return _skipped("requires structured-category item results")
+    _write_csv(root / "data" / "deployment_risk.csv", rows)
+
+    def draw(axis: Any, plt: Any) -> None:
+        axis.axhspan(.1, 3, color="#DCFCE7", alpha=.8, label="deployable zone")
+        for row in rows:
+            y = max(row["invalid_rate_percent"], .1)
+            axis.errorbar(
+                row["pass_rate_percent"], y,
+                xerr=[[row["pass_rate_percent"] - row["pass_ci_low_percent"]],
+                      [row["pass_ci_high_percent"] - row["pass_rate_percent"]]],
+                yerr=[[max(0, y - max(row["invalid_ci_low_percent"], .1))],
+                      [row["invalid_ci_high_percent"] - row["invalid_rate_percent"]]],
+                fmt=QUANT_MARKERS.get(_quant(row.get("quantization")), "o"),
+                color=FAMILY_COLORS.get(str(row.get("family")), "#374151"), capsize=3,
+            )
+            axis.annotate(str(row["variant_id"]), (row["pass_rate_percent"], y),
+                          xytext=(4, 4), textcoords="offset points", fontsize=7)
+        axis.set_yscale("log")
+        axis.set(xlabel="Overall pass rate (%)", ylabel="Invalid-output rate (%)",
+                 title="Deployment Risk")
+        axis.legend(frameon=False)
+
+    paths = _render(root, "deployment_risk", draw, figsize=(10, 6))
+    return _generated(paths, len(rows))
+
+
+def trust_profile(
+    root: Path, item_rows: list[dict[str, Any]], frontier_ids: list[str]
+) -> dict[str, Any]:
+    definitions = [
+        ("sycophancy flip", "answer_stability", {"confident_wrong_suggestion"}),
+        ("are-you-sure flip", "answer_stability", {"are_you_sure_challenge"}),
+        ("false-premise acceptance", "false_missing_information", {"false_premise"}),
+        ("over-refusal", "over_refusal", None),
+    ]
+    rows: list[dict[str, Any]] = []
+    for variant in frontier_ids:
+        config_rows = [row for row in item_rows if row.get("variant_id") == variant]
+        family = str(config_rows[0].get("family")) if config_rows else ""
+        for metric, benchmark, subcategories in definitions:
+            selected = [row for row in config_rows if row.get("benchmark") == benchmark
+                        and (subcategories is None or row.get("subcategory") in subcategories)]
+            events = sum(_boolean(row.get("passed")) is False for row in selected)
+            interval = wilson_interval(events, len(selected))
+            if interval is None:
+                continue
+            rows.append({
+                "variant_id": variant, "family": family, "metric": metric,
+                "events": events, "attempted": len(selected), "rate_percent": events / len(selected) * 100,
+                "ci_low_percent": interval[0] * 100, "ci_high_percent": interval[1] * 100,
+            })
+    if not rows:
+        return _skipped("requires trust-suite results for frontier configurations")
+    _write_csv(root / "data" / "trust_profile.csv", rows)
+
+    def draw(axis: Any, plt: Any) -> None:
+        from matplotlib.patches import Patch
+        metrics = [value[0] for value in definitions]
+        width = .18
+        hatches = ["", "//", "xx", ".."]
+        for index, metric in enumerate(metrics):
+            series = [next((row for row in rows if row["variant_id"] == variant
+                            and row["metric"] == metric), None) for variant in frontier_ids]
+            x = [position + (index - 1.5) * width for position in range(len(frontier_ids))]
+            heights = [row["rate_percent"] if row else 0 for row in series]
+            bars = axis.bar(x, heights, width, color=[FAMILY_COLORS.get(
+                row["family"] if row else "", "#9CA3AF") for row in series],
+                hatch=hatches[index], edgecolor="white")
+            for bar, row in zip(bars, series):
+                if row:
+                    axis.errorbar(bar.get_x() + bar.get_width() / 2, row["rate_percent"],
+                                  yerr=[[row["rate_percent"] - row["ci_low_percent"]],
+                                        [row["ci_high_percent"] - row["rate_percent"]]],
+                                  fmt="none", color="#111827", capsize=2)
+        axis.set_xticks(range(len(frontier_ids)), frontier_ids, rotation=25, ha="right")
+        axis.set(ylabel="Rate (%) — lower is better", title="Trust Profile", ylim=(0, 105))
+        axis.legend(handles=[Patch(facecolor="#6B7280", hatch=hatches[i], label=metric)
+                             for i, metric in enumerate(metrics)], frameon=False, fontsize=8)
+
+    paths = _render(root, "trust_profile", draw, figsize=(max(10, len(frontier_ids) * 1.8), 6))
+    return _generated(paths, len(rows))
+
+
 def _render(root: Path, stem: str, draw: Callable[[Any, Any], None], *, figsize: tuple[float, float]) -> dict[str, str]:
     import matplotlib
     matplotlib.use("Agg")
@@ -205,6 +371,10 @@ def _render(root: Path, stem: str, draw: Callable[[Any, Any], None], *, figsize:
     plt.style.use("seaborn-v0_8-whitegrid")
     figure, axis = plt.subplots(figsize=figsize, layout="constrained")
     draw(axis, plt)
+    return _save_figure(root, stem, figure, plt)
+
+
+def _save_figure(root: Path, stem: str, figure: Any, plt: Any) -> dict[str, str]:
     plot_dir = root / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     png, svg = plot_dir / f"{stem}.png", plot_dir / f"{stem}.svg"

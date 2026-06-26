@@ -2,7 +2,10 @@ import csv
 from pathlib import Path
 
 from llm_workload_benchmark.final_figures import (
+    deployment_risk,
     laptop_value_frontier,
+    quant_survival,
+    trust_profile,
     workload_decision_matrix,
 )
 
@@ -41,3 +44,26 @@ def test_frontier_and_decision_matrix_write_ci_data(tmp_path: Path) -> None:
         rows = list(csv.DictReader(source))
     assert len(rows) == 18
     assert all(row["ci_low_percent"] and row["ci_high_percent"] for row in rows)
+
+
+def test_quant_deployment_and_trust_figures_generate(tmp_path: Path) -> None:
+    configs = [_config("small", 2_000_000_000, 7), _config("quality", 4_000_000_000, 9)]
+    items = []
+    for config in configs:
+        for quant in ("Q8_0", "Q6_K", "Q4_K_M", "Q3_K_M"):
+            for benchmark, subcategory in [
+                ("applied_reasoning", "math"), ("messy_text_to_schema", "clean"),
+                ("tool_use", "call"), ("answer_stability", "confident_wrong_suggestion"),
+                ("answer_stability", "are_you_sure_challenge"),
+                ("false_missing_information", "false_premise"),
+                ("over_refusal", "benign_security_terminology"),
+            ]:
+                items.append({
+                    "variant_id": config["variant_id"], "family": "qwen3",
+                    "quantization": quant, "benchmark": benchmark,
+                    "subcategory": subcategory, "passed": benchmark == "applied_reasoning",
+                    "integration_outcome": "scored" if benchmark != "tool_use" else "unparseable_output",
+                })
+    assert quant_survival(tmp_path, items)["status"] == "generated"
+    assert deployment_risk(tmp_path, configs, items)["status"] == "generated"
+    assert trust_profile(tmp_path, items, ["small", "quality"])["status"] == "generated"
