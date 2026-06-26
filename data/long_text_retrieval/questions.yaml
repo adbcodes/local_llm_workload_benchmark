@@ -126,6 +126,100 @@ items:
 
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
+
 
     QUESTION: What is the approved codename? Return one word.'
   response_contract:
@@ -146,7 +240,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_start
-  - 1k_context
+  - 2k_context
 - id: long_text_retrieval_002
   subcategory: fact_at_middle
   difficulty: easy
@@ -200,8 +294,6 @@ items:
 
     Record 24: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
-    AUTHORITATIVE FACT: The approved codename is Cedar.
-
     Record 25: The archive lists routine maintenance notes with no change to the final decision.
 
     Record 26: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
@@ -248,7 +340,103 @@ items:
 
     Record 47: Older drafts mention general options but do not replace the approved value in this document.
 
+    AUTHORITATIVE FACT: The approved codename is Cedar.
+
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
 
 
     QUESTION: What is the approved codename? Return one word.'
@@ -270,7 +458,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_middle
-  - 1k_context
+  - 2k_context
   source_item: long_text_retrieval_001
   variant_of: long_text_retrieval_001
 - id: long_text_retrieval_003
@@ -374,6 +562,100 @@ items:
 
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
+
     AUTHORITATIVE FACT: The approved codename is Cedar.
 
 
@@ -396,7 +678,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_end
-  - 1k_context
+  - 2k_context
   source_item: long_text_retrieval_001
   variant_of: long_text_retrieval_001
 - id: long_text_retrieval_004
@@ -502,6 +784,100 @@ items:
 
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
+
 
     QUESTION: How many units were finally allocated? Return digits only.'
   response_contract:
@@ -521,7 +897,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_start
-  - 1k_context
+  - 2k_context
 - id: long_text_retrieval_005
   subcategory: fact_at_middle
   difficulty: easy
@@ -575,8 +951,6 @@ items:
 
     Record 24: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
-    AUTHORITATIVE FACT: The final allocation is 64 units.
-
     Record 25: The archive lists routine maintenance notes with no change to the final decision.
 
     Record 26: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
@@ -623,7 +997,103 @@ items:
 
     Record 47: Older drafts mention general options but do not replace the approved value in this document.
 
+    AUTHORITATIVE FACT: The final allocation is 64 units.
+
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
 
 
     QUESTION: How many units were finally allocated? Return digits only.'
@@ -644,7 +1114,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_middle
-  - 1k_context
+  - 2k_context
   source_item: long_text_retrieval_004
   variant_of: long_text_retrieval_004
 - id: long_text_retrieval_006
@@ -748,6 +1218,100 @@ items:
 
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
+
     AUTHORITATIVE FACT: The final allocation is 64 units.
 
 
@@ -769,7 +1333,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_end
-  - 1k_context
+  - 2k_context
   source_item: long_text_retrieval_004
   variant_of: long_text_retrieval_004
 - id: long_text_retrieval_007
@@ -875,6 +1439,100 @@ items:
 
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
+
 
     QUESTION: What is the signed review date? Return an ISO date.'
   response_contract:
@@ -893,7 +1551,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_start
-  - 1k_context
+  - 2k_context
 - id: long_text_retrieval_008
   subcategory: fact_at_middle
   difficulty: easy
@@ -947,8 +1605,6 @@ items:
 
     Record 24: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
-    AUTHORITATIVE FACT: The signed review date is 2026-04-12.
-
     Record 25: The archive lists routine maintenance notes with no change to the final decision.
 
     Record 26: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
@@ -995,7 +1651,103 @@ items:
 
     Record 47: Older drafts mention general options but do not replace the approved value in this document.
 
+    AUTHORITATIVE FACT: The signed review date is 2026-04-12.
+
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
 
 
     QUESTION: What is the signed review date? Return an ISO date.'
@@ -1015,7 +1767,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_middle
-  - 1k_context
+  - 2k_context
   source_item: long_text_retrieval_007
   variant_of: long_text_retrieval_007
 - id: long_text_retrieval_009
@@ -1119,6 +1871,100 @@ items:
 
     Record 48: The appendix contains neutral examples, repeated labels, and administrative reference text.
 
+    Record 49: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 50: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 51: The record includes background figures that are unrelated to the question being asked.
+
+    Record 52: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 53: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 54: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 55: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 56: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 57: The record includes background figures that are unrelated to the question being asked.
+
+    Record 58: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 59: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 60: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 61: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 62: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 63: The record includes background figures that are unrelated to the question being asked.
+
+    Record 64: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 65: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 66: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 67: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 68: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 69: The record includes background figures that are unrelated to the question being asked.
+
+    Record 70: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 71: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 72: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 73: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 74: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 75: The record includes background figures that are unrelated to the question being asked.
+
+    Record 76: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 77: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 78: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 79: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 80: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 81: The record includes background figures that are unrelated to the question being asked.
+
+    Record 82: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 83: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 84: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 85: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 86: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 87: The record includes background figures that are unrelated to the question being asked.
+
+    Record 88: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 89: Older drafts mention general options but do not replace the approved value in this document.
+
+    Record 90: The appendix contains neutral examples, repeated labels, and administrative reference text.
+
+    Record 91: The archive lists routine maintenance notes with no change to the final decision.
+
+    Record 92: Several teams submitted weekly updates about staffing, equipment, and ordinary scheduling.
+
+    Record 93: The record includes background figures that are unrelated to the question being asked.
+
+    Record 94: A reviewer checked the section numbering and confirmed that the pages were in order.
+
+    Record 95: Older drafts mention general options but do not replace the approved value in this document.
+
     AUTHORITATIVE FACT: The signed review date is 2026-04-12.
 
 
@@ -1139,7 +1985,7 @@ items:
   tags:
   - fresh_generated
   - fact_at_end
-  - 1k_context
+  - 2k_context
   source_item: long_text_retrieval_007
   variant_of: long_text_retrieval_007
 - id: long_text_retrieval_010

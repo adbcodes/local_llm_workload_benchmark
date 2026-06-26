@@ -226,7 +226,7 @@ def long_context(target_words: int, fact: str, position: str) -> str:
 
 def long_text_items() -> list[dict[str, Any]]:
     tiers = [
-        ("easy", 700, "1k_context", [
+        ("easy", 1400, "2k_context", [
             ("The approved codename is Cedar.", "What is the approved codename? Return one word.", "Cedar", "exact_match", "text"),
             ("The final allocation is 64 units.", "How many units were finally allocated? Return digits only.", 64, "numeric_tolerance", "number"),
             ("The signed review date is 2026-04-12.", "What is the signed review date? Return an ISO date.", "2026-04-12", "date_value", "date"),

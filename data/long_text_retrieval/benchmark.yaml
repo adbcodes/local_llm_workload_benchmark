@@ -1,6 +1,6 @@
 id: long_text_retrieval
 title: Long-Text Retrieval
-description: Retrieve exact facts from the start, middle, and end of 1K, 4K, and 8K contexts.
+description: Retrieve exact facts from the start, middle, and end of 2K, 4K, and 8K contexts.
 suite: E
 status: started
 execution_mode: paired_variants
@@ -8,7 +8,7 @@ task_types:
 - fact at start
 - fact in middle
 - fact at end
-- 1K context
+- 2K context
 - 4K context
 - 8K context
 metrics:

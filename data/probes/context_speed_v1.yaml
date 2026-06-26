@@ -1,0 +1,13 @@
+schema_version: 1
+id: context_speed_v1
+status: frozen
+metric: runtime_only
+context_points:
+  - {tokens_already_in_context: 0, source: short_tasks}
+  - {tokens_already_in_context: 2048, source_tag: 2k_context}
+  - {tokens_already_in_context: 4096, source_tag: 4k_context}
+  - {tokens_already_in_context: 8192, source_tag: 8k_context}
+aggregation:
+  speed: mean_output_tokens_per_second
+  ttft: mean_time_to_first_token_seconds
+  short_tasks_max_prompt_tokens: 256
