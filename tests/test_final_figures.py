@@ -3,8 +3,11 @@ from pathlib import Path
 
 from llm_workload_benchmark.final_figures import (
     deployment_risk,
+    config_effects,
+    context_speed,
     laptop_value_frontier,
     quant_survival,
+    retrieval_depth,
     trust_profile,
     workload_decision_matrix,
 )
@@ -67,3 +70,31 @@ def test_quant_deployment_and_trust_figures_generate(tmp_path: Path) -> None:
     assert quant_survival(tmp_path, items)["status"] == "generated"
     assert deployment_risk(tmp_path, configs, items)["status"] == "generated"
     assert trust_profile(tmp_path, items, ["small", "quality"])["status"] == "generated"
+
+
+def test_retrieval_context_and_config_figures_generate(tmp_path: Path) -> None:
+    config = _config("qwen3-q4", 2_000_000_000, 8)
+    config.update({"architecture": "qwen3-8b", "family": "qwen3", "quantization": "Q4_K_M"})
+    retrieval = []
+    for tag in ("2k_context", "4k_context", "8k_context"):
+        for position in ("start", "middle", "end"):
+            retrieval.append({**config, "benchmark": "long_text_retrieval",
+                              "subcategory": f"fact_at_{position}", "tags": [tag], "passed": True})
+    assert retrieval_depth(tmp_path, [config], retrieval)["status"] == "generated"
+    context = [
+        {**config, "prompt_tokens": tokens, "tags": [] if tag is None else [tag],
+         "output_tokens_per_second": 20 - index, "ttft_seconds": .1 + index,
+         "variant_id": "context-q4"}
+        for index, (tokens, tag) in enumerate([(100, None), (2000, "2k_context"),
+                                                (4000, "4k_context"), (8000, "8k_context")])
+    ]
+    assert context_speed(tmp_path, [config], context)["status"] == "generated"
+    default = [{**config, "item_id": "probe", "passed": True,
+                "benchmark": "messy_text_to_schema", "integration_outcome": "scored"}]
+    tier2 = [
+        {**default[0], "temperature": .7, "repeat_penalty": 1.0, "constrained_decoding": "none"},
+        {**default[0], "temperature": 0.0, "repeat_penalty": 1.1, "constrained_decoding": "none"},
+        {**default[0], "temperature": 0.0, "repeat_penalty": 1.0,
+         "constrained_decoding": "json_when_requested"},
+    ]
+    assert config_effects(tmp_path, default, tier2)["status"] == "generated"

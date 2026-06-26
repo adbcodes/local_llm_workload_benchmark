@@ -364,6 +364,197 @@ def trust_profile(
     return _generated(paths, len(rows))
 
 
+def retrieval_depth(
+    root: Path, configuration_rows: list[dict[str, Any]], item_rows: list[dict[str, Any]]
+) -> dict[str, Any]:
+    best: dict[str, dict[str, Any]] = {}
+    for config in configuration_rows:
+        attempted, passed = _integer(config.get("attempted")), _integer(config.get("passed"))
+        family = str(config.get("family"))
+        if not attempted or passed is None or family not in FAMILY_COLORS:
+            continue
+        candidate = (passed / attempted, -QUANT_ORDER.index(_quant(config.get("quantization"))))
+        current = best.get(family)
+        if current is None or candidate > current["rank"]:
+            best[family] = {"config": config, "rank": candidate}
+    rows: list[dict[str, Any]] = []
+    positions = ["start", "middle", "end"]
+    lengths = [("2K", "2k_context"), ("4K", "4k_context"), ("8K", "8k_context")]
+    for family, selected in best.items():
+        config = selected["config"]
+        for position in positions:
+            for label, tag in lengths:
+                items = [row for row in item_rows if row.get("variant_id") == config.get("variant_id")
+                         and row.get("benchmark") == "long_text_retrieval"
+                         and row.get("subcategory") == f"fact_at_{position}"
+                         and tag in _tags(row.get("tags"))]
+                passed = sum(_boolean(row.get("passed")) is True for row in items)
+                interval = wilson_interval(passed, len(items))
+                if interval:
+                    rows.append({
+                        "family": family, "variant_id": config.get("variant_id"),
+                        "position": position, "context_length": label,
+                        "passed": passed, "attempted": len(items),
+                        "pass_rate_percent": passed / len(items) * 100,
+                        "ci_low_percent": interval[0] * 100, "ci_high_percent": interval[1] * 100,
+                    })
+    if not rows:
+        return _skipped("requires long-retrieval results with context tags")
+    _write_csv(root / "data" / "retrieval_depth.csv", rows)
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+    figure, axes = plt.subplots(1, len(best), figsize=(5 * len(best), 4.8),
+                                sharex=True, sharey=True, layout="constrained")
+    axes_list = [axes] if len(best) == 1 else list(axes)
+    for axis, family in zip(axes_list, best):
+        matrix = []
+        for position in positions:
+            matrix.append([next((row["pass_rate_percent"] for row in rows
+                                 if row["family"] == family and row["position"] == position
+                                 and row["context_length"] == label), float("nan"))
+                           for label, _ in lengths])
+        image = axis.imshow(matrix, vmin=0, vmax=100, cmap="viridis")
+        for y, position in enumerate(positions):
+            for x, (label, _) in enumerate(lengths):
+                row = next((row for row in rows if row["family"] == family
+                            and row["position"] == position and row["context_length"] == label), None)
+                if row:
+                    axis.text(x, y, f"{row['pass_rate_percent']:.0f}\n"
+                              f"[{row['ci_low_percent']:.0f}–{row['ci_high_percent']:.0f}]",
+                              ha="center", va="center", fontsize=8)
+        axis.set_xticks(range(3), [label for label, _ in lengths])
+        axis.set_yticks(range(3), positions)
+        axis.set_title(f"{family} — {best[family]['config']['quantization']}")
+    figure.colorbar(image, ax=axes_list, label="Retrieval pass rate (%)")
+    paths = _save_figure(root, "retrieval_depth", figure, plt)
+    return _generated(paths, len(rows), family_count=len(best))
+
+
+def context_speed(
+    root: Path, frontier_configs: list[dict[str, Any]], context_items: list[dict[str, Any]]
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    points = [(0, None), (2048, "2k_context"), (4096, "4k_context"), (8192, "8k_context")]
+    for config in frontier_configs:
+        matched = [row for row in context_items
+                   if row.get("architecture") == config.get("architecture")
+                   and _quant(row.get("quantization")) == _quant(config.get("quantization"))]
+        for tokens, tag in points:
+            selected = [row for row in matched if (
+                (_number_or_none(row.get("prompt_tokens")) or math.inf) <= 256
+                if tag is None else tag in _tags(row.get("tags"))
+            )]
+            speeds = [_number_or_none(row.get("output_tokens_per_second")) for row in selected]
+            ttfts = [_number_or_none(row.get("ttft_seconds")) for row in selected]
+            speeds, ttfts = [value for value in speeds if value is not None], [value for value in ttfts if value is not None]
+            if speeds and ttfts:
+                rows.append({
+                    "variant_id": config.get("variant_id"), "family": config.get("family"),
+                    "tokens_in_context": tokens, "generation_speed_tps": sum(speeds) / len(speeds),
+                    "ttft_seconds": sum(ttfts) / len(ttfts), "n": len(selected),
+                })
+    if not rows:
+        return _skipped("requires context-profile token, speed, and TTFT measurements")
+    _write_csv(root / "data" / "context_speed.csv", rows)
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+    figure, axes = plt.subplots(2, 1, figsize=(11, 8), sharex=True, layout="constrained")
+    for variant in dict.fromkeys(row["variant_id"] for row in rows):
+        series = sorted([row for row in rows if row["variant_id"] == variant], key=lambda row: row["tokens_in_context"])
+        color = FAMILY_COLORS.get(str(series[0]["family"]), "#374151")
+        axes[0].plot([row["tokens_in_context"] for row in series],
+                     [row["generation_speed_tps"] for row in series], marker="o", color=color, label=variant)
+        axes[1].plot([row["tokens_in_context"] for row in series],
+                     [row["ttft_seconds"] for row in series], marker="o", color=color)
+    worst = max(rows, key=lambda row: row["ttft_seconds"])
+    axes[1].annotate(f"worst: {worst['variant_id']} {worst['ttft_seconds']:.2f}s",
+                     (worst["tokens_in_context"], worst["ttft_seconds"]), xytext=(5, 6), textcoords="offset points")
+    axes[0].set(ylabel="Generation speed (tok/s)", title="Context Speed")
+    axes[1].set(xlabel="Tokens already in context", ylabel="Time to first token (s)")
+    axes[1].set_xticks([value for value, _ in points], ["0", "2K", "4K", "8K"])
+    axes[0].legend(frameon=False, fontsize=7, ncol=2)
+    paths = _save_figure(root, "context_speed", figure, plt)
+    return _generated(paths, len(rows))
+
+
+def config_effects(
+    root: Path, default_items: list[dict[str, Any]], tier2_items: list[dict[str, Any]]
+) -> dict[str, Any]:
+    probe_ids = {row.get("item_id") for row in tier2_items}
+    baseline = [row for row in default_items if row.get("item_id") in probe_ids]
+    keys = sorted({(str(row.get("architecture")), _quant(row.get("quantization")))
+                   for row in tier2_items})
+    rows: list[dict[str, Any]] = []
+    for architecture, quant in keys:
+        base = [row for row in baseline if row.get("architecture") == architecture
+                and _quant(row.get("quantization")) == quant]
+        treatments = [row for row in tier2_items if row.get("architecture") == architecture
+                      and _quant(row.get("quantization")) == quant]
+        for effect, chosen in [
+            ("temperature", [row for row in treatments if _number_or_none(row.get("temperature")) == .7]),
+            ("repeat_penalty", [row for row in treatments if _number_or_none(row.get("repeat_penalty")) == 1.1]),
+        ]:
+            for level, selected in [("off", base), ("on", chosen)]:
+                _append_rate(rows, architecture, quant, effect, level, "probe pass rate", selected)
+        structured_base = [row for row in base if row.get("benchmark") in {"messy_text_to_schema", "tool_use"}]
+        structured_on = [row for row in treatments if row.get("benchmark") in {"messy_text_to_schema", "tool_use"}
+                         and str(row.get("constrained_decoding")) != "none"]
+        for level, selected in [("off", structured_base), ("on", structured_on)]:
+            parseable = [row for row in selected if row.get("integration_outcome") == "scored"]
+            _append_rate(rows, architecture, quant, "grammar", level, "parse rate", selected,
+                         successes=len(parseable))
+            _append_rate(rows, architecture, quant, "grammar", level, "value accuracy",
+                         parseable)
+    if not rows:
+        return _skipped("requires matching default and Tier 2 probe results")
+    _write_csv(root / "data" / "config_effects.csv", rows)
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+    figure, axes = plt.subplots(1, 3, figsize=(15, 5.5), sharey=True, layout="constrained")
+    for axis, effect, title in zip(axes, ["temperature", "repeat_penalty", "grammar"],
+                                   ["Temperature 0 → 0.7", "Repeat penalty off → on", "Grammar off → on"]):
+        metrics = ["parse rate", "value accuracy"] if effect == "grammar" else ["probe pass rate"]
+        for architecture, quant in keys:
+            family = next((row.get("family") for row in tier2_items if row.get("architecture") == architecture), "")
+            for metric in metrics:
+                series = [row for row in rows if row["architecture"] == architecture and row["quantization"] == quant
+                          and row["effect"] == effect and row["metric"] == metric]
+                if len(series) != 2:
+                    continue
+                series.sort(key=lambda row: row["level"] == "on")
+                style = "--" if metric == "value accuracy" else "-"
+                axis.plot([0, 1], [row["rate_percent"] for row in series], style,
+                          color=FAMILY_COLORS.get(str(family), "#374151"), marker=QUANT_MARKERS.get(quant, "o"),
+                          alpha=.8, label=f"{architecture} {quant} {metric}" if effect == "grammar" else f"{architecture} {quant}")
+                axis.errorbar([0, 1], [row["rate_percent"] for row in series],
+                              yerr=[[row["rate_percent"] - row["ci_low_percent"] for row in series],
+                                    [row["ci_high_percent"] - row["rate_percent"] for row in series]],
+                              fmt="none", color=FAMILY_COLORS.get(str(family), "#374151"), capsize=2)
+        axis.set_xticks([0, 1], ["off", "on"])
+        axis.set_title(title)
+    axes[0].set_ylabel("Rate (%)")
+    axes[0].set_ylim(0, 105)
+    axes[-1].legend(frameon=False, fontsize=6, loc="upper left", bbox_to_anchor=(1, 1))
+    paths = _save_figure(root, "config_effects", figure, plt)
+    return _generated(paths, len(rows))
+
+
+def _append_rate(rows: list[dict[str, Any]], architecture: str, quant: str,
+                 effect: str, level: str, metric: str, selected: list[dict[str, Any]],
+                 *, successes: int | None = None) -> None:
+    successes = (sum(_boolean(row.get("passed")) is True for row in selected)
+                 if successes is None else successes)
+    interval = wilson_interval(successes, len(selected))
+    if interval:
+        rows.append({"architecture": architecture, "quantization": quant, "effect": effect,
+                     "level": level, "metric": metric, "successes": successes,
+                     "attempted": len(selected), "rate_percent": successes / len(selected) * 100,
+                     "ci_low_percent": interval[0] * 100, "ci_high_percent": interval[1] * 100})
+
+
 def _render(root: Path, stem: str, draw: Callable[[Any, Any], None], *, figsize: tuple[float, float]) -> dict[str, str]:
     import matplotlib
     matplotlib.use("Agg")
@@ -416,6 +607,18 @@ def _boolean(value: Any) -> bool | None:
     if isinstance(value, str) and value.casefold() in {"true", "false"}:
         return value.casefold() == "true"
     return None
+
+
+def _tags(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return [str(item) for item in parsed] if isinstance(parsed, list) else []
+        except json.JSONDecodeError:
+            return []
+    return []
 
 
 def _quant(value: Any) -> str:
