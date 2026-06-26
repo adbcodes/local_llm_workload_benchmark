@@ -356,6 +356,7 @@ def run_benchmark(
                             judge_panel_backends=judge_panel_backends,
                             peak_memory_reader=memory_reader,
                         )
+                        record["run_order"] = len(records) + 1
                         records.append(record)
                         results_file.write(json.dumps(record, sort_keys=True) + "\n")
                         results_file.flush()
@@ -637,6 +638,10 @@ def _evaluate_item(
             "suite": suite_id,
             "item_id": item.id,
             "source_item": item.source_item,
+            "variant_of": item.variant_of,
+            "tags": item.tags,
+            "response_contract": item.response_contract.model_dump(mode="json"),
+            "scoring_method": item.scoring.method,
             "subcategory": item.subcategory,
             "difficulty": item.difficulty,
             "split": item.split,
@@ -680,6 +685,10 @@ def _evaluate_item(
             "suite": suite_id,
             "item_id": item.id,
             "source_item": item.source_item,
+            "variant_of": item.variant_of,
+            "tags": item.tags,
+            "response_contract": item.response_contract.model_dump(mode="json"),
+            "scoring_method": item.scoring.method,
             "subcategory": item.subcategory,
             "difficulty": item.difficulty,
             "split": item.split,

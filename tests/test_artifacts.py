@@ -66,7 +66,11 @@ def _write_experiment(tmp_path: Path) -> Path:
                         "score_formula": "mean_score",
                     }
                 },
-                "telemetry": {"sample_count": 2},
+                "telemetry": {
+                    "sample_count": 2,
+                    "mean_system_power_watts": 5.0,
+                    "sensor_status": {"temperature_and_power": "available"},
+                },
             }
         ),
         encoding="utf-8",
@@ -88,6 +92,11 @@ def _write_experiment(tmp_path: Path) -> Path:
                 "benchmark": "reasoning",
                 "suite": "A",
                 "item_id": "reasoning_001",
+                "run_order": 1,
+                "variant_of": None,
+                "tags": ["short"],
+                "response_contract": {"type": "number", "format": None},
+                "scoring_method": "numeric_tolerance",
                 "difficulty": "easy",
                 "repetition": 1,
                 "evaluation": {"passed": True, "score": 1.0},
@@ -207,9 +216,17 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
         configurations = list(csv.DictReader(source))
     assert [row["status"] for row in configurations] == ["completed", "failed"]
     assert configurations[0]["score_retained_vs_q8"] == "1.0"
+    assert configurations[0]["expected_pass_rate_ci_95_low"]
+    assert configurations[0]["estimated_generation_energy_joules"] == "1.0"
+    assert configurations[0]["energy_per_correct_answer_joules"] == "1.0"
     assert json.loads(configurations[1]["error"])["message"] == "load failed"
     with paths["suites"].open(newline="") as source:
         assert list(csv.DictReader(source))[0]["suite"] == "A"
+    with paths["items"].open(newline="") as source:
+        item = list(csv.DictReader(source))[0]
+    assert item["run_order"] == "1"
+    assert json.loads(item["tags"]) == ["short"]
+    assert json.loads(item["response_contract"])["type"] == "number"
 
 
 def test_export_experiment_artifacts_writes_quantization_plot_and_data(

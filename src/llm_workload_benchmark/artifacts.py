@@ -31,11 +31,16 @@ CONFIGURATION_FIELDS = MODEL_FIELDS + [
     "mean_gpu_power_watts", "mean_system_power_watts", "mean_cpu_temperature_c",
     "telemetry_sample_count", "score_delta_vs_q8", "score_retained_vs_q8",
     "memory_saved_vs_q8_bytes", "speed_ratio_vs_q8",
+    "expected_pass_rate", "expected_pass_rate_ci_95_low",
+    "expected_pass_rate_ci_95_high", "estimated_generation_energy_joules",
+    "energy_per_correct_answer_joules", "power_sensor_status",
 ]
 GROUP_FIELDS = [
     "attempted", "completed", "passed", "pass_rate", "mean_score",
     "mean_latency_seconds", "mean_ttft_seconds", "mean_output_tokens_per_second",
     "peak_process_memory_bytes", "integration_friction_rate",
+    "expected_pass_rate", "expected_pass_rate_ci_95_low",
+    "expected_pass_rate_ci_95_high",
 ]
 SUITE_FIELDS = MODEL_FIELDS + [
     "suite", *GROUP_FIELDS, "score_delta_vs_q8", "score_retained_vs_q8",
@@ -45,13 +50,16 @@ BENCHMARK_FIELDS = MODEL_FIELDS + [
     "score_delta_vs_q8", "score_retained_vs_q8",
 ]
 ITEM_FIELDS = MODEL_FIELDS + [
-    "benchmark", "suite", "item_id", "source_item", "subcategory", "difficulty",
+    "benchmark", "suite", "item_id", "source_item", "variant_of", "tags",
+    "subcategory", "difficulty",
     "split", "visibility", "dataset_origin", "repetition", "seed", "status",
     "passed", "score", "integration_outcome", "latency_seconds", "ttft_seconds",
     "prompt_tokens", "output_tokens", "reasoning_tokens", "output_characters",
     "output_tokens_per_second", "process_wall_seconds", "process_cpu_seconds",
     "process_cpu_utilization_percent", "process_memory_bytes", "finish_reason",
-    "prompt_sha256", "system_prompt_sha256", "error",
+    "prompt_sha256", "system_prompt_sha256", "run_order", "response_contract",
+    "scoring_method", "evaluation_type", "evaluation_details", "raw_response",
+    "evaluated_response", "error",
 ]
 
 
@@ -210,6 +218,7 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
                 "mean_system_power_watts": telemetry.get("mean_system_power_watts"),
                 "mean_cpu_temperature_c": telemetry.get("mean_cpu_temperature_c"),
                 "telemetry_sample_count": telemetry.get("sample_count"),
+                **_energy_fields(totals, telemetry),
             }
         )
 
@@ -246,6 +255,8 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
                         "suite": record.get("suite"),
                         "item_id": record.get("item_id"),
                         "source_item": record.get("source_item"),
+                        "variant_of": record.get("variant_of"),
+                        "tags": record.get("tags"),
                         "subcategory": record.get("subcategory"),
                         "difficulty": record.get("difficulty"),
                         "split": record.get("split"),
@@ -275,6 +286,13 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
                         "finish_reason": record.get("finish_reason"),
                         "prompt_sha256": record.get("prompt_sha256"),
                         "system_prompt_sha256": record.get("system_prompt_sha256"),
+                        "run_order": record.get("run_order"),
+                        "response_contract": record.get("response_contract"),
+                        "scoring_method": record.get("scoring_method"),
+                        "evaluation_type": evaluation.get("type"),
+                        "evaluation_details": evaluation.get("details"),
+                        "raw_response": record.get("raw_response"),
+                        "evaluated_response": record.get("evaluated_response"),
                         "error": record.get("error"),
                     }
                 )
@@ -313,8 +331,15 @@ def _model_fields(model: dict[str, Any], fallback_id: str) -> dict[str, Any]:
 
 def _aggregate_fields(aggregate: Any) -> dict[str, Any]:
     values = aggregate if isinstance(aggregate, dict) else {}
+    attempted = values.get("attempted")
+    passed = values.get("passed")
+    interval = (
+        _wilson_interval(passed, attempted)
+        if isinstance(passed, int) and isinstance(attempted, int)
+        else None
+    )
     return {
-        "attempted": values.get("attempted"),
+        "attempted": attempted,
         "completed": values.get("completed"),
         "passed": values.get("passed"),
         "pass_rate": values.get("pass_rate"),
@@ -324,7 +349,61 @@ def _aggregate_fields(aggregate: Any) -> dict[str, Any]:
         "mean_output_tokens_per_second": values.get("mean_output_tokens_per_second_end_to_end"),
         "peak_process_memory_bytes": values.get("peak_process_memory_bytes"),
         "integration_friction_rate": values.get("integration_friction_rate"),
+        "expected_pass_rate": (
+            passed / attempted
+            if isinstance(passed, int) and isinstance(attempted, int) and attempted
+            else None
+        ),
+        "expected_pass_rate_ci_95_low": interval[0] if interval else None,
+        "expected_pass_rate_ci_95_high": interval[1] if interval else None,
     }
+
+
+def _energy_fields(
+    totals: dict[str, Any], telemetry: dict[str, Any]
+) -> dict[str, Any]:
+    power = telemetry.get("mean_system_power_watts")
+    latency = totals.get("latency_seconds")
+    if not isinstance(latency, int | float):
+        mean_latency = totals.get("mean_latency_seconds")
+        attempted = totals.get("attempted")
+        latency = (
+            mean_latency * attempted
+            if isinstance(mean_latency, int | float) and isinstance(attempted, int)
+            else None
+        )
+    passed = totals.get("passed")
+    energy = (
+        float(power) * float(latency)
+        if isinstance(power, int | float) and isinstance(latency, int | float)
+        else None
+    )
+    sensor_status = telemetry.get("sensor_status")
+    return {
+        "estimated_generation_energy_joules": energy,
+        "energy_per_correct_answer_joules": (
+            energy / passed if energy is not None and isinstance(passed, int) and passed else None
+        ),
+        "power_sensor_status": (
+            sensor_status.get("temperature_and_power")
+            if isinstance(sensor_status, dict)
+            else None
+        ),
+    }
+
+
+def _wilson_interval(
+    successes: int, total: int, z: float = 1.959963984540054
+) -> tuple[float, float] | None:
+    if total == 0:
+        return None
+    proportion = successes / total
+    denominator = 1 + z * z / total
+    centre = (proportion + z * z / (2 * total)) / denominator
+    margin = z * (
+        (proportion * (1 - proportion) / total + z * z / (4 * total * total)) ** 0.5
+    ) / denominator
+    return max(0.0, centre - margin), min(1.0, centre + margin)
 
 
 def _attach_q8_baselines(
