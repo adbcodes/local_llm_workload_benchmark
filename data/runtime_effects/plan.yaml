@@ -1,10 +1,15 @@
-schema_version: 1
+schema_version: 2
 id: local_runtime_effects
 title: Local Runtime Effects
 kind: experiment_group
 status: planned
 runner_status: implemented
 run_command: uv run llm-benchmark runtime-matrix
+figure_command: >-
+  uv run llm-benchmark figures
+  --default-experiment RUN
+  --tier2-experiment RUN
+  --context-experiment RUN
 saved_artifacts:
   - artifacts/manifest.json
   - artifacts/data/configurations.csv
@@ -42,3 +47,54 @@ experiments:
     variants: [engine_version]
     controls: [same_model_file, same_probe_version, same_settings]
     metrics: [score_delta, latency_delta, memory_delta, integration_friction_delta]
+
+final_figures:
+  status: finalized
+  default_configuration:
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 40
+    repeat_penalty: 1.0
+    constrained_decoding: none
+    context_window: 16384
+    batch_size: 512
+    gpu_layers: -1
+    flash_attention: true
+    seed: 42
+    repetitions: 1
+  model_families:
+    qwen2_5: {architecture: qwen2.5-3b, color: '#0072B2'}
+    gemma3: {architecture: gemma-3-4b, color: '#E69F00'}
+    qwen3: {architecture: qwen3-8b, color: '#6A3D9A'}
+  quantizations: [Q8, Q6, Q4, Q3]
+  workload_groups:
+    reasoning: [applied_reasoning]
+    coding: [code_debug_repair]
+    knowledge: [knowledge_abstention]
+    extraction: [messy_text_to_schema]
+    decisions_routing: [tables_to_decisions, inbox_routing]
+    tool_use: [tool_use]
+    instruction_control:
+      [constraint_load_curve, negative_instructions, instruction_hierarchy, raw_output_discipline]
+    communication: [grounded_compression, india_focused_tasks]
+    reliability_trust:
+      [answer_stability, clean_vs_noisy, confidence_correctness, conversation_memory,
+       false_missing_information, long_text_retrieval, over_refusal,
+       prompt_format_sensitivity, shuffled_choices]
+  required:
+    - laptop_value_frontier
+    - workload_decision_matrix
+    - quant_survival
+    - deployment_risk
+    - trust_profile
+    - retrieval_depth
+    - context_speed
+    - config_effects
+  conditional:
+    calibration: every_family_confidence_bin_n_at_least_30
+    thermal_drift: negative_slope_p_below_0_05_and_predicted_drop_above_10_percent
+  reporting:
+    pass_rate_denominator: expected_attempts
+    failed_generation_is_failure: true
+    confidence_interval: wilson_95
+    outputs: [csv, png, svg]
