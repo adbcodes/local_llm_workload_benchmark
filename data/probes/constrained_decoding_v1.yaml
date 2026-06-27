@@ -1,0 +1,26 @@
+schema_version: 1
+id: constrained_decoding_v1
+status: frozen
+target_question_count: 15
+purpose: Compare plain generation with JSON-constrained decoding on varied JSON tasks.
+selection:
+  messy_text_to_schema: 9
+  raw_output_discipline: 4
+  instruction_hierarchy: 2
+item_ids:
+  - schema_invoice_001
+  - schema_event_001
+  - schema_invoice_002
+  - schema_delivery_001
+  - schema_address_001
+  - schema_inventory_001
+  - schema_order_001
+  - schema_manifest_001
+  - schema_batch_001
+  - raw_output_discipline_001
+  - raw_output_discipline_004
+  - raw_output_discipline_007
+  - raw_output_discipline_009
+  - instruction_hierarchy_003
+  - instruction_hierarchy_014
+freeze_rule: Change only by creating a new probe version.

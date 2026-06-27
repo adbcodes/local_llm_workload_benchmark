@@ -58,3 +58,6 @@ evaluation_files:
   frontier_anchor: evaluation/frontier_anchor.yaml
 probe_sets:
   - probes/frozen_probe_v1.yaml
+  - probes/temperature_stability_v1.yaml
+  - probes/constrained_decoding_v1.yaml
+  - probes/repetition_penalty_v1.yaml

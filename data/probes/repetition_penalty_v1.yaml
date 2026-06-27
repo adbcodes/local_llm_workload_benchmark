@@ -1,0 +1,27 @@
+schema_version: 1
+id: repetition_penalty_v1
+status: frozen
+target_question_count: 15
+purpose: Measure repeat-penalty effects on longer summaries, code, and tool traces.
+selection:
+  grounded_compression: 6
+  india_focused_hinglish: 3
+  code_debug_repair: 4
+  tool_use: 2
+item_ids:
+  - summary_incident_001
+  - summary_audit_001
+  - summary_study_001
+  - summary_proposal_001
+  - summary_migration_001
+  - summary_research_001
+  - india_focused_tasks_005
+  - india_focused_tasks_010
+  - india_focused_tasks_020
+  - code_validate_bst_001
+  - code_can_finish_courses_001
+  - repair_grid_paths_001
+  - repair_course_order_001
+  - tool_use_017
+  - tool_use_018
+freeze_rule: Change only by creating a new probe version.

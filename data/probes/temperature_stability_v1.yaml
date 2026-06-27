@@ -1,0 +1,45 @@
+schema_version: 1
+id: temperature_stability_v1
+status: frozen
+target_question_count: 30
+repetitions: 3
+purpose: Measure accuracy, stability, and run-to-run flips at temperature 0.7.
+selection:
+  applied_reasoning: 6
+  code_debug_repair: 6
+  tables_and_routing: 4
+  tool_use: 4
+  constraint_load_curve: 4
+  reliability_variants: 6
+item_ids:
+  - anchor_math_average_001
+  - reason_combined_work_generated_001
+  - anchor_bbh_order_five_001
+  - reason_business_days_generated_001
+  - reason_truth_tellers_generated_001
+  - reason_conditional_coins_generated_001
+  - code_deduplicate_001
+  - code_validate_bst_001
+  - code_can_finish_courses_001
+  - diagnose_missing_base_case_001
+  - repair_sliding_window_001
+  - repair_course_order_001
+  - tables_to_decisions_012
+  - tables_to_decisions_028
+  - inbox_routing_009
+  - inbox_routing_027
+  - tool_use_004
+  - tool_use_009
+  - tool_use_017
+  - tool_use_020
+  - constraint_api_rate_limiting_001
+  - constraint_api_rate_limiting_004
+  - constraint_paragraph_rewrite_001
+  - constraint_paragraph_rewrite_004
+  - answer_stability_001
+  - answer_stability_006
+  - prompt_format_sensitivity_002
+  - prompt_format_sensitivity_014
+  - shuffled_choices_011
+  - shuffled_choices_016
+freeze_rule: Change only by creating a new probe version.

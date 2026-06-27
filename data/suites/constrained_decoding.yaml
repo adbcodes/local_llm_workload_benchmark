@@ -1,0 +1,25 @@
+schema_version: 1
+name: final-constrained-decoding
+version: 1
+status: frozen
+benchmark_files:
+  - ../messy_text_to_schema/benchmark.yaml
+  - ../raw_output_discipline/benchmark.yaml
+  - ../instruction_hierarchy/benchmark.yaml
+filters:
+  ids:
+    - schema_invoice_001
+    - schema_event_001
+    - schema_invoice_002
+    - schema_delivery_001
+    - schema_address_001
+    - schema_inventory_001
+    - schema_order_001
+    - schema_manifest_001
+    - schema_batch_001
+    - raw_output_discipline_001
+    - raw_output_discipline_004
+    - raw_output_discipline_007
+    - raw_output_discipline_009
+    - instruction_hierarchy_003
+    - instruction_hierarchy_014

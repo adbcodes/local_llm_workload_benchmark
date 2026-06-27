@@ -1,0 +1,26 @@
+schema_version: 1
+name: final-repetition-penalty
+version: 1
+status: frozen
+benchmark_files:
+  - ../grounded_compression/benchmark.yaml
+  - ../india_focused_tasks/benchmark.yaml
+  - ../code_debug_repair/benchmark.yaml
+  - ../tool_use/benchmark.yaml
+filters:
+  ids:
+    - summary_incident_001
+    - summary_audit_001
+    - summary_study_001
+    - summary_proposal_001
+    - summary_migration_001
+    - summary_research_001
+    - india_focused_tasks_005
+    - india_focused_tasks_010
+    - india_focused_tasks_020
+    - code_validate_bst_001
+    - code_can_finish_courses_001
+    - repair_grid_paths_001
+    - repair_course_order_001
+    - tool_use_017
+    - tool_use_018
