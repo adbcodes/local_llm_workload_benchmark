@@ -4,6 +4,7 @@ import gc
 import hashlib
 import json
 import re
+import shutil
 import sys
 import time
 import uuid
@@ -404,8 +405,9 @@ def run_matrix(
     judge_backend_factory: JudgeBackendFactory = _default_judge_backend_factory,
     peak_memory_reader: Callable[[], int | None] | None = None,
     progress_callback: Callable[[RunProgress], None] | None = None,
+    resume_experiment: Path | None = None,
 ) -> Path:
-    """Run all enabled models sequentially under one experiment directory."""
+    """Run enabled models sequentially, optionally resuming at model boundaries."""
 
     root = (project_root or Path.cwd()).resolve()
     enabled_models = [model for model in config.models if model.enabled]
@@ -431,12 +433,58 @@ def run_matrix(
 
             effective_judge_backend_factory = use_shared_judge_backend
     output_root = _resolve_from_root(root, config.benchmark.output_root)
-    experiment_id = _new_experiment_id()
-    experiment_directory = output_root / experiment_id
-    experiment_directory.mkdir(parents=True, exist_ok=False)
+    config_source = {
+        "path": str(config_path.resolve()),
+        "sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
+    }
+    previous_elapsed = 0.0
+    resume_count = 0
+    existing_results: dict[str, dict[str, Any]] = {}
+    if resume_experiment is None:
+        experiment_id = _new_experiment_id()
+        experiment_directory = output_root / experiment_id
+        experiment_directory.mkdir(parents=True, exist_ok=False)
+    else:
+        experiment_directory = _resolve_from_root(root, resume_experiment).resolve()
+        index_path = experiment_directory / "experiment.json"
+        try:
+            existing_index = json.loads(index_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise EvaluationError(
+                f"cannot resume invalid experiment index {index_path}: {error}"
+            ) from error
+        if existing_index.get("config_source") != config_source:
+            raise EvaluationError(
+                "cannot resume experiment because its configuration hash does not "
+                f"match {config_path}"
+            )
+        experiment_id = str(
+            existing_index.get("experiment_id") or experiment_directory.name
+        )
+        previous_elapsed = float(existing_index.get("elapsed_seconds") or 0.0)
+        resume_count = int(existing_index.get("resume_count") or 0) + 1
+        for result in existing_index.get("models") or []:
+            if isinstance(result, dict) and isinstance(result.get("model_id"), str):
+                existing_results[result["model_id"]] = result
+
     index_path = experiment_directory / "experiment.json"
     started = time.perf_counter()
     model_results: list[dict[str, Any]] = []
+
+    def completed_result(model: ModelConfig) -> dict[str, Any] | None:
+        result = existing_results.get(model.id)
+        if result is None or result.get("status") != "completed":
+            return None
+        run_reference = result.get("run_directory")
+        summary_reference = result.get("summary")
+        if not isinstance(run_reference, str) or not isinstance(summary_reference, str):
+            return None
+        run_directory = experiment_directory / run_reference
+        if not (run_directory / "results.jsonl").is_file():
+            return None
+        if not (experiment_directory / summary_reference).is_file():
+            return None
+        return result
 
     def write_index(status: str) -> None:
         completed = sum(result["status"] == "completed" for result in model_results)
@@ -446,11 +494,12 @@ def run_matrix(
                 "schema_version": 1,
                 "experiment_id": experiment_id,
                 "status": status,
-                "config_source": str(config_path.resolve()),
+                "config_source": config_source,
                 "dataset": str(
                     _resolve_from_root(root, config.benchmark.workload_path)
                 ),
-                "elapsed_seconds": time.perf_counter() - started,
+                "elapsed_seconds": previous_elapsed + time.perf_counter() - started,
+                "resume_count": resume_count,
                 "models_total": len(enabled_models),
                 "models_completed": completed,
                 "models_failed": len(model_results) - completed,
@@ -458,9 +507,15 @@ def run_matrix(
             },
         )
 
-    write_index("running")
     for model_number, model in enumerate(enabled_models, start=1):
         child_directory = experiment_directory / "models" / model.id
+        preserved_result = completed_result(model)
+        if preserved_result is not None:
+            model_results.append(preserved_result)
+            continue
+        if child_directory.exists():
+            shutil.rmtree(child_directory)
+        write_index("running")
         single_model_config = config.model_copy(
             update={"models": [model.model_copy(update={"enabled": True})]},
             deep=True,

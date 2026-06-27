@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
+from typing import TextIO
 
 import typer
 
@@ -40,6 +42,74 @@ app = typer.Typer(
 )
 dataset_app = typer.Typer(help="Build and validate benchmark datasets.")
 app.add_typer(dataset_app, name="dataset")
+
+
+def _format_duration(seconds: float | None) -> str:
+    if seconds is None or seconds < 0:
+        return "--:--"
+    rounded = int(seconds)
+    hours, remainder = divmod(rounded, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours:d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def _progress_line(progress: RunProgress, *, width: int = 24) -> str:
+    fraction = (
+        progress.completed_items / progress.total_items
+        if progress.total_items
+        else 0.0
+    )
+    fraction = max(0.0, min(1.0, fraction))
+    filled = round(width * fraction)
+    bar = "#" * filled + "-" * (width - filled)
+    eta = None
+    if progress.completed_items:
+        eta = (
+            progress.elapsed_seconds
+            / progress.completed_items
+            * (progress.total_items - progress.completed_items)
+        )
+    return (
+        f"[{bar}] {fraction:6.1%} | "
+        f"model {progress.model_number}/{progress.model_count} "
+        f"{progress.model_id} | {progress.benchmark} | "
+        f"item {progress.completed_items}/{progress.total_items} | "
+        f"elapsed {_format_duration(progress.elapsed_seconds)} | "
+        f"ETA {_format_duration(eta)}"
+    )
+
+
+class _ProgressDisplay:
+    """Render one updating terminal line, with readable output when redirected."""
+
+    def __init__(self, stream: TextIO = sys.stdout) -> None:
+        self._stream = stream
+        self._live = bool(getattr(stream, "isatty", lambda: False)())
+        self._line_open = False
+
+    def update(self, progress: RunProgress) -> None:
+        line = _progress_line(progress)
+        completed = progress.completed_items >= progress.total_items
+        if not self._live:
+            self._stream.write(line + "\n")
+            self._stream.flush()
+            return
+
+        self._stream.write("\r\033[2K" + line)
+        if completed:
+            self._stream.write("\n")
+            self._line_open = False
+        else:
+            self._line_open = True
+        self._stream.flush()
+
+    def finish(self) -> None:
+        if self._line_open:
+            self._stream.write("\n")
+            self._stream.flush()
+            self._line_open = False
 
 
 def _version_callback(value: bool) -> None:
@@ -169,16 +239,23 @@ def benchmark_command(
         "--color/--no-color",
         help="Enable Python syntax colours in the human ballot.",
     ),
+    resume_experiment: Path | None = typer.Option(
+        None,
+        "--resume-experiment",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+        help="Resume an interrupted matrix, preserving completed model runs.",
+    ),
 ) -> None:
     """Run the model matrix, then collect blind terminal preferences."""
 
+    progress_display = _ProgressDisplay()
+
     def show_progress(progress: RunProgress) -> None:
-        typer.echo(
-            f"[{progress.model_number}/{progress.model_count}] "
-            f"{progress.model_id} | {progress.benchmark} | "
-            f"item {progress.completed_items}/{progress.total_items} | "
-            f"{progress.elapsed_seconds:.1f}s"
-        )
+        progress_display.update(progress)
 
     try:
         config = load_config(config_path)
@@ -187,10 +264,13 @@ def benchmark_command(
             config,
             config_path,
             progress_callback=show_progress,
+            resume_experiment=resume_experiment,
         )
     except (ConfigError, DatasetError, EvaluationError, OSError) as error:
+        progress_display.finish()
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
+    progress_display.finish()
 
     try:
         artifact_paths = export_experiment_artifacts(
@@ -248,13 +328,10 @@ def runtime_matrix_command(
 ) -> None:
     """Run every configured quantization and setting combination."""
 
+    progress_display = _ProgressDisplay()
+
     def show_progress(progress: RunProgress) -> None:
-        typer.echo(
-            f"[{progress.model_number}/{progress.model_count}] "
-            f"{progress.model_id} | {progress.benchmark} | "
-            f"{progress.completed_items}/{progress.total_items} | "
-            f"{progress.elapsed_seconds:.1f}s"
-        )
+        progress_display.update(progress)
 
     try:
         runtime_config = load_runtime_matrix(config_path)
@@ -274,8 +351,10 @@ def runtime_matrix_command(
         EvaluationError,
         OSError,
     ) as error:
+        progress_display.finish()
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
+    progress_display.finish()
 
     typer.echo(f"Artifact manifest: {experiment / 'artifacts' / 'manifest.json'}")
     typer.echo(

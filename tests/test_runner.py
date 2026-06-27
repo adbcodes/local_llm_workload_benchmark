@@ -353,6 +353,57 @@ def test_matrix_runs_enabled_models_sequentially_and_indexes_artifacts(
         ).is_file()
 
 
+def test_matrix_resume_preserves_completed_model_and_restarts_partial_model(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_matrix_config(tmp_path)
+    config = load_config(config_path)
+    answers = _correct_answers()
+    experiment = run_matrix(
+        config,
+        config_path,
+        project_root=tmp_path,
+        backend_factory=lambda model, model_path, seed: AnsweringBackend(answers),
+    )
+    index_path = experiment / "experiment.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    first_result = index["models"][0]
+    first_results_path = experiment / first_result["run_directory"] / "results.jsonl"
+    preserved_bytes = first_results_path.read_bytes()
+
+    second_directory = experiment / "models" / "second-model"
+    shutil.rmtree(second_directory)
+    second_directory.mkdir(parents=True)
+    (second_directory / "results.jsonl").write_text("partial\n", encoding="utf-8")
+    index.update(status="running", models=[first_result], models_completed=1)
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+
+    loaded_models: list[str] = []
+    progress: list[RunProgress] = []
+
+    def backend_factory(model, model_path, seed):
+        loaded_models.append(model.id)
+        return AnsweringBackend(answers)
+
+    resumed = run_matrix(
+        config,
+        config_path,
+        project_root=tmp_path,
+        backend_factory=backend_factory,
+        progress_callback=progress.append,
+        resume_experiment=experiment,
+    )
+
+    assert resumed == experiment
+    assert loaded_models == ["second-model"]
+    assert progress[0].model_number == 2
+    assert first_results_path.read_bytes() == preserved_bytes
+    resumed_index = json.loads(index_path.read_text(encoding="utf-8"))
+    assert resumed_index["status"] == "completed"
+    assert resumed_index["models_completed"] == 2
+    assert resumed_index["resume_count"] == 1
+
+
 def test_matrix_isolates_model_load_failure_and_continues(tmp_path: Path) -> None:
     config_path = _write_matrix_config(tmp_path)
     config = load_config(config_path)
