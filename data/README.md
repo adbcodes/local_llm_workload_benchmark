@@ -25,8 +25,9 @@ uv run pytest -q
 Use `evaluation/scoring_contracts.yaml` to choose the scorer. Reliability items
 use `source_item` to point to their clean version. Multi-turn items use
 `conversation`; `{{source_response}}` inserts an earlier model answer into a
-later challenge. Runtime-effect experiments live in `runtime_effects/plan.yaml`
-and reuse `probes/frozen_probe_v1.yaml`.
+later challenge. Runtime-effect experiments live in `runtime_effects/plan.yaml`.
+The historical 40-item probe is retained for audit; final setting tests use
+separate temperature, constrained-decoding, and repetition-penalty probes.
 
 ## Runtime matrix
 

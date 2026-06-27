@@ -8,7 +8,9 @@ run_command: uv run llm-benchmark runtime-matrix
 figure_command: >-
   uv run llm-benchmark figures
   --default-experiment RUN
-  --tier2-experiment RUN
+  --temperature-experiment RUN
+  --constrained-experiment RUN
+  --repetition-experiment RUN
   --context-experiment RUN
 saved_artifacts:
   - artifacts/manifest.json
@@ -20,20 +22,26 @@ saved_artifacts:
   - artifacts/plots/*.png
   - artifacts/plots/*.svg
   - models/*/telemetry.jsonl
-probe_set: ../probes/frozen_probe_v1.yaml
+probe_sets:
+  temperature: ../probes/temperature_stability_v1.yaml
+  constrained_decoding: ../probes/constrained_decoding_v1.yaml
+  repetition_penalty: ../probes/repetition_penalty_v1.yaml
+  context: ../probes/context_speed_v1.yaml
 experiments:
   - id: quantization_survival
     variants: [Q8, Q6, Q4, Q3]
     controls: [same_model_family, same_probe_version, same_generation_settings]
     metrics: [score_by_suite, quality_retained_vs_q8, peak_memory_bytes, model_file_bytes]
     required_probe_types: [large_number_arithmetic, rare_proper_nouns, long_code_identifiers, non_ascii_text, tool_use]
-  - id: sampler_sensitivity
-    variants:
-      - {temperature: 0.0, repeat_penalty: 1.0}
-      - {temperature: 0.7, repeat_penalty: 1.0}
-      - {temperature: 0.0, repeat_penalty: 1.1}
-      - {temperature: 0.7, repeat_penalty: 1.1}
-    metrics: [score_by_suite, run_to_run_flip_rate, output_tokens]
+  - id: temperature_stability
+    probe: temperature
+    variants: [{temperature: 0.0}, {temperature: 0.7}]
+    repetitions: 3
+    metrics: [pass_rate, score_delta, run_to_run_flip_rate, output_tokens]
+  - id: repetition_penalty
+    probe: repetition_penalty
+    variants: [{repeat_penalty: 1.0}, {repeat_penalty: 1.1}]
+    metrics: [pass_rate, score_delta, repetition_rate, output_tokens]
   - id: long_generation_degradation
     variants: [structured_output_1500_plus_tokens]
     metrics: [overall_format_accuracy, final_third_format_accuracy, repetition_rate]
@@ -41,6 +49,7 @@ experiments:
     variants: [context_90_percent, context_100_percent, context_110_percent]
     metrics: [early_instruction_retention, completion_status, truncation_rate]
   - id: constrained_decoding_tradeoff
+    probe: constrained_decoding
     variants: [plain_generation, json_mode_or_grammar]
     metrics: [parseability, value_accuracy, latency_seconds]
   - id: runner_regression

@@ -1,6 +1,6 @@
 schema_version: 1
 id: frozen_probe_v1
-status: frozen
+status: superseded
 target_question_count: 40
 source_suites: [A, B, C]
 selection:
@@ -55,4 +55,4 @@ item_ids:
   - constraint_employee_json_001
   - constraint_book_csv_001
   - constraint_paragraph_rewrite_001
-freeze_rule: Selection is immutable for final figure Tier 2 comparisons.
+freeze_rule: Historical 40-item probe retained for audit; replaced by three setting-specific probes.
