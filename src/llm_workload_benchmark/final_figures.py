@@ -492,27 +492,31 @@ def context_speed(
 
 
 def config_effects(
-    root: Path, default_items: list[dict[str, Any]], tier2_items: list[dict[str, Any]]
+    root: Path, default_items: list[dict[str, Any]], setting_items: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    probe_ids = {row.get("item_id") for row in tier2_items}
-    baseline = [row for row in default_items if row.get("item_id") in probe_ids]
     keys = sorted({(str(row.get("architecture")), _quant(row.get("quantization")))
-                   for row in tier2_items})
+                   for row in setting_items})
     rows: list[dict[str, Any]] = []
     for architecture, quant in keys:
-        base = [row for row in baseline if row.get("architecture") == architecture
-                and _quant(row.get("quantization")) == quant]
-        treatments = [row for row in tier2_items if row.get("architecture") == architecture
+        treatments = [row for row in setting_items if row.get("architecture") == architecture
                       and _quant(row.get("quantization")) == quant]
         for effect, chosen in [
             ("temperature", [row for row in treatments if _number_or_none(row.get("temperature")) == .7]),
             ("repeat_penalty", [row for row in treatments if _number_or_none(row.get("repeat_penalty")) == 1.1]),
         ]:
+            chosen_ids = {row.get("item_id") for row in chosen}
+            base = [row for row in default_items if row.get("architecture") == architecture
+                    and _quant(row.get("quantization")) == quant
+                    and row.get("item_id") in chosen_ids]
             for level, selected in [("off", base), ("on", chosen)]:
                 _append_rate(rows, architecture, quant, effect, level, "probe pass rate", selected)
-        structured_base = [row for row in base if row.get("benchmark") in {"messy_text_to_schema", "tool_use"}]
-        structured_on = [row for row in treatments if row.get("benchmark") in {"messy_text_to_schema", "tool_use"}
-                         and str(row.get("constrained_decoding")) != "none"]
+        structured_on = [row for row in treatments
+                         if str(row.get("constrained_decoding")) != "none"]
+        structured_ids = {row.get("item_id") for row in structured_on}
+        structured_base = [row for row in default_items
+                           if row.get("architecture") == architecture
+                           and _quant(row.get("quantization")) == quant
+                           and row.get("item_id") in structured_ids]
         for level, selected in [("off", structured_base), ("on", structured_on)]:
             parseable = [row for row in selected if row.get("integration_outcome") == "scored"]
             _append_rate(rows, architecture, quant, "grammar", level, "parse rate", selected,
@@ -529,7 +533,7 @@ def config_effects(
                                ("grammar", "parse rate")]
     )
     if not rows or not has_pair:
-        return _skipped("requires matching default and Tier 2 probe results")
+        return _skipped("requires matching default and setting-specific probe results")
     _write_csv(root / "data" / "config_effects.csv", rows)
     import matplotlib
     matplotlib.use("Agg")
@@ -539,7 +543,7 @@ def config_effects(
                                    ["Temperature 0 → 0.7", "Repeat penalty off → on", "Grammar off → on"]):
         metrics = ["parse rate", "value accuracy"] if effect == "grammar" else ["probe pass rate"]
         for architecture, quant in keys:
-            family = next((row.get("family") for row in tier2_items if row.get("architecture") == architecture), "")
+            family = next((row.get("family") for row in setting_items if row.get("architecture") == architecture), "")
             for metric in metrics:
                 series = [row for row in rows if row["architecture"] == architecture and row["quantization"] == quant
                           and row["effect"] == effect and row["metric"] == metric]
@@ -669,14 +673,19 @@ def thermal_drift(root: Path, item_rows: list[dict[str, Any]]) -> dict[str, Any]
 
 
 def generate_final_figure_bundle(
-    default_experiment: Path, tier2_experiment: Path, context_experiment: Path
+    default_experiment: Path,
+    temperature_experiment: Path,
+    constrained_experiment: Path,
+    repetition_experiment: Path,
+    context_experiment: Path,
 ) -> Path:
     from llm_workload_benchmark.artifacts import export_experiment_artifacts
 
-    for experiment in dict.fromkeys([default_experiment, tier2_experiment, context_experiment]):
+    experiments = [default_experiment, temperature_experiment, constrained_experiment,
+                   repetition_experiment, context_experiment]
+    for experiment in dict.fromkeys(experiments):
         export_experiment_artifacts(experiment)
     default_root = default_experiment / "artifacts"
-    tier2_root = tier2_experiment / "artifacts"
     context_root = context_experiment / "artifacts"
     output = default_root / "final_figures"
     if output.exists():
@@ -684,7 +693,10 @@ def generate_final_figure_bundle(
     output.mkdir(parents=True)
     configurations = _read_csv(default_root / "data" / "configurations.csv")
     items = _read_csv(default_root / "data" / "items.csv")
-    tier2_items = _read_csv(tier2_root / "data" / "items.csv")
+    setting_items = []
+    for experiment in (temperature_experiment, constrained_experiment,
+                       repetition_experiment):
+        setting_items.extend(_read_csv(experiment / "artifacts" / "data" / "items.csv"))
     context_items = _read_csv(context_root / "data" / "items.csv")
     frontier_plot, frontier_ids = laptop_value_frontier(output, configurations)
     memory_by_id = {str(row["variant_id"]): (_number_or_none(row.get("peak_process_memory_bytes")) or 0) / 1e9
@@ -698,14 +710,19 @@ def generate_final_figure_bundle(
         "trust_profile": trust_profile(output, items, frontier_ids),
         "retrieval_depth": retrieval_depth(output, configurations, items),
         "context_speed": context_speed(output, frontier_configs, context_items),
-        "config_effects": config_effects(output, items, tier2_items),
+        "config_effects": config_effects(output, items, setting_items),
         "calibration": calibration(output, items),
         "thermal_drift": thermal_drift(output, items),
     }
     manifest = {
         "schema_version": 1,
-        "sources": {"default": str(default_experiment), "tier2": str(tier2_experiment),
-                    "context": str(context_experiment)},
+        "sources": {
+            "default": str(default_experiment),
+            "temperature": str(temperature_experiment),
+            "constrained_decoding": str(constrained_experiment),
+            "repetition_penalty": str(repetition_experiment),
+            "context": str(context_experiment),
+        },
         "family_colors": FAMILY_COLORS,
         "confidence_interval": "wilson_95",
         "plots": plots,

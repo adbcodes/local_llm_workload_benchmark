@@ -325,7 +325,9 @@ def test_figures_cli_writes_manifest_and_conditional_reasons(tmp_path: Path) -> 
         [
             "figures",
             "--default-experiment", str(experiment),
-            "--tier2-experiment", str(experiment),
+            "--temperature-experiment", str(experiment),
+            "--constrained-experiment", str(experiment),
+            "--repetition-experiment", str(experiment),
             "--context-experiment", str(experiment),
         ],
     )

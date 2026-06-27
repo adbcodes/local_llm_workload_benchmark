@@ -403,15 +403,24 @@ def artifacts_command(
 def figures_command(
     default_experiment: Path = typer.Option(..., "--default-experiment", exists=True,
                                             file_okay=False, resolve_path=True),
-    tier2_experiment: Path = typer.Option(..., "--tier2-experiment", exists=True,
-                                          file_okay=False, resolve_path=True),
+    temperature_experiment: Path = typer.Option(..., "--temperature-experiment", exists=True,
+                                                file_okay=False, resolve_path=True),
+    constrained_experiment: Path = typer.Option(..., "--constrained-experiment", exists=True,
+                                                file_okay=False, resolve_path=True),
+    repetition_experiment: Path = typer.Option(..., "--repetition-experiment", exists=True,
+                                               file_okay=False, resolve_path=True),
     context_experiment: Path = typer.Option(..., "--context-experiment", exists=True,
                                             file_okay=False, resolve_path=True),
 ) -> None:
-    """Generate the finalized benchmark figure bundle from three saved experiments."""
+    """Generate the finalized benchmark figure bundle from five saved experiments."""
     try:
-        root = generate_final_figure_bundle(default_experiment, tier2_experiment,
-                                            context_experiment)
+        root = generate_final_figure_bundle(
+            default_experiment,
+            temperature_experiment,
+            constrained_experiment,
+            repetition_experiment,
+            context_experiment,
+        )
     except (ArtifactError, OSError, ValueError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error

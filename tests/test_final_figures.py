@@ -91,15 +91,27 @@ def test_retrieval_context_and_config_figures_generate(tmp_path: Path) -> None:
                                                 (4000, "4k_context"), (8000, "8k_context")])
     ]
     assert context_speed(tmp_path, [config], context)["status"] == "generated"
-    default = [{**config, "item_id": "probe", "passed": True,
-                "benchmark": "messy_text_to_schema", "integration_outcome": "scored"}]
-    tier2 = [
+    default = [
+        {**config, "item_id": "temperature-item", "passed": True,
+         "benchmark": "applied_reasoning", "integration_outcome": "scored"},
+        {**config, "item_id": "repeat-item", "passed": True,
+         "benchmark": "grounded_compression", "integration_outcome": "scored"},
+        {**config, "item_id": "json-item", "passed": True,
+         "benchmark": "messy_text_to_schema", "integration_outcome": "scored"},
+    ]
+    settings = [
         {**default[0], "temperature": .7, "repeat_penalty": 1.0, "constrained_decoding": "none"},
-        {**default[0], "temperature": 0.0, "repeat_penalty": 1.1, "constrained_decoding": "none"},
-        {**default[0], "temperature": 0.0, "repeat_penalty": 1.0,
+        {**default[1], "temperature": 0.0, "repeat_penalty": 1.1, "constrained_decoding": "none"},
+        {**default[2], "temperature": 0.0, "repeat_penalty": 1.0,
          "constrained_decoding": "json_when_requested"},
     ]
-    assert config_effects(tmp_path, default, tier2)["status"] == "generated"
+    assert config_effects(tmp_path, default, settings)["status"] == "generated"
+    with (tmp_path / "data" / "config_effects.csv").open(newline="") as source:
+        effects = list(csv.DictReader(source))
+    assert {row["effect"] for row in effects} == {
+        "temperature", "repeat_penalty", "grammar"
+    }
+    assert {row["attempted"] for row in effects} == {"1"}
 
 
 def test_conditional_figures_report_gate_evidence(tmp_path: Path) -> None:
