@@ -992,7 +992,7 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         if record["peak_process_memory_bytes"] is not None
     ]
     passed = sum(record["evaluation"]["passed"] is True for record in scored)
-    confidence_interval = _wilson_interval(passed, len(scored))
+    confidence_interval = _wilson_interval(passed, len(records))
     integration_outcomes: dict[str, int] = defaultdict(int)
     for record in completed:
         integration_outcomes[record.get("integration_outcome", "scored")] += 1
@@ -1021,7 +1021,7 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "integration_outcomes": dict(sorted(integration_outcomes.items())),
         "passed": passed,
-        "pass_rate": passed / len(scored) if scored else None,
+        "pass_rate": passed / len(records) if records else None,
         "pass_rate_ci_95": confidence_interval,
         "brier_score": _mean(
             [

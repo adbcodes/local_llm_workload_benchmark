@@ -215,6 +215,10 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
     assert summary["totals"]["completed"] == item_count - 1
     assert summary["totals"]["errors"] == 1
     assert summary["totals"]["passed"] == item_count - 1
+    assert summary["totals"]["pass_rate"] == pytest.approx(
+        (item_count - 1) / item_count
+    )
+    assert summary["totals"]["pass_rate_ci_95"]["high"] < 1.0
 
 
 def test_runner_applies_only_configured_empty_think_cleanup(tmp_path: Path) -> None:

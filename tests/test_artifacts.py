@@ -43,6 +43,7 @@ def _write_experiment(tmp_path: Path) -> Path:
         "passed": 1,
         "pass_rate": 1.0,
         "mean_score": 1.0,
+        "latency_seconds": 0.2,
         "mean_latency_seconds": 0.2,
         "mean_time_to_first_token_seconds": 0.05,
         "mean_output_tokens_per_second_end_to_end": 20.0,
@@ -66,6 +67,7 @@ def _write_experiment(tmp_path: Path) -> Path:
                 },
                 "telemetry": {
                     "sample_count": 2,
+                    "elapsed_seconds": 0.35,
                     "mean_system_power_watts": 5.0,
                     "sensor_status": {"temperature_and_power": "available"},
                 },
@@ -113,6 +115,7 @@ def _write_experiment(tmp_path: Path) -> Path:
                 "schema_version": 1,
                 "experiment_id": "matrix-test",
                 "status": "partial_failure",
+                "elapsed_seconds": 1.5,
                 "models": [
                     {
                         "model_id": "model-q8",
@@ -200,7 +203,9 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     paths = export_experiment_artifacts(experiment)
 
     manifest = json.loads(paths["manifest"].read_text())
+    assert manifest["schema_version"] == 2
     assert manifest["experiment_status"] == "partial_failure"
+    assert manifest["experiment_elapsed_seconds"] == 1.5
     assert manifest["machine"]["environment"]["machine_model"] == "test-machine"
     assert manifest["plots"] == {}
     assert manifest["tables"] == {
@@ -213,17 +218,43 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
         configurations = list(csv.DictReader(source))
     assert [row["status"] for row in configurations] == ["completed", "failed"]
     assert configurations[0]["score_retained_vs_q8"] == "1.0"
-    assert configurations[0]["expected_pass_rate_ci_95_low"]
+    assert configurations[0]["pass_rate_ci_95_low"]
     assert configurations[0]["estimated_generation_energy_joules"] == "1.0"
     assert configurations[0]["energy_per_correct_answer_joules"] == "1.0"
+    assert configurations[0]["run_elapsed_seconds"] == "0.35"
+    assert configurations[0]["item_latency_seconds_total"] == "0.2"
     assert json.loads(configurations[1]["error"])["message"] == "load failed"
     with paths["suites"].open(newline="") as source:
-        assert list(csv.DictReader(source))[0]["suite"] == "A"
+        suite = list(csv.DictReader(source))[0]
+    assert suite["suite"] == "A"
+    assert suite["latency_seconds_total"] == "0.2"
     with paths["items"].open(newline="") as source:
         item = list(csv.DictReader(source))[0]
     assert item["run_order"] == "1"
     assert json.loads(item["tags"]) == ["short"]
     assert json.loads(item["response_contract"])["type"] == "number"
+
+
+def test_artifact_pass_rate_counts_errors_for_older_saved_summaries(
+    tmp_path: Path,
+) -> None:
+    experiment = _write_experiment(tmp_path)
+    summary_path = experiment / "models" / "model-q8" / "summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    for aggregate in (
+        summary["totals"],
+        summary["suites"]["A"],
+        summary["benchmarks"]["reasoning"]["overall"],
+    ):
+        aggregate.update(attempted=2, completed=1, passed=1, pass_rate=1.0)
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+
+    paths = export_experiment_artifacts(experiment)
+
+    with paths["configurations"].open(newline="") as source:
+        configuration = list(csv.DictReader(source))[0]
+    assert configuration["pass_rate"] == "0.5"
+    assert float(configuration["pass_rate_ci_95_high"]) < 1.0
 
 
 def test_export_experiment_artifacts_replaces_only_managed_bundle(

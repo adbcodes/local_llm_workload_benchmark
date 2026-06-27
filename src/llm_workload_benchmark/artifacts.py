@@ -19,6 +19,7 @@ MODEL_FIELDS = [
 ]
 CONFIGURATION_FIELDS = MODEL_FIELDS + [
     "status", "summary_status", "error", "model_load_seconds", "model_file_bytes",
+    "run_elapsed_seconds", "item_latency_seconds_total",
     "attempted", "completed", "passed", "pass_rate", "mean_score",
     "mean_latency_seconds", "mean_ttft_seconds", "mean_output_tokens_per_second",
     "mean_process_cpu_seconds", "mean_process_cpu_utilization_percent",
@@ -28,16 +29,16 @@ CONFIGURATION_FIELDS = MODEL_FIELDS + [
     "mean_gpu_power_watts", "mean_system_power_watts", "mean_cpu_temperature_c",
     "telemetry_sample_count", "score_delta_vs_q8", "score_retained_vs_q8",
     "memory_saved_vs_q8_bytes", "speed_ratio_vs_q8",
-    "expected_pass_rate", "expected_pass_rate_ci_95_low",
-    "expected_pass_rate_ci_95_high", "estimated_generation_energy_joules",
+    "pass_rate_ci_95_low", "pass_rate_ci_95_high",
+    "estimated_generation_energy_joules",
     "energy_per_correct_answer_joules", "power_sensor_status",
 ]
 GROUP_FIELDS = [
     "attempted", "completed", "passed", "pass_rate", "mean_score",
+    "latency_seconds_total",
     "mean_latency_seconds", "mean_ttft_seconds", "mean_output_tokens_per_second",
     "peak_process_memory_bytes", "integration_friction_rate",
-    "expected_pass_rate", "expected_pass_rate_ci_95_low",
-    "expected_pass_rate_ci_95_high",
+    "pass_rate_ci_95_low", "pass_rate_ci_95_high",
 ]
 SUITE_FIELDS = MODEL_FIELDS + [
     "suite", *GROUP_FIELDS, "score_delta_vs_q8", "score_retained_vs_q8",
@@ -109,9 +110,10 @@ def export_experiment_artifacts(
         _write_json(
             temporary / "manifest.json",
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "experiment_id": index.get("experiment_id"),
                 "experiment_status": index.get("status"),
+                "experiment_elapsed_seconds": index.get("elapsed_seconds"),
                 "source": "../experiment.json",
                 "experiment_metadata": experiment_metadata,
                 "machine": rows["machine"],
@@ -189,6 +191,8 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
                 "error": entry.get("error") or summary.get("error"),
                 "model_load_seconds": summary.get("model_load_seconds"),
                 "model_file_bytes": model.get("file_size_bytes"),
+                "run_elapsed_seconds": telemetry.get("elapsed_seconds"),
+                "item_latency_seconds_total": totals.get("latency_seconds"),
                 **_aggregate_fields(totals),
                 "mean_process_cpu_seconds": totals.get("mean_process_cpu_seconds"),
                 "mean_process_cpu_utilization_percent": totals.get(
@@ -330,20 +334,20 @@ def _aggregate_fields(aggregate: Any) -> dict[str, Any]:
         "attempted": attempted,
         "completed": values.get("completed"),
         "passed": values.get("passed"),
-        "pass_rate": values.get("pass_rate"),
+        "pass_rate": (
+            passed / attempted
+            if isinstance(passed, int) and isinstance(attempted, int) and attempted
+            else None
+        ),
         "mean_score": values.get("mean_score"),
+        "latency_seconds_total": values.get("latency_seconds"),
         "mean_latency_seconds": values.get("mean_latency_seconds"),
         "mean_ttft_seconds": values.get("mean_time_to_first_token_seconds"),
         "mean_output_tokens_per_second": values.get("mean_output_tokens_per_second_end_to_end"),
         "peak_process_memory_bytes": values.get("peak_process_memory_bytes"),
         "integration_friction_rate": values.get("integration_friction_rate"),
-        "expected_pass_rate": (
-            passed / attempted
-            if isinstance(passed, int) and isinstance(attempted, int) and attempted
-            else None
-        ),
-        "expected_pass_rate_ci_95_low": interval[0] if interval else None,
-        "expected_pass_rate_ci_95_high": interval[1] if interval else None,
+        "pass_rate_ci_95_low": interval[0] if interval else None,
+        "pass_rate_ci_95_high": interval[1] if interval else None,
     }
 
 
