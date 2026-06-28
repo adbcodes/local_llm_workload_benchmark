@@ -16,6 +16,10 @@ from llm_workload_benchmark.authoring import build_authoring_suite
 from llm_workload_benchmark.catalog import CatalogError, validate_catalog
 from llm_workload_benchmark.config import ConfigError, load_config
 from llm_workload_benchmark.dataset import DatasetError
+from llm_workload_benchmark.evaluation_regression import (
+    RegressionCorpusError,
+    replay_regression_corpus,
+)
 from llm_workload_benchmark.final_figures import generate_final_figure_bundle
 from llm_workload_benchmark.preference import (
     PreferenceError,
@@ -43,6 +47,10 @@ app = typer.Typer(
 )
 dataset_app = typer.Typer(help="Build and validate benchmark datasets.")
 app.add_typer(dataset_app, name="dataset")
+regression_app = typer.Typer(
+    help="Replay saved responses without model generation."
+)
+app.add_typer(regression_app, name="regression")
 
 
 def _format_duration(seconds: float | None) -> str:
@@ -189,6 +197,44 @@ def dataset_validate_command(
         f"{result.current_question_count} current questions, "
         f"{result.planned_question_set_count} empty templates."
     )
+
+
+@regression_app.command("replay")
+def regression_replay_command(
+    corpus_path: Path = typer.Option(
+        Path("tests/fixtures/evaluation/failure_regressions_v1.jsonl"),
+        "--corpus",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Versioned saved-response corpus to replay.",
+    ),
+    suite_path: Path = typer.Option(
+        Path("data/suites/all.yaml"),
+        "--suite",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Suite containing the referenced benchmark items.",
+    ),
+) -> None:
+    """Re-score frozen responses and verify the recorded legacy baseline."""
+    try:
+        summary = replay_regression_corpus(corpus_path, suite_path)
+    except (DatasetError, RegressionCorpusError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Cases: {summary.total}")
+    typer.echo(f"Baseline reproduced: {summary.baseline_reproduced}")
+    typer.echo(f"Known target gaps: {summary.known_target_gaps}")
+    typer.echo(f"Unexpected results: {len(summary.unexpected_case_ids)}")
+    if summary.unexpected_case_ids:
+        typer.echo("Unexpected case IDs: " + ", ".join(summary.unexpected_case_ids))
+        raise typer.Exit(code=1)
 
 
 @app.command("run")

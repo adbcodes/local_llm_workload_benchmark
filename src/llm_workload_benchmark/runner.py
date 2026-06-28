@@ -673,7 +673,7 @@ def _evaluate_item(
             evaluation = evaluate_python(item, evaluated_response)
         else:
             evaluation = score_answer(item, evaluated_response)
-        integration_outcome = _integration_outcome(
+        integration_status = integration_outcome(
             item, evaluated_response, evaluation.details
         )
         output_tokens_per_second = (
@@ -710,7 +710,7 @@ def _evaluate_item(
                 model.system_prompt.encode("utf-8")
             ).hexdigest(),
             "evaluation": evaluation.model_dump(mode="json"),
-            "integration_outcome": integration_outcome,
+            "integration_outcome": integration_status,
             "latency_seconds": latency_seconds,
             "time_to_first_token_seconds": output.time_to_first_token_seconds,
             "prompt_tokens": output.prompt_tokens,
@@ -1173,7 +1173,7 @@ def _reported_benchmark_score(
     raise EvaluationError(f"unsupported benchmark score formula: {formula}")
 
 
-def _integration_outcome(
+def integration_outcome(
     item: DatasetItem,
     answer: str,
     details: dict[str, Any],
