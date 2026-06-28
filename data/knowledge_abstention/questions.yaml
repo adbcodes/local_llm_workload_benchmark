@@ -278,10 +278,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - does not exist
-      - not a real
+      decision: fabricated_entity
+      reference_answer: does not exist
+      evidence_patterns:
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
+      - (?<!\w)not[\s-]+a[\s-]+real(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -304,10 +305,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - no Nobel Prize in Mathematics
-      - does not exist
+      decision: fabricated_entity
+      reference_answer: no Nobel Prize in Mathematics
+      evidence_patterns:
+      - (?<!\w)no[\s-]+Nobel[\s-]+Prize[\s-]+in[\s-]+Mathematics(?!\w)
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -330,10 +332,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not enough information
-      - not provided
+      decision: unanswerable
+      reference_answer: not enough information
+      evidence_patterns:
+      - (?<!\w)not[\s-]+enough[\s-]+information(?!\w)
+      - (?<!\w)not[\s-]+provided(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -356,10 +359,11 @@ items:
     format: null
   expected:
     value:
-      label: clarify
-      required_any:
-      - which room
-      - what room
+      decision: clarify
+      reference_answer: which room
+      evidence_patterns:
+      - (?<!\w)which[\s-]+room(?!\w)
+      - (?<!\w)what[\s-]+room(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -382,10 +386,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - cannot verify
-      - not a real
+      decision: fabricated_entity
+      reference_answer: cannot verify
+      evidence_patterns:
+      - (?<!\w)cannot[\s-]+verify(?!\w)
+      - (?<!\w)not[\s-]+a[\s-]+real(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -408,10 +413,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not enough information
-      - prices are missing
+      decision: unanswerable
+      reference_answer: not enough information
+      evidence_patterns:
+      - (?<!\w)not[\s-]+enough[\s-]+information(?!\w)
+      - (?<!\w)prices[\s-]+are[\s-]+missing(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -434,10 +440,11 @@ items:
     format: null
   expected:
     value:
-      label: clarify
-      required_any:
-      - which Alex
-      - what file
+      decision: clarify
+      reference_answer: which Alex
+      evidence_patterns:
+      - (?<!\w)which[\s-]+Alex(?!\w)
+      - (?<!\w)what[\s-]+file(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -460,10 +467,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - does not exist
-      - not a standard
+      decision: fabricated_entity
+      reference_answer: does not exist
+      evidence_patterns:
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
+      - (?<!\w)not[\s-]+a[\s-]+standard(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -486,10 +494,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not provided
-      - not enough information
+      decision: unanswerable
+      reference_answer: not provided
+      evidence_patterns:
+      - (?<!\w)not[\s-]+provided(?!\w)
+      - (?<!\w)not[\s-]+enough[\s-]+information(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -512,10 +521,11 @@ items:
     format: null
   expected:
     value:
-      label: clarify
-      required_any:
-      - which models
-      - what criteria
+      decision: clarify
+      reference_answer: which models
+      evidence_patterns:
+      - (?<!\w)which[\s-]+models(?!\w)
+      - (?<!\w)what[\s-]+criteria(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -538,10 +548,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - cannot verify
-      - fictional
+      decision: fabricated_entity
+      reference_answer: cannot verify
+      evidence_patterns:
+      - (?<!\w)cannot[\s-]+verify(?!\w)
+      - (?<!\w)fictional(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -564,10 +575,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not provided
-      - not enough information
+      decision: unanswerable
+      reference_answer: not provided
+      evidence_patterns:
+      - (?<!\w)not[\s-]+provided(?!\w)
+      - (?<!\w)not[\s-]+enough[\s-]+information(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -590,10 +602,11 @@ items:
     format: null
   expected:
     value:
-      label: clarify
-      required_any:
-      - what time
-      - when
+      decision: clarify
+      reference_answer: what time
+      evidence_patterns:
+      - (?<!\w)what[\s-]+time(?!\w)
+      - (?<!\w)when(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -616,10 +629,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - does not exist
-      - not a real
+      decision: fabricated_entity
+      reference_answer: does not exist
+      evidence_patterns:
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
+      - (?<!\w)not[\s-]+a[\s-]+real(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -642,10 +656,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not provided
-      - cannot determine
+      decision: unanswerable
+      reference_answer: not provided
+      evidence_patterns:
+      - (?<!\w)not[\s-]+provided(?!\w)
+      - (?<!\w)cannot[\s-]+determine(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -668,10 +683,11 @@ items:
     format: null
   expected:
     value:
-      label: clarify
-      required_any:
-      - which
-      - what
+      decision: clarify
+      reference_answer: which
+      evidence_patterns:
+      - (?<!\w)which(?!\w)
+      - (?<!\w)what(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -694,10 +710,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - fictional
-      - cannot verify
+      decision: fabricated_entity
+      reference_answer: fictional
+      evidence_patterns:
+      - (?<!\w)fictional(?!\w)
+      - (?<!\w)cannot[\s-]+verify(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -720,10 +737,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not enough information
-      - cannot determine
+      decision: unanswerable
+      reference_answer: not enough information
+      evidence_patterns:
+      - (?<!\w)not[\s-]+enough[\s-]+information(?!\w)
+      - (?<!\w)cannot[\s-]+determine(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -746,10 +764,11 @@ items:
     format: null
   expected:
     value:
-      label: clarify
-      required_any:
-      - how short
-      - word limit
+      decision: clarify
+      reference_answer: how short
+      evidence_patterns:
+      - (?<!\w)how[\s-]+short(?!\w)
+      - (?<!\w)word[\s-]+limit(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -772,10 +791,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - does not exist
-      - not a real
+      decision: fabricated_entity
+      reference_answer: does not exist
+      evidence_patterns:
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
+      - (?<!\w)not[\s-]+a[\s-]+real(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}

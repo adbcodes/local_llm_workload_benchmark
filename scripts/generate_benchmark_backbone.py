@@ -224,9 +224,10 @@ def _item_template(spec: dict[str, Any]) -> dict[str, Any]:
         }
     elif method == "behavior_rules":
         expected = {
-            "label": "replace_behavior_label",
-            "required_any": ["replace accepted phrase"],
-            "forbidden": ["replace forbidden phrase"],
+            "decision": "unanswerable",
+            "reference_answer": "There is not enough information to determine that.",
+            "evidence_patterns": [r"not\\s+enough\\s+information"],
+            "forbidden_patterns": [r"definitely\\s+happened"],
         }
     elif method == "confidence_value":
         expected = {"answer": "replace_with_gold_answer"}

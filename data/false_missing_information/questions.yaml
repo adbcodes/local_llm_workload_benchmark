@@ -34,12 +34,13 @@ items:
     format: null
   expected:
     value:
-      label: correct_false_premise
-      required_any:
-      - Earth orbits the Sun
-      - false premise
-      forbidden:
-      - because the Sun
+      decision: correct_false_premise
+      reference_answer: Earth orbits the Sun
+      evidence_patterns:
+      - (?<!\w)Earth[\s-]+orbits[\s-]+the[\s-]+Sun(?!\w)
+      - (?<!\w)false[\s-]+premise(?!\w)
+      forbidden_patterns:
+      - (?<!\w)because[\s-]+the[\s-]+Sun(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -62,10 +63,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - fictional
-      - does not exist
+      decision: fabricated_entity
+      reference_answer: fictional
+      evidence_patterns:
+      - (?<!\w)fictional(?!\w)
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -88,10 +90,11 @@ items:
     format: null
   expected:
     value:
-      label: flag_conflict
-      required_any:
-      - conflict
-      - inconsistent
+      decision: flag_conflict
+      reference_answer: conflict
+      evidence_patterns:
+      - (?<!\w)conflict(?!\w)
+      - (?<!\w)inconsistent(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -114,10 +117,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not provided
-      - not enough information
+      decision: unanswerable
+      reference_answer: not provided
+      evidence_patterns:
+      - (?<!\w)not[\s-]+provided(?!\w)
+      - (?<!\w)not[\s-]+enough[\s-]+information(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -140,10 +144,11 @@ items:
     format: null
   expected:
     value:
-      label: correct_false_premise
-      required_any:
-      - did not
-      - false premise
+      decision: correct_false_premise
+      reference_answer: did not
+      evidence_patterns:
+      - (?<!\w)did[\s-]+not(?!\w)
+      - (?<!\w)false[\s-]+premise(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -166,10 +171,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - cannot verify
-      - does not exist
+      decision: fabricated_entity
+      reference_answer: cannot verify
+      evidence_patterns:
+      - (?<!\w)cannot[\s-]+verify(?!\w)
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -192,10 +198,11 @@ items:
     format: null
   expected:
     value:
-      label: flag_conflict
-      required_any:
-      - conflicting
-      - clarification
+      decision: flag_conflict
+      reference_answer: conflicting
+      evidence_patterns:
+      - (?<!\w)conflicting(?!\w)
+      - (?<!\w)clarification(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -218,10 +225,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - cannot determine
-      - not provided
+      decision: unanswerable
+      reference_answer: cannot determine
+      evidence_patterns:
+      - (?<!\w)cannot[\s-]+determine(?!\w)
+      - (?<!\w)not[\s-]+provided(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -244,10 +252,11 @@ items:
     format: null
   expected:
     value:
-      label: correct_false_premise
-      required_any:
-      - 17 is odd
-      - not even
+      decision: correct_false_premise
+      reference_answer: 17 is odd
+      evidence_patterns:
+      - (?<!\w)17[\s-]+is[\s-]+odd(?!\w)
+      - (?<!\w)not[\s-]+even(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -270,10 +279,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - made-up
-      - cannot verify
+      decision: fabricated_entity
+      reference_answer: made-up
+      evidence_patterns:
+      - (?<!\w)made\-up(?!\w)
+      - (?<!\w)cannot[\s-]+verify(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -297,10 +307,11 @@ items:
     format: null
   expected:
     value:
-      label: flag_conflict
-      required_any:
-      - conflict
-      - cannot determine
+      decision: flag_conflict
+      reference_answer: conflict
+      evidence_patterns:
+      - (?<!\w)conflict(?!\w)
+      - (?<!\w)cannot[\s-]+determine(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -323,10 +334,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - not enough information
-      - cannot determine
+      decision: unanswerable
+      reference_answer: not enough information
+      evidence_patterns:
+      - (?<!\w)not[\s-]+enough[\s-]+information(?!\w)
+      - (?<!\w)cannot[\s-]+determine(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -349,10 +361,11 @@ items:
     format: null
   expected:
     value:
-      label: correct_false_premise
-      required_any:
-      - countries do not have moons
-      - false premise
+      decision: correct_false_premise
+      reference_answer: countries do not have moons
+      evidence_patterns:
+      - (?<!\w)countries[\s-]+do[\s-]+not[\s-]+have[\s-]+moons(?!\w)
+      - (?<!\w)false[\s-]+premise(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -375,10 +388,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - does not exist
-      - cannot verify
+      decision: fabricated_entity
+      reference_answer: does not exist
+      evidence_patterns:
+      - (?<!\w)does[\s-]+not[\s-]+exist(?!\w)
+      - (?<!\w)cannot[\s-]+verify(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -402,10 +416,11 @@ items:
     format: null
   expected:
     value:
-      label: flag_conflict
-      required_any:
-      - conflict
-      - clarification
+      decision: flag_conflict
+      reference_answer: conflict
+      evidence_patterns:
+      - (?<!\w)conflict(?!\w)
+      - (?<!\w)clarification(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -428,10 +443,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - cannot determine
-      - not provided
+      decision: unanswerable
+      reference_answer: cannot determine
+      evidence_patterns:
+      - (?<!\w)cannot[\s-]+determine(?!\w)
+      - (?<!\w)not[\s-]+provided(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -454,10 +470,11 @@ items:
     format: null
   expected:
     value:
-      label: correct_false_premise
-      required_any:
-      - did not
-      - false premise
+      decision: correct_false_premise
+      reference_answer: did not
+      evidence_patterns:
+      - (?<!\w)did[\s-]+not(?!\w)
+      - (?<!\w)false[\s-]+premise(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -480,10 +497,11 @@ items:
     format: null
   expected:
     value:
-      label: fabricated_entity
-      required_any:
-      - fictional
-      - cannot verify
+      decision: fabricated_entity
+      reference_answer: fictional
+      evidence_patterns:
+      - (?<!\w)fictional(?!\w)
+      - (?<!\w)cannot[\s-]+verify(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -507,10 +525,11 @@ items:
     format: null
   expected:
     value:
-      label: flag_conflict
-      required_any:
-      - inconsistent
-      - cannot determine
+      decision: flag_conflict
+      reference_answer: inconsistent
+      evidence_patterns:
+      - (?<!\w)inconsistent(?!\w)
+      - (?<!\w)cannot[\s-]+determine(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
@@ -533,10 +552,11 @@ items:
     format: null
   expected:
     value:
-      label: unanswerable
-      required_any:
-      - redacted
-      - not provided
+      decision: unanswerable
+      reference_answer: redacted
+      evidence_patterns:
+      - (?<!\w)redacted(?!\w)
+      - (?<!\w)not[\s-]+provided(?!\w)
   scoring:
     method: behavior_rules
     parameters: {}
