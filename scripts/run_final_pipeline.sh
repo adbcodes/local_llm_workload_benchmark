@@ -347,9 +347,6 @@ echo "Generating final figures"
 UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv-cache}" \
   uv run --offline llm-benchmark figures \
   --default-experiment "$default_run" \
-  --temperature-experiment "$temperature_run" \
-  --constrained-experiment "$constrained_run" \
-  --repetition-experiment "$repetition_run" \
   --context-experiment "$context_run"
 
 figure_manifest="$default_run/artifacts/final_figures/manifest.json"

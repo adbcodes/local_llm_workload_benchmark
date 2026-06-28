@@ -317,7 +317,7 @@ def test_artifacts_cli_reports_invalid_saved_experiment(tmp_path: Path) -> None:
     assert "Error: experiment index must contain at least one model entry" in result.output
 
 
-def test_figures_cli_writes_manifest_and_conditional_reasons(tmp_path: Path) -> None:
+def test_figures_cli_writes_compact_manifest(tmp_path: Path) -> None:
     experiment = _write_experiment(tmp_path)
 
     result = CliRunner().invoke(
@@ -325,16 +325,13 @@ def test_figures_cli_writes_manifest_and_conditional_reasons(tmp_path: Path) -> 
         [
             "figures",
             "--default-experiment", str(experiment),
-            "--temperature-experiment", str(experiment),
-            "--constrained-experiment", str(experiment),
-            "--repetition-experiment", str(experiment),
             "--context-experiment", str(experiment),
         ],
     )
 
     assert result.exit_code == 0, result.output
-    assert "Skipped calibration:" in result.output
-    assert "Skipped thermal_drift:" in result.output
+    assert "Final figure manifest:" in result.output
     manifest_path = experiment / "artifacts" / "final_figures" / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
-    assert len(manifest["plots"]) == 10
+    assert len(manifest["plots"]) == 9
+    assert set(manifest["sources"]) == {"default", "context"}

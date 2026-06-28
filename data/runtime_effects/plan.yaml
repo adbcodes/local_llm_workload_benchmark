@@ -1,4 +1,4 @@
-schema_version: 2
+schema_version: 3
 id: local_runtime_effects
 title: Local Runtime Effects
 kind: experiment_group
@@ -8,9 +8,6 @@ run_command: uv run llm-benchmark runtime-matrix
 figure_command: >-
   uv run llm-benchmark figures
   --default-experiment RUN
-  --temperature-experiment RUN
-  --constrained-experiment RUN
-  --repetition-experiment RUN
   --context-experiment RUN
 saved_artifacts:
   - artifacts/manifest.json
@@ -58,7 +55,7 @@ experiments:
     metrics: [score_delta, latency_delta, memory_delta, integration_friction_delta]
 
 final_figures:
-  status: finalized
+  status: simplified_after_evidence_review
   default_configuration:
     temperature: 0.0
     top_p: 1.0
@@ -72,38 +69,51 @@ final_figures:
     seed: 42
     repetitions: 1
   model_families:
-    qwen2_5: {architecture: qwen2.5-3b, color: '#0072B2'}
-    gemma3: {architecture: gemma-3-4b, color: '#E69F00'}
-    qwen3: {architecture: qwen3-8b, color: '#6A3D9A'}
+    qwen2_5: {architecture: qwen2.5-3b, color: '#1565C0'}
+    gemma3: {architecture: gemma-3-4b, color: '#D32F2F'}
+    qwen3: {architecture: qwen3-8b, color: '#2E7D32'}
   quantizations: [Q8, Q6, Q4, Q3]
-  workload_groups:
-    reasoning: [applied_reasoning]
-    coding: [code_debug_repair]
-    knowledge: [knowledge_abstention]
-    extraction: [messy_text_to_schema]
-    decisions_routing: [tables_to_decisions, inbox_routing]
-    tool_use: [tool_use]
-    instruction_control:
-      [constraint_load_curve, negative_instructions, instruction_hierarchy, raw_output_discipline]
-    communication: [grounded_compression, india_focused_tasks]
-    reliability_trust:
-      [answer_stability, clean_vs_noisy, confidence_correctness, conversation_memory,
-       false_missing_information, long_text_retrieval, over_refusal,
-       prompt_format_sensitivity, shuffled_choices]
   required:
-    - laptop_value_frontier
-    - workload_decision_matrix
-    - quant_survival
-    - deployment_risk
-    - trust_profile
-    - retrieval_depth
-    - context_speed
-    - config_effects
-  conditional:
-    calibration: every_family_confidence_bin_n_at_least_30
-    thermal_drift: negative_slope_p_below_0_05_and_predicted_drop_above_10_percent
+    - quant_applied_reasoning
+    - quant_code_debug_repair
+    - quant_messy_text_to_schema
+    - quant_confidence_correctness
+    - quant_raw_output_discipline
+    - quant_tool_trace_parseability
+    - constraint_load_score
+    - constraint_content_retention
+    - context_ttft
   reporting:
-    pass_rate_denominator: expected_attempts
-    failed_generation_is_failure: true
-    confidence_interval: wilson_95
+    one_metric_per_figure: true
+    marker_shapes_encode_data: false
+    family_colors: [blue, red, green]
+    quantization_metric: benchmark_mean_score
+    constraint_configuration: Q4
+    context_metric: median_ttft_seconds
     outputs: [csv, png, svg]
+
+to_be_investigated_benchmarks:
+  tool_use_correctness:
+    issue: Expected observations are not produced by real tool execution, and final states are compared too strictly.
+    next_step: Add simulated tool execution and semantic final-state checks before plotting correctness.
+  temperature_effects:
+    issue: Temperature 0 has one response per prompt while temperature 0.7 has three repetitions.
+    next_step: Run three matched repetitions at both temperatures before publishing benchmark deltas.
+  answer_stability_follow_ups:
+    issue: Paired transitions are added after results.jsonl is written, and each follow-up condition has only three pairs per configuration.
+    next_step: Persist paired transitions and expand the follow-up set before plotting flip rates.
+  long_text_retrieval:
+    issue: Every current accuracy cell is 3 out of 3, so the probe has no separating power.
+    next_step: Add harder retrieval cases and more examples; keep current data only for context timing.
+  confidence_calibration:
+    issue: Confidence bins contain zero to four observations instead of the required thirty.
+    next_step: Expand confidence questions before generating calibration plots.
+  thermal_drift:
+    issue: Question order, prompt length, and output length are confounded with run order.
+    next_step: Use repeated fixed probes with shuffled or interleaved ordering before making thermal claims.
+  constraint_load_absolute_scores:
+    issue: The degradation trend is useful, but one-constraint absolute scores are unexpectedly low.
+    next_step: Manually audit content-preservation and rule-compliance checks before interpreting absolute levels.
+  shuffled_choices_q3:
+    issue: Qwen3 falls by 25 score points at Q3 on only twenty questions.
+    next_step: Inspect the failures and expand the set before claiming quantization-driven position bias.

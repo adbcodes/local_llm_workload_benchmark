@@ -30,9 +30,6 @@ def test_final_pipeline_script_runs_all_profiles_and_figures() -> None:
         assert config in source
     for option in (
         "--default-experiment",
-        "--temperature-experiment",
-        "--constrained-experiment",
-        "--repetition-experiment",
         "--context-experiment",
     ):
         assert option in source
