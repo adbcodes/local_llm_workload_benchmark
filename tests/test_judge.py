@@ -9,6 +9,7 @@ from llm_workload_benchmark.config import JudgeConfig, load_config
 from llm_workload_benchmark.dataset import DatasetError, load_suite, score_answer
 from llm_workload_benchmark.judge import (
     CachedJudgeBackend,
+    CerebrasJudgeBackend,
     GroqJudgeBackend,
     JudgeCallResult,
     JudgeError,
@@ -91,6 +92,16 @@ def test_judge_defaults_leave_room_for_reasoning_and_structured_output() -> None
     assert config.rate_limit_cooldown_retries == 1
     assert config.rate_limit_fallback_wait_seconds == 60
     assert config.rate_limit_max_wait_seconds == 3600
+
+
+def test_cerebras_judge_uses_provider_specific_defaults() -> None:
+    config = JudgeConfig(provider="cerebras")
+
+    assert config.model == "gpt-oss-120b"
+    assert config.api_key_env == "CEREBRAS_API_KEY"
+    assert config.input_price_per_million_tokens == 0.35
+    assert config.cached_input_price_per_million_tokens == 0.35
+    assert config.output_price_per_million_tokens == 0.75
 
 
 class FakeRateLimitError(Exception):
@@ -180,6 +191,59 @@ def test_groq_judge_parses_long_reset_and_respects_wait_cap() -> None:
             seed=42,
         )
     assert not sleeps
+
+
+def test_cerebras_judge_sends_supported_structured_output_parameters() -> None:
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=_decision().model_dump_json()),
+                finish_reason="stop",
+            )
+        ],
+        usage=SimpleNamespace(
+            prompt_tokens=100,
+            completion_tokens=50,
+            prompt_tokens_details=None,
+            completion_tokens_details=None,
+        ),
+        id="cerebras-judge",
+        model="gpt-oss-120b",
+        system_fingerprint="cerebras-test-fingerprint",
+    )
+
+    class Completions:
+        arguments = None
+
+        def create(self, **arguments):
+            self.arguments = arguments
+            return completion
+
+    completions = Completions()
+    backend = CerebrasJudgeBackend.__new__(CerebrasJudgeBackend)
+    backend._config = JudgeConfig(provider="cerebras")
+    backend._client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    backend._sleep = lambda seconds: None
+    backend._retry_notifier = lambda message: None
+
+    result = backend.evaluate(
+        system_prompt="judge policy",
+        user_prompt="candidate answer",
+        response_schema=SummaryJudgeDecision.model_json_schema(),
+        seed=42,
+    )
+
+    assert result.model == "gpt-oss-120b"
+    assert completions.arguments["reasoning_effort"] == "medium"
+    response_format = completions.arguments["response_format"]
+    assert response_format["type"] == "json_schema"
+    cerebras_schema = response_format["json_schema"]["schema"]
+    encoded_schema = json.dumps(cerebras_schema)
+    assert "minLength" not in encoded_schema
+    assert "title" not in encoded_schema
+    assert "description" not in encoded_schema
+    assert cerebras_schema["additionalProperties"] is False
+    assert "include_reasoning" not in completions.arguments
 
 
 def test_judge_cache_reuses_exact_decisions_without_request_cost(tmp_path: Path) -> None:
@@ -407,3 +471,10 @@ def test_groq_backend_requires_key_without_exposing_credentials(monkeypatch) -> 
 
     with pytest.raises(JudgeError, match="GROQ_API_KEY.*not set"):
         GroqJudgeBackend(JudgeConfig())
+
+
+def test_cerebras_backend_requires_key_without_exposing_credentials(monkeypatch) -> None:
+    monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
+
+    with pytest.raises(JudgeError, match="CEREBRAS_API_KEY.*not set"):
+        CerebrasJudgeBackend(JudgeConfig(provider="cerebras"))

@@ -248,37 +248,23 @@ that the benchmark already handles.
 """
 
 
-class GroqJudgeBackend:
-    """Pointwise summary judge using Groq's strict structured-output API."""
+class _StructuredChatJudgeBackend:
+    """Shared structured-output handling for supported chat-completion APIs."""
 
-    def __init__(
+    _provider_name: str
+
+    def _initialize(
         self,
         config: JudgeConfig,
+        client: Any,
         *,
-        sleep: Callable[[float], None] = time.sleep,
-        retry_notifier: Callable[[str], None] | None = None,
+        sleep: Callable[[float], None],
+        retry_notifier: Callable[[str], None] | None,
     ) -> None:
-        try:
-            from groq import Groq
-        except ImportError as error:
-            raise JudgeError(
-                "Groq judging requires the judge-groq extra; run "
-                "`uv sync --extra judge-groq`"
-            ) from error
-
-        api_key = os.environ.get(config.api_key_env)
-        if not api_key:
-            raise JudgeError(
-                f"judge API key environment variable {config.api_key_env!r} is not set"
-            )
         self._config = config
+        self._client = client
         self._sleep = sleep
         self._retry_notifier = retry_notifier or _notify_rate_limit_retry
-        self._client = Groq(
-            api_key=api_key,
-            timeout=config.timeout_seconds,
-            max_retries=config.max_retries,
-        )
 
     def evaluate(
         self,
@@ -300,15 +286,21 @@ class GroqJudgeBackend:
         latency_seconds = time.perf_counter() - started
 
         if not completion.choices:
-            raise JudgeError("Groq judge returned no completion choices")
+            raise JudgeError(
+                f"{self._provider_name} judge returned no completion choices"
+            )
         choice = completion.choices[0]
         content = choice.message.content
         if not isinstance(content, str) or not content:
-            raise JudgeError("Groq judge returned no structured decision")
+            raise JudgeError(
+                f"{self._provider_name} judge returned no structured decision"
+            )
         try:
             decision = SummaryJudgeDecision.model_validate_json(content)
         except ValidationError as error:
-            raise JudgeError(f"Groq judge returned an invalid decision: {error}") from error
+            raise JudgeError(
+                f"{self._provider_name} judge returned an invalid decision: {error}"
+            ) from error
 
         usage = completion.usage
         prompt_tokens = _optional_int(getattr(usage, "prompt_tokens", None))
@@ -356,7 +348,6 @@ class GroqJudgeBackend:
                         {"role": "user", "content": user_prompt},
                     ],
                     reasoning_effort=self._config.reasoning_effort,
-                    include_reasoning=False,
                     max_completion_tokens=self._config.max_completion_tokens,
                     seed=seed,
                     stream=False,
@@ -365,17 +356,22 @@ class GroqJudgeBackend:
                         "json_schema": {
                             "name": "summary_judge_decision",
                             "strict": True,
-                            "schema": response_schema,
+                            "schema": self._prepare_response_schema(
+                                response_schema
+                            ),
                         },
                     },
+                    **self._provider_request_options(),
                 )
                 return completion, retries, waited_seconds
             except Exception as error:
                 if not _is_rate_limit_error(error):
-                    raise JudgeError(f"Groq judge request failed: {error}") from error
+                    raise JudgeError(
+                        f"{self._provider_name} judge request failed: {error}"
+                    ) from error
                 if retries >= self._config.rate_limit_cooldown_retries:
                     raise JudgeError(
-                        "Groq judge rate limit persisted after "
+                        f"{self._provider_name} judge rate limit persisted after "
                         f"{retries} cooldown retries: {error}"
                     ) from error
 
@@ -384,7 +380,7 @@ class GroqJudgeBackend:
                     wait_seconds = self._config.rate_limit_fallback_wait_seconds
                 if wait_seconds > self._config.rate_limit_max_wait_seconds:
                     raise JudgeError(
-                        "Groq judge rate limit requires waiting approximately "
+                        f"{self._provider_name} judge rate limit requires waiting approximately "
                         f"{wait_seconds:.1f}s, above the configured maximum of "
                         f"{self._config.rate_limit_max_wait_seconds:.1f}s: {error}"
                     ) from error
@@ -392,11 +388,142 @@ class GroqJudgeBackend:
                 retries += 1
                 waited_seconds += wait_seconds
                 self._retry_notifier(
-                    "Groq judge rate limit reached; waiting "
+                    f"{self._provider_name} judge rate limit reached; waiting "
                     f"{wait_seconds:.1f}s before cooldown retry "
                     f"{retries}/{self._config.rate_limit_cooldown_retries}."
                 )
                 self._sleep(wait_seconds)
+
+    def _provider_request_options(self) -> dict[str, Any]:
+        return {}
+
+    def _prepare_response_schema(
+        self, response_schema: dict[str, Any]
+    ) -> dict[str, Any]:
+        return response_schema
+
+
+class GroqJudgeBackend(_StructuredChatJudgeBackend):
+    """Pointwise judge using Groq's strict structured-output API."""
+
+    _provider_name = "Groq"
+
+    def __init__(
+        self,
+        config: JudgeConfig,
+        *,
+        sleep: Callable[[float], None] = time.sleep,
+        retry_notifier: Callable[[str], None] | None = None,
+    ) -> None:
+        try:
+            from groq import Groq
+        except ImportError as error:
+            raise JudgeError(
+                "Groq judging requires the judge-groq extra; run "
+                "`uv sync --extra judge-groq`"
+            ) from error
+
+        api_key = os.environ.get(config.api_key_env)
+        if not api_key:
+            raise JudgeError(
+                f"judge API key environment variable {config.api_key_env!r} is not set"
+            )
+        client = Groq(
+            api_key=api_key,
+            timeout=config.timeout_seconds,
+            max_retries=config.max_retries,
+        )
+        self._initialize(
+            config,
+            client,
+            sleep=sleep,
+            retry_notifier=retry_notifier,
+        )
+
+    def _provider_request_options(self) -> dict[str, Any]:
+        return {"include_reasoning": False}
+
+
+class CerebrasJudgeBackend(_StructuredChatJudgeBackend):
+    """Pointwise judge using Cerebras structured chat completions."""
+
+    _provider_name = "Cerebras"
+
+    def __init__(
+        self,
+        config: JudgeConfig,
+        *,
+        sleep: Callable[[float], None] = time.sleep,
+        retry_notifier: Callable[[str], None] | None = None,
+    ) -> None:
+        try:
+            from cerebras.cloud.sdk import Cerebras
+        except ImportError as error:
+            raise JudgeError(
+                "Cerebras judging requires the judge-cerebras extra; run "
+                "`uv sync --extra judge-cerebras`"
+            ) from error
+
+        api_key = os.environ.get(config.api_key_env)
+        if not api_key:
+            raise JudgeError(
+                f"judge API key environment variable {config.api_key_env!r} is not set"
+            )
+        client = Cerebras(
+            api_key=api_key,
+            timeout=config.timeout_seconds,
+            max_retries=config.max_retries,
+            warm_tcp_connection=False,
+        )
+        self._initialize(
+            config,
+            client,
+            sleep=sleep,
+            retry_notifier=retry_notifier,
+        )
+
+    def _prepare_response_schema(
+        self, response_schema: dict[str, Any]
+    ) -> dict[str, Any]:
+        return _cerebras_response_schema(response_schema)
+
+
+def create_judge_backend(config: JudgeConfig) -> JudgeBackend:
+    """Create the configured provider backend, with optional persistent caching."""
+
+    backend: JudgeBackend
+    if config.provider == "cerebras":
+        backend = CerebrasJudgeBackend(config)
+    else:
+        backend = GroqJudgeBackend(config)
+    return CachedJudgeBackend(backend, config) if config.cache_path else backend
+
+
+_CEREBRAS_UNSUPPORTED_SCHEMA_FIELDS = {
+    "default",
+    "description",
+    "examples",
+    "format",
+    "maxItems",
+    "maxLength",
+    "minItems",
+    "minLength",
+    "pattern",
+    "title",
+    "uniqueItems",
+}
+
+
+def _cerebras_response_schema(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _cerebras_response_schema(child)
+            for key, child in value.items()
+            if key not in _CEREBRAS_UNSUPPORTED_SCHEMA_FIELDS
+        }
+    if isinstance(value, list):
+        return [_cerebras_response_schema(child) for child in value]
+    return value
 
 
 def evaluate_summary(
@@ -467,7 +594,7 @@ def evaluate_summary(
     cost = _estimate_cost(call, config)
     return EvaluationResult(
         type="llm_judge",
-        evaluator="groq_gpt_oss_summary_rubric",
+        evaluator=_judge_evaluator_id(config),
         version=SUMMARY_RUBRIC_VERSION,
         passed=passed,
         score=semantic_score,
@@ -578,6 +705,12 @@ def _estimate_cost(call: JudgeCallResult, config: JudgeConfig) -> float | None:
         + cached * config.cached_input_price_per_million_tokens
         + call.output_tokens * config.output_price_per_million_tokens
     ) / 1_000_000
+
+
+def _judge_evaluator_id(config: JudgeConfig) -> str:
+    model = config.model.rsplit("/", 1)[-1].casefold().replace("-120b", "")
+    normalized = re.sub(r"[^a-z0-9]+", "_", model).strip("_")
+    return f"{config.provider}_{normalized}_summary_rubric"
 
 
 def _optional_int(value: Any) -> int | None:

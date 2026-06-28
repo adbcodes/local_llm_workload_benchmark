@@ -31,9 +31,8 @@ from llm_workload_benchmark.dataset import (
 )
 from llm_workload_benchmark.executable import evaluate_python
 from llm_workload_benchmark.judge import (
-    CachedJudgeBackend,
-    GroqJudgeBackend,
     JudgeBackend,
+    create_judge_backend,
     evaluate_summary,
     evaluate_summary_panel,
 )
@@ -81,8 +80,7 @@ JudgeBackendFactory = Callable[[JudgeConfig], JudgeBackend]
 
 
 def _default_judge_backend_factory(config: JudgeConfig) -> JudgeBackend:
-    backend: JudgeBackend = GroqJudgeBackend(config)
-    return CachedJudgeBackend(backend, config) if config.cache_path else backend
+    return create_judge_backend(config)
 
 
 class LlamaCppBackend:
@@ -1024,6 +1022,39 @@ def _failed_summary(
         "telemetry": telemetry,
         "error": {"type": type(error).__name__, "message": str(error)},
     }
+
+
+def rebuild_run_summary(
+    run_directory: Path,
+    *,
+    model: ModelConfig,
+    suite_path: Path,
+    definitions: dict[str, Any],
+) -> Path:
+    """Rebuild a run summary after saved evaluations have been replaced."""
+
+    summary_path = run_directory / "summary.json"
+    results_path = run_directory / "results.jsonl"
+    previous = json.loads(summary_path.read_text(encoding="utf-8"))
+    records = [
+        json.loads(line)
+        for line in results_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    rebuilt = _build_summary(
+        records,
+        model=model,
+        model_path=Path(previous["model"]["path"]),
+        suite_path=suite_path,
+        definitions=definitions,
+        load_seconds=float(previous.get("model_load_seconds") or 0.0),
+        peak_memory_after_model_load_bytes=previous.get(
+            "peak_process_memory_after_model_load_bytes"
+        ),
+        telemetry=previous.get("telemetry"),
+    )
+    _write_json(summary_path, rebuilt)
+    return summary_path
 
 
 def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:

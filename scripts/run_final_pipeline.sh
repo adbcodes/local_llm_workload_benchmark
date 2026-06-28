@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${ENV_FILE:-$ROOT/.env}"
 RUNS="${RUNS_DIR:-$ROOT/runs}"
 STATE="$RUNS/final-pipeline"
 LOCK="${LOCK_DIR:-$ROOT/.final-pipeline.lock}"
@@ -137,7 +138,7 @@ latest_compatible_experiment() {
     [[ -n "$saved_hash" && "$saved_hash" == "$expected_hash" ]] || continue
     printf '%s\n' "$directory"
     return 0
-  done < <(find "$RUNS" -mindepth 1 -maxdepth 1 -type d -name '*-matrix-*' \
+  done < <(find "$RUNS" -mindepth 1 -maxdepth 1 -type d \
     -print | sort -r)
 
   return 1
@@ -248,6 +249,33 @@ run_experiment() {
   echo "[$label] Completed: $directory"
 }
 
+migrate_saved_default_if_requested() {
+  [[ "$MODE" == "resume" ]] || return 0
+  [[ -n "${REJUDGE_SOURCE_EXPERIMENT:-}" ]] || return 0
+  if latest_compatible_experiment "$DEFAULT_CONFIG" >/dev/null; then
+    return 0
+  fi
+
+  local source="$REJUDGE_SOURCE_EXPERIMENT"
+  [[ "$source" == /* ]] || source="$ROOT/$source"
+  [[ -f "$source/experiment.json" ]] || \
+    die "rejudge source experiment does not exist: $source"
+
+  echo "[default] Migrating saved answers to the Cerebras judge"
+  log_event STARTED "rejudge source=$source"
+  if ! UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv-cache}" \
+    uv run --offline llm-benchmark rejudge \
+      --experiment "$source" \
+      --config "$DEFAULT_CONFIG" \
+      2> "$STATE/rejudge.stderr.log"; then
+    cat "$STATE/rejudge.stderr.log" >&2
+    die "saved-answer rejudging failed; see $STATE/rejudge.stderr.log"
+  fi
+  latest_compatible_experiment "$DEFAULT_CONFIG" >/dev/null || \
+    die "rejudging finished without a resumable default experiment"
+  log_event COMPLETED "rejudge source=$source"
+}
+
 show_timing() {
   local label="$1"
   local directory="$2"
@@ -270,14 +298,15 @@ if [[ "$MODE" == "fresh" ]]; then
   fresh_reset
 fi
 
-if [[ -f .env ]]; then
+if [[ -f "$ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source .env
+  source "$ENV_FILE"
   set +a
 fi
 
-[[ -n "${GROQ_API_KEY:-}" ]] || die "GROQ_API_KEY is missing; add it to .env"
+[[ -n "${CEREBRAS_API_KEY:-}" ]] || \
+  die "CEREBRAS_API_KEY is missing; add it to .env"
 
 : > "$EVENT_LOG"
 log_event STARTED "final pipeline pid=$$"
@@ -289,6 +318,8 @@ UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv-cache}" \
   uv run --offline pytest -q \
   tests/test_final_profiles.py tests/test_artifacts.py tests/test_final_figures.py
 log_event COMPLETED "preflight"
+
+migrate_saved_default_if_requested
 
 RUN_RESULT=""
 show_pipeline_progress 0 "starting default matrix"

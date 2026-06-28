@@ -47,6 +47,8 @@ def test_final_pipeline_script_runs_all_profiles_and_figures() -> None:
     assert "stderr.log" in source
     assert "Keep stdout attached to the terminal" in source
     assert "--resume-experiment" in source
+    assert "REJUDGE_SOURCE_EXPERIMENT" in source
+    assert "llm-benchmark rejudge" in source
     assert "--fresh" in source
     assert "--status" in source
 
@@ -75,6 +77,52 @@ def test_config_source_lookup_supports_string_and_object_formats(tmp_path: Path)
         )
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == "configs/final_default_matrix.yaml"
+
+
+def test_status_finds_a_compatible_rejudged_experiment(tmp_path: Path) -> None:
+    run = tmp_path / "runs" / "2026-01-01_00-00-00-rejudged-test"
+    run.mkdir(parents=True)
+    config = ROOT / "configs" / "final_default_matrix.yaml"
+    config_hash = subprocess.run(
+        ["shasum", "-a", "256", str(config)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()[0]
+    (run / "experiment.json").write_text(
+        json.dumps(
+            {
+                "status": "interrupted",
+                "models_completed": 3,
+                "models_total": 12,
+                "config_source": {
+                    "path": str(config),
+                    "sha256": config_hash,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "RUNS_DIR": str(tmp_path / "runs"),
+            "ENV_FILE": str(tmp_path / "no-project-env"),
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", str(SCRIPT), "--status"],
+        cwd=ROOT,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "default       interrupted      3/12" in result.stdout
+    assert str(run) in result.stdout
 
 
 def test_final_pipeline_completes_with_tiny_fake_benchmarks(tmp_path: Path) -> None:
@@ -124,7 +172,8 @@ fi
     environment = os.environ.copy()
     environment.update(
         {
-            "GROQ_API_KEY": "test-key",
+            "CEREBRAS_API_KEY": "test-key",
+            "ENV_FILE": str(tmp_path / "no-project-env"),
             "PATH": f"{bin_directory}:{environment['PATH']}",
             "RUNS_DIR": str(tmp_path / "runs"),
             "LOCK_DIR": str(tmp_path / "pipeline.lock"),

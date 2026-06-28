@@ -16,6 +16,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+judge-cerebras = [
+  "cerebras-cloud-sdk>=1.91,<2",
+]
 judge-groq = [
   "groq>=1.5,<2",
 ]

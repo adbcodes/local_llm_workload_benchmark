@@ -2,16 +2,16 @@ schema_version: 1
 
 benchmark:
   name: judged-summary-pilot
-  description: Compare local GGUF summaries using GPT-OSS 120B on Groq.
+  description: Compare local GGUF summaries using GPT-OSS 120B on Cerebras.
   workload_path: data/suites/judged.yaml
   output_root: runs
   repetitions: 1
   seed: 42
 
 judge:
-  provider: groq
-  model: openai/gpt-oss-120b
-  api_key_env: GROQ_API_KEY
+  provider: cerebras
+  model: gpt-oss-120b
+  api_key_env: CEREBRAS_API_KEY
   reasoning_effort: medium
   max_completion_tokens: 4096
   timeout_seconds: 60
@@ -21,9 +21,9 @@ judge:
   rate_limit_max_wait_seconds: 3600
   max_candidate_characters: 12000
   cache_path: runs/judge_cache.jsonl
-  input_price_per_million_tokens: 0.15
-  cached_input_price_per_million_tokens: 0.075
-  output_price_per_million_tokens: 0.60
+  input_price_per_million_tokens: 0.35
+  cached_input_price_per_million_tokens: 0.35
+  output_price_per_million_tokens: 0.75
 
 models:
   - id: qwen2.5-3b-q4

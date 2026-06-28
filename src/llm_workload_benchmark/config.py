@@ -57,7 +57,7 @@ class JudgeConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    provider: Literal["groq"] = "groq"
+    provider: Literal["cerebras", "groq"] = "groq"
     model: str = Field(default="openai/gpt-oss-120b", min_length=1)
     family: str = Field(default="openai", min_length=1)
     api_key_env: str = Field(
@@ -76,6 +76,20 @@ class JudgeConfig(BaseModel):
     input_price_per_million_tokens: float = Field(default=0.15, ge=0)
     cached_input_price_per_million_tokens: float = Field(default=0.075, ge=0)
     output_price_per_million_tokens: float = Field(default=0.60, ge=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def apply_provider_defaults(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        configured = dict(value)
+        if configured.get("provider", "groq") == "cerebras":
+            configured.setdefault("model", "gpt-oss-120b")
+            configured.setdefault("api_key_env", "CEREBRAS_API_KEY")
+            configured.setdefault("input_price_per_million_tokens", 0.35)
+            configured.setdefault("cached_input_price_per_million_tokens", 0.35)
+            configured.setdefault("output_price_per_million_tokens", 0.75)
+        return configured
 
 
 class JudgePanelConfig(BaseModel):

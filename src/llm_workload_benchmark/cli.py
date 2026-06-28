@@ -22,6 +22,7 @@ from llm_workload_benchmark.preference import (
     completed_model_ids,
 )
 from llm_workload_benchmark.preference_terminal import run_terminal_preferences
+from llm_workload_benchmark.rejudge import RejudgeError, rejudge_experiment
 from llm_workload_benchmark.runtime_matrix import (
     RuntimeMatrixError,
     combination_count,
@@ -310,6 +311,49 @@ def benchmark_command(
 
     typer.echo(f"\nExperiment saved to {experiment_directory}")
     _show_artifact_paths(artifact_paths)
+
+
+@app.command("rejudge")
+def rejudge_command(
+    experiment: Path = typer.Option(
+        ...,
+        "--experiment",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+        help="Stopped experiment whose completed saved answers should be copied.",
+    ),
+    config_path: Path = typer.Option(
+        ...,
+        "--config",
+        "-c",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Matching config containing the replacement judge settings.",
+    ),
+) -> None:
+    """Copy completed runs and re-evaluate saved answers with another judge."""
+
+    def show_progress(model_id: str, completed: int, total: int) -> None:
+        typer.echo(f"Rejudging {completed}/{total}: {model_id}")
+
+    try:
+        config = load_config(config_path)
+        target = rejudge_experiment(
+            experiment,
+            config,
+            config_path,
+            progress_callback=show_progress,
+        )
+    except (ConfigError, DatasetError, RejudgeError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Rejudged experiment saved to {target}")
 
 
 @app.command("runtime-matrix")

@@ -9,9 +9,9 @@ benchmark:
   seed: 42
 
 judge:
-  provider: groq
-  model: openai/gpt-oss-120b
-  api_key_env: GROQ_API_KEY
+  provider: cerebras
+  model: gpt-oss-120b
+  api_key_env: CEREBRAS_API_KEY
   reasoning_effort: medium
   max_completion_tokens: 4096
   timeout_seconds: 60

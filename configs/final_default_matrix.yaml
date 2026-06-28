@@ -7,10 +7,10 @@ benchmark:
   repetitions: 1
   seed: 42
 judge: &judge
-  provider: groq
-  model: openai/gpt-oss-120b
+  provider: cerebras
+  model: gpt-oss-120b
   family: openai
-  api_key_env: GROQ_API_KEY
+  api_key_env: CEREBRAS_API_KEY
   cache_path: runs/judge_cache.jsonl
 models:
   - &qwen25
