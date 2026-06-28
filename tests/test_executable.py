@@ -105,6 +105,17 @@ def deduplicate_preserving_order(values):
     assert partial.details["tests_passed"] == 1
 
 
+def test_python_evaluator_allows_safe_lambda_expressions() -> None:
+    result = evaluate_python(
+        _coding_item(),
+        "def deduplicate_preserving_order(values):\n"
+        "    return list(dict.fromkeys(sorted(values, key=lambda value: values.index(value))))",
+    )
+
+    assert result.passed
+    assert result.details["reason"] == "all_tests_passed"
+
+
 def test_python_evaluator_stops_infinite_loop_at_timeout() -> None:
     result = evaluate_python(
         _coding_item(),

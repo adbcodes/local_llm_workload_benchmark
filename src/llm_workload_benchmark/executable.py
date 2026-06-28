@@ -14,6 +14,7 @@ from typing import Any
 
 from llm_workload_benchmark.dataset import DatasetItem
 from llm_workload_benchmark.evaluation import EvaluationResult
+from llm_workload_benchmark.answer_parser import parse_answer
 
 
 class ExecutableEvaluationError(RuntimeError):
@@ -29,7 +30,6 @@ _BLOCKED_NODES = (
     ast.Global,
     ast.Import,
     ast.ImportFrom,
-    ast.Lambda,
     ast.Nonlocal,
 )
 _BLOCKED_CALLS = {
@@ -215,15 +215,11 @@ def evaluate_python(item: DatasetItem, answer: str) -> EvaluationResult:
 
 
 def _extract_source(answer: str) -> tuple[str, str | None]:
-    stripped = answer.strip()
-    if not stripped.startswith("```"):
-        return stripped, None
-    lines = stripped.splitlines()
-    if len(lines) >= 3 and lines[-1].strip() == "```":
-        language = lines[0][3:].strip().casefold()
-        if language in {"", "py", "python"}:
-            return "\n".join(lines[1:-1]).strip(), "markdown_fence"
-    return stripped, None
+    parsed = parse_answer(answer, "code")
+    if not parsed.parsed:
+        return answer.strip(), None
+    wrapper = "markdown_fence" if "markdown_fence" in parsed.protocol_violations else None
+    return str(parsed.value), wrapper
 
 
 def _validate_candidate(source: str, entry_point: str) -> str | None:

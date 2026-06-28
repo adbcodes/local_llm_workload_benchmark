@@ -52,6 +52,7 @@ def parse_answer(
     kind: AnswerKind,
     *,
     require_final: bool = False,
+    recover_missing_final: bool = False,
     allow_recovery: bool = True,
     option_text: dict[str, str] | None = None,
     separator: str = ",",
@@ -74,6 +75,7 @@ def parse_answer(
     extracted, steps, violations, error = _extract_answer_slot(
         response,
         require_final=require_final,
+        recover_missing_final=recover_missing_final,
     )
     if error is not None:
         return _result(
@@ -177,6 +179,7 @@ def _extract_answer_slot(
     response: str,
     *,
     require_final: bool,
+    recover_missing_final: bool,
 ) -> tuple[str | None, list[str], list[str], ParseStatus | None]:
     if not require_final:
         return response.strip(), ["strip_whitespace"], [], None
@@ -195,11 +198,26 @@ def _extract_answer_slot(
         if not candidate:
             return None, [], ["empty_final_answer"], "missing"
         return candidate, ["extract_inline_final"], ["final_not_own_line"], None
+    if recover_missing_final:
+        lines = [line.strip() for line in response.splitlines() if line.strip()]
+        if lines:
+            candidate = re.sub(
+                r"(?i)^(?:the\s+)?(?:final\s+)?(?:answer|date|value)\s*(?::|=|is)\s*",
+                "",
+                lines[-1],
+            ).strip()
+            if candidate:
+                return (
+                    candidate,
+                    ["recover_last_nonempty_line"],
+                    ["missing_final_marker"],
+                    None,
+                )
     return None, [], ["missing_final_marker"], "missing"
 
 
 def _parse_option(value: str, option_text: dict[str, str]) -> tuple[str, list[str]]:
-    candidate = value.strip()
+    candidate = value.strip().rstrip(".!?")
     steps = ["strip_whitespace"] if candidate != value else []
     wrapped = re.fullmatch(r"[\(\[\{]?\s*([A-Za-z])\s*[\)\]\}]?[\.!?]?", candidate)
     if wrapped:
@@ -222,6 +240,16 @@ def _parse_option(value: str, option_text: dict[str, str]) -> tuple[str, list[st
 def _parse_number(value: str) -> tuple[int | float, list[str]]:
     candidate = value.strip()
     steps = ["strip_whitespace"] if candidate != value else []
+    quoted = re.fullmatch(r"(['\"])(.*?)\1", candidate)
+    if quoted:
+        candidate = quoted.group(2).strip()
+        steps.append("remove_scalar_quotes")
+    without_terminal = candidate.rstrip("!?")
+    if re.fullmatch(r"[-+]?(?:\d[\d,]*)\.", without_terminal):
+        without_terminal = without_terminal[:-1]
+    if without_terminal != candidate:
+        candidate = without_terminal
+        steps.append("remove_terminal_punctuation")
     currency = re.fullmatch(r"([₹$£€])?\s*(.*?)\s*", candidate)
     assert currency is not None
     if currency.group(1):
@@ -239,16 +267,18 @@ def _parse_number(value: str) -> tuple[int | float, list[str]]:
 def _parse_date(value: str, formats: tuple[str, ...]) -> tuple[str, list[str]]:
     if not formats:
         raise ValueError("date parsing requires declared formats")
-    candidate = value.strip()
+    candidate = value.strip().rstrip(".!?")
+    without_ordinal = re.sub(r"(?i)(?<=\d)(st|nd|rd|th)\b", "", candidate)
+    steps = ["remove_date_ordinal"] if without_ordinal != candidate else []
     matches: set[str] = set()
     for date_format in formats:
         try:
-            matches.add(datetime.strptime(candidate, date_format).date().isoformat())
+            matches.add(datetime.strptime(without_ordinal, date_format).date().isoformat())
         except ValueError:
             continue
     if len(matches) != 1:
         raise ValueError("date is unsupported or ambiguous")
-    return matches.pop(), ["parse_declared_date_format", "normalize_date_iso8601"]
+    return matches.pop(), [*steps, "parse_declared_date_format", "normalize_date_iso8601"]
 
 
 def _parse_set(value: str, separator: str) -> tuple[list[str], list[str]]:

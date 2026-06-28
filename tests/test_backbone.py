@@ -78,6 +78,44 @@ def test_reusable_set_behavior_tool_and_confidence_evaluators() -> None:
     assert result.details["brier_component"] == pytest.approx(0.04)
 
 
+def test_deterministic_scorers_apply_generic_semantic_normalization() -> None:
+    text_item = _item(
+        "exact_match",
+        "Window seats",
+        parameters={"case_sensitive": False},
+    )
+    assert score_answer(text_item, "WINDOW-SEATS!").passed
+
+    number_item = _item(
+        "numeric_tolerance",
+        1234567,
+        contract_type="number",
+        parameters={"absolute_tolerance": 0},
+    )
+    numeric = score_answer(number_item, "₹12,34,567")
+    assert numeric.passed
+    assert "remove_currency_symbol" in numeric.details["normalization_steps"]
+
+    set_item = _item(
+        "set_match",
+        ["Billing", "Urgent"],
+        parameters={"case_sensitive": False},
+    )
+    assert score_answer(set_item, "urgent!, BILLING").passed
+
+    confidence_item = _item(
+        "confidence_value",
+        {"answer": False},
+        parameters={"answer_type": "exact", "case_sensitive": False},
+    )
+    confidence = score_answer(confidence_item, "FALSE\n85")
+    assert confidence.passed
+    assert confidence.details["confidence"] == 85
+    assert confidence.details["protocol_violations"] == [
+        "missing_confidence_label"
+    ]
+
+
 def _write_single_item_run(
     tmp_path: Path,
     item: dict,
@@ -181,12 +219,13 @@ def test_json_fence_is_integration_friction_not_a_wrong_scorable_answer(tmp_path
     record = json.loads((run / "results.jsonl").read_text())
     totals = json.loads((run / "summary.json").read_text())["totals"]
     assert record["integration_outcome"] == "markdown_fence"
-    assert record["evaluation"]["score"] == 0.75
+    assert record["evaluation"]["score"] == 1.0
+    assert record["evaluation"]["details"]["content_exact"] is True
     assert totals["scored"] == 1
     assert totals["integration_failures"] == 1
     assert totals["integration_friction_rate"] == 1.0
     assert totals["pass_rate"] == 0.0
-    assert totals["mean_score"] == 0.75
+    assert totals["mean_score"] == 1.0
 
 
 def test_runner_executes_fake_tool_results_between_model_turns(tmp_path: Path) -> None:

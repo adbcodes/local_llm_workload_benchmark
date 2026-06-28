@@ -64,6 +64,9 @@ def test_number_parser_rejects_surrounding_explanation() -> None:
 
 def test_dates_require_declared_unambiguous_formats() -> None:
     assert parse_answer("3rd March 2001", "date").status == "unparseable"
+    assert parse_answer(
+        "3rd March 2001", "date", date_formats=("%d %B %Y",)
+    ).value == "2001-03-03"
     parsed = parse_answer("03/04/2009", "date", date_formats=("%d/%m/%Y",))
     assert parsed.value == "2009-04-03"
     ambiguous = parse_answer(
@@ -72,6 +75,17 @@ def test_dates_require_declared_unambiguous_formats() -> None:
         date_formats=("%d/%m/%Y", "%m/%d/%Y"),
     )
     assert ambiguous.status == "unparseable"
+
+
+def test_missing_final_marker_can_use_only_the_last_line_when_contract_allows_it() -> None:
+    parsed = parse_answer(
+        "working\nThe answer is (B).",
+        "option",
+        require_final=True,
+        recover_missing_final=True,
+    )
+    assert parsed.value == "B"
+    assert parsed.protocol_violations == ["missing_final_marker"]
 
 
 def test_set_parser_normalizes_members_and_rejects_duplicates() -> None:

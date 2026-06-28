@@ -16,6 +16,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from llm_workload_benchmark.evaluation import EvaluationResult
+from llm_workload_benchmark.answer_parser import ParsedAnswer, normalize_text, parse_answer
 
 Difficulty = Literal["easy", "medium", "hard"]
 Split = Literal["dev", "test"]
@@ -947,8 +948,24 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
     extraction_details: dict[str, Any] = {}
     scoring_answer = answer
     if item.benchmark == "applied_reasoning":
-        extracted_answer, extraction_details = _extract_applied_reasoning_answer(answer)
-        if extracted_answer is None:
+        parsed = _parse_applied_reasoning_answer(item, answer)
+        extraction_details = _answer_parse_details(parsed)
+        extraction_details.update(
+            {
+                "answer_extraction": (
+                    "final_marker"
+                    if "extract_final_line" in parsed.normalization_steps
+                    else "last_line_fallback"
+                ),
+                "final_marker_compliant": not parsed.protocol_violations,
+                "final_answer": parsed.extracted_answer,
+            }
+        )
+        if not parsed.parsed:
+            extraction_details["reason"] = {
+                "ambiguous": "multiple_final_answers",
+                "missing": "missing_final_answer",
+            }.get(parsed.status, "unparseable_final_answer")
             return EvaluationResult(
                 type="deterministic",
                 evaluator=method,
@@ -957,7 +974,7 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
                 score=0,
                 details=extraction_details,
             )
-        scoring_answer = extracted_answer
+        scoring_answer = parsed.extracted_answer or ""
     if method == "numeric_tolerance":
         score = _score_numeric(item, scoring_answer)
     elif method == "rational_value":
@@ -1011,51 +1028,48 @@ def _load_yaml_model(path: Path, model_type: type[BaseModel]) -> Any:
         raise DatasetError(f"invalid dataset metadata in {path}:\n{error}") from error
 
 
-def _extract_applied_reasoning_answer(
-    answer: str,
-) -> tuple[str | None, dict[str, Any]]:
-    """Extract the explicit FINAL field or use one narrow last-line fallback."""
-
-    marked_answers = re.findall(
-        r"(?im)^\s*FINAL\s*:\s*(.*?)\s*$",
+def _parse_applied_reasoning_answer(item: DatasetItem, answer: str) -> ParsedAnswer:
+    kind = "text"
+    options: dict[str, str] | None = None
+    date_formats: tuple[str, ...] = ()
+    prompt_options = _prompt_options(item.prompt)
+    if item.response_contract.format == "source_label" and prompt_options:
+        kind = "option"
+        options = prompt_options
+    elif item.scoring.method == "numeric_tolerance":
+        kind = "number"
+    elif item.scoring.method == "date_value":
+        kind = "date"
+        date_formats = _declared_date_formats(item.response_contract.format)
+    return parse_answer(
         answer,
+        kind,
+        require_final=True,
+        recover_missing_final=True,
+        option_text=options,
+        date_formats=date_formats,
     )
-    if len(marked_answers) > 1:
-        return None, {
-            "reason": "multiple_final_answers",
-            "final_marker_compliant": False,
-            "final_answer_candidates": marked_answers,
-        }
-    if marked_answers:
-        final_answer = marked_answers[0].strip()
-        if not final_answer:
-            return None, {
-                "reason": "empty_final_answer",
-                "final_marker_compliant": False,
-                "final_answer_candidates": marked_answers,
-            }
-        return final_answer, {
-            "answer_extraction": "final_marker",
-            "final_marker_compliant": True,
-            "final_answer": final_answer,
-        }
 
-    lines = [line.strip() for line in answer.splitlines() if line.strip()]
-    if not lines:
-        return None, {
-            "reason": "missing_final_answer",
-            "final_marker_compliant": False,
-        }
-    fallback = re.sub(
-        r"(?i)^(?:the\s+)?(?:final\s+)?answer\s*(?::|=|is)\s*",
-        "",
-        lines[-1],
-    ).strip()
-    fallback = fallback[:-1].rstrip() if fallback.endswith(".") else fallback
-    return fallback, {
-        "answer_extraction": "last_line_fallback",
-        "final_marker_compliant": False,
-        "final_answer": fallback,
+
+def _prompt_options(prompt: str) -> dict[str, str]:
+    options: dict[str, str] = {}
+    for wrapped, bare, text in re.findall(
+        r"(?m)^\s*(?:\(([A-Za-z])\)|([A-Za-z])[\).])\s*(.+?)\s*$",
+        prompt,
+    ):
+        options[(wrapped or bare).upper()] = text.strip()
+    return options
+
+
+def _answer_parse_details(parsed: ParsedAnswer) -> dict[str, Any]:
+    return {
+        "answer_parse_status": parsed.status,
+        "answer_extraction": (
+            parsed.normalization_steps[0] if parsed.normalization_steps else None
+        ),
+        "normalization_steps": parsed.normalization_steps,
+        "protocol_violations": parsed.protocol_violations,
+        "parsed_value": parsed.value,
     }
 
 
@@ -1078,7 +1092,10 @@ def _extract_numeric_values(answer: str) -> list[float]:
 def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
     expected = float(item.expected["value"])
     tolerance = float(item.scoring.parameters.get("absolute_tolerance", 0))
-    if item.scoring.parameters.get("allow_surrounding_text", False):
+    parsed = parse_answer(answer, "number")
+    if parsed.parsed:
+        actual = float(parsed.value)
+    elif item.scoring.parameters.get("allow_surrounding_text", False):
         candidates = _extract_numeric_values(answer)
         unique_candidates = set(candidates)
         if len(unique_candidates) != 1:
@@ -1092,19 +1109,23 @@ def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
             )
         actual = unique_candidates.pop()
     else:
-        try:
-            actual = float(answer.strip().replace(",", ""))
-        except ValueError:
-            return ScoreResult(passed=False, score=0, details={"reason": "not_numeric"})
-        if not math.isfinite(actual):
-            return ScoreResult(passed=False, score=0, details={"reason": "not_finite"})
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={"reason": "not_numeric", **_answer_parse_details(parsed)},
+        )
 
     difference = abs(actual - expected)
     passed = difference <= tolerance
     return ScoreResult(
         passed=passed,
         score=float(passed),
-        details={"actual": actual, "difference": difference, "tolerance": tolerance},
+        details={
+            "actual": actual,
+            "difference": difference,
+            "tolerance": tolerance,
+            **_answer_parse_details(parsed),
+        },
     )
 
 
@@ -1174,6 +1195,20 @@ def _score_exact(item: DatasetItem, answer: str) -> ScoreResult:
     expected = str(item.expected["value"])
     actual = answer.strip() if item.scoring.parameters.get("strip", True) else answer
     candidates: list[str] | None = None
+    parse_details: dict[str, Any] = {}
+    options = _prompt_options(item.prompt)
+    if item.response_contract.format == "source_label" and options:
+        parsed_actual = parse_answer(actual, "option", option_text=options)
+        parsed_expected = parse_answer(expected, "option", option_text=options)
+        parse_details = _answer_parse_details(parsed_actual)
+        if not parsed_actual.parsed or not parsed_expected.parsed:
+            return ScoreResult(
+                passed=False,
+                score=0,
+                details={"reason": "invalid_option_answer", **parse_details},
+            )
+        actual = str(parsed_actual.value)
+        expected = str(parsed_expected.value)
     if item.scoring.parameters.get("allow_surrounding_text", False):
         answer_format = item.scoring.parameters.get("answer_format")
         if answer_format == "comma_separated_labels":
@@ -1195,44 +1230,75 @@ def _score_exact(item: DatasetItem, answer: str) -> ScoreResult:
                 )
             actual = unique_candidates[0]
     if not item.scoring.parameters.get("case_sensitive", True):
-        actual = actual.casefold()
-        expected = expected.casefold()
+        actual, actual_steps = normalize_text(actual)
+        expected, _ = normalize_text(expected)
+        parse_details.setdefault("normalization_steps", []).extend(
+            step
+            for step in actual_steps
+            if step not in parse_details.get("normalization_steps", [])
+        )
     passed = actual == expected
     return ScoreResult(
         passed=passed,
         score=float(passed),
-        details={"actual": actual, "expected": expected, "candidates": candidates},
+        details={
+            "actual": actual,
+            "expected": expected,
+            "candidates": candidates,
+            **parse_details,
+        },
     )
 
 
 def _score_date(item: DatasetItem, answer: str) -> ScoreResult:
-    expected_candidates = _extract_dates(str(item.expected["value"]))
-    candidates = _extract_dates(answer)
-    if len(expected_candidates) != 1:
+    formats = _declared_date_formats(item.response_contract.format)
+    expected_parsed = parse_answer(str(item.expected["value"]), "date", date_formats=formats)
+    parsed = parse_answer(answer, "date", date_formats=formats)
+    if not expected_parsed.parsed:
         return ScoreResult(
             passed=False,
             score=0,
             details={"reason": "invalid_expected_date"},
         )
-    if len(candidates) != 1:
+    if not parsed.parsed:
         return ScoreResult(
             passed=False,
             score=0,
             details={
                 "reason": "missing_or_ambiguous_date_answer",
-                "candidates": [value.isoformat() for value in candidates],
-                "expected": expected_candidates[0].isoformat(),
+                "expected": expected_parsed.value,
+                **_answer_parse_details(parsed),
             },
         )
 
-    actual = candidates[0]
-    expected = expected_candidates[0]
+    actual = parsed.value
+    expected = expected_parsed.value
     passed = actual == expected
     return ScoreResult(
         passed=passed,
         score=float(passed),
-        details={"actual": actual.isoformat(), "expected": expected.isoformat()},
+        details={"actual": actual, "expected": expected, **_answer_parse_details(parsed)},
     )
+
+
+def _declared_date_formats(contract_format: str | None) -> tuple[str, ...]:
+    if contract_format == "common_unambiguous_date":
+        return (
+            "%Y-%m-%d",
+            "%B %d, %Y",
+            "%b %d, %Y",
+            "%d %B %Y",
+            "%d %b %Y",
+            "%m/%d/%Y",
+            "%d/%m/%Y",
+            "%m-%d-%Y",
+            "%d-%m-%Y",
+        )
+    if contract_format == "DD/MM/YYYY":
+        return ("%d/%m/%Y",)
+    if contract_format == "MM/DD/YYYY":
+        return ("%m/%d/%Y",)
+    return ("%Y-%m-%d",)
 
 
 def _extract_dates(answer: str) -> list[date]:
@@ -1315,25 +1381,26 @@ def _append_text_date(
 
 
 def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
-    protocol_compliant = True
-    wrapper: str | None = None
-    try:
-        actual = json.loads(answer)
-    except json.JSONDecodeError:
-        protocol_compliant = False
-        actual = None
-        if item.scoring.parameters.get("allow_diagnostic_normalization", True):
-            actual, wrapper = _extract_diagnostic_json(answer)
-        if actual is None:
-            return ScoreResult(
-                passed=False,
-                score=0,
-                details={
-                    "reason": "invalid_json",
-                    "protocol_compliant": False,
-                    "diagnostic_json_valid": False,
-                },
-            )
+    parsed = parse_answer(
+        answer,
+        "json",
+        allow_recovery=item.scoring.parameters.get(
+            "allow_diagnostic_normalization", True
+        ),
+    )
+    protocol_compliant = parsed.parsed and not parsed.protocol_violations
+    if not parsed.parsed:
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={
+                "reason": "invalid_json",
+                "protocol_compliant": False,
+                "diagnostic_json_valid": False,
+                **_answer_parse_details(parsed),
+            },
+        )
+    actual = parsed.value
 
     expected = item.expected["value"]
     expected_leaves = _flatten_json(expected)
@@ -1347,12 +1414,11 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
         and _json_values_equal(expected_leaves[path], actual_leaves[path])
     }
     leaf_accuracy = len(matched_paths) / len(all_paths) if all_paths else 1.0
-    content_weight = 0.75
-    protocol_weight = 0.25
-    content_score = content_weight * leaf_accuracy
-    protocol_score = protocol_weight * float(protocol_compliant)
-    score = content_score + protocol_score
+    content_score = leaf_accuracy
+    protocol_score = float(protocol_compliant)
+    score = content_score
     content_exact = _json_values_equal(actual, expected)
+    # Commit 5 will derive the headline verdict from each benchmark policy.
     passed = protocol_compliant and content_exact
     return ScoreResult(
         passed=passed,
@@ -1360,11 +1426,13 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
         details={
             "protocol_compliant": protocol_compliant,
             "content_exact": content_exact,
-            "diagnostic_wrapper": wrapper,
+            "diagnostic_wrapper": (
+                parsed.protocol_violations[0] if parsed.protocol_violations else None
+            ),
             "leaf_accuracy": leaf_accuracy,
             "content_score": content_score,
             "protocol_score": protocol_score,
-            "score_weights": {"content": content_weight, "protocol": protocol_weight},
+            **_answer_parse_details(parsed),
             "missing_paths": sorted(set(expected_leaves) - set(actual_leaves)),
             "extra_paths": sorted(set(actual_leaves) - set(expected_leaves)),
         },
@@ -1374,14 +1442,14 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
 def _score_set(item: DatasetItem, answer: str) -> ScoreResult:
     expected_values = [str(value).strip() for value in item.expected["value"]]
     if item.response_contract.type == "json":
-        try:
-            parsed = json.loads(answer)
-        except json.JSONDecodeError:
+        parsed_answer = parse_answer(answer, "json")
+        if not parsed_answer.parsed:
             return ScoreResult(
                 passed=False,
                 score=0,
                 details={"reason": "invalid_json", "protocol_compliant": False},
             )
+        parsed = parsed_answer.value
         if not isinstance(parsed, list) or any(not isinstance(value, str) for value in parsed):
             return ScoreResult(
                 passed=False,
@@ -1391,9 +1459,10 @@ def _score_set(item: DatasetItem, answer: str) -> ScoreResult:
         actual_values = [value.strip() for value in parsed]
     else:
         separator = item.scoring.parameters.get("separator", ",")
-        actual_values = [value.strip() for value in answer.strip().split(separator) if value.strip()]
+        raw_values = [value.strip() for value in answer.strip().split(separator) if value.strip()]
+        actual_values = raw_values
     case_sensitive = item.scoring.parameters.get("case_sensitive", True)
-    normalize = (lambda value: value) if case_sensitive else (lambda value: value.casefold())
+    normalize = (lambda value: value) if case_sensitive else (lambda value: normalize_text(value)[0])
     expected = {normalize(value) for value in expected_values}
     actual = {normalize(value) for value in actual_values}
     intersection = expected & actual
@@ -1514,38 +1583,35 @@ def _score_tool_trace(item: DatasetItem, answer: str) -> ScoreResult:
 
 
 def _score_confidence(item: DatasetItem, answer: str) -> ScoreResult:
-    match = re.search(
-        r"(?im)^\s*confidence\s*:\s*(100|[1-9]?\d)\s*%?\s*$",
+    answer_type = item.scoring.parameters.get("answer_type", "exact")
+    parsed = parse_answer(
         answer,
+        "confidence",
+        confidence_answer_kind="number" if answer_type == "numeric" else "text",
     )
-    if match is None:
+    if not parsed.parsed:
         return ScoreResult(
             passed=False,
             score=0,
-            details={"reason": "missing_confidence_line", "confidence": None},
+            details={
+                "reason": "missing_confidence_line",
+                "confidence": None,
+                **_answer_parse_details(parsed),
+            },
         )
-    confidence = int(match.group(1))
-    answer_text = (answer[: match.start()] + answer[match.end() :]).strip()
+    confidence = int(parsed.value["confidence"])
+    actual_value = parsed.value["answer"]
     expected = item.expected["value"]["answer"]
-    answer_type = item.scoring.parameters.get("answer_type", "exact")
     if answer_type == "numeric":
-        candidates = re.findall(
-            r"(?<![\w.])[-+]?(?:\d[\d,]*(?:\.\d*)?|\.\d+)(?![\w.])",
-            answer_text,
+        answer_correct = abs(float(actual_value) - float(expected)) <= float(
+            item.scoring.parameters.get("absolute_tolerance", 0)
         )
-        if len(candidates) == 1:
-            actual_value = float(candidates[0].replace(",", ""))
-            answer_correct = abs(actual_value - float(expected)) <= float(
-                item.scoring.parameters.get("absolute_tolerance", 0)
-            )
-        else:
-            answer_correct = False
     else:
-        actual_value = answer_text.strip()
-        expected_value = str(expected).strip()
-        if not item.scoring.parameters.get("case_sensitive", True):
-            actual_value = actual_value.casefold()
-            expected_value = expected_value.casefold()
+        if item.scoring.parameters.get("case_sensitive", True):
+            actual_value = answer.splitlines()[0].strip()
+            expected_value = str(expected).strip()
+        else:
+            expected_value = normalize_text(str(expected))[0]
         answer_correct = actual_value == expected_value
     return ScoreResult(
         passed=answer_correct,
@@ -1555,6 +1621,7 @@ def _score_confidence(item: DatasetItem, answer: str) -> ScoreResult:
             "confidence": confidence,
             "confidence_probability": confidence / 100,
             "brier_component": (confidence / 100 - float(answer_correct)) ** 2,
+            **_answer_parse_details(parsed),
         },
     )
 

@@ -170,7 +170,7 @@ def test_numeric_and_exact_answer_verifiers() -> None:
     date_choice = items["anchor_bbh_date_visit_001"]
     assert score_answer(date_choice, "FINAL: (B)").passed
     assert not score_answer(date_choice, "(B) 02/16/2009").passed
-    assert not score_answer(date_choice, "02/16/2009").passed
+    assert score_answer(date_choice, "02/16/2009").passed
     assert not score_answer(date_choice, "It could be (A) or (B).").passed
     assert not score_answer(
         date_choice,
@@ -256,10 +256,10 @@ def test_json_verifier_reports_partial_leaf_accuracy() -> None:
 
     fenced = score_answer(invoice, f"```json\n{correct}\n```")
     assert not fenced.passed
-    assert fenced.score == 0.75
+    assert fenced.score == 1.0
     assert fenced.details["protocol_compliant"] is False
     assert fenced.details["content_exact"] is True
-    assert fenced.details["content_score"] == 0.75
+    assert fenced.details["content_score"] == 1.0
     assert fenced.details["protocol_score"] == 0.0
     assert fenced.details["diagnostic_wrapper"] == "markdown_fence"
 

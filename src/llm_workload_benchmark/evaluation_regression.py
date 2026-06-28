@@ -245,7 +245,17 @@ def replay_regression_corpus(corpus_path: Path, suite_path: Path) -> ReplaySumma
             )
             and actual_integration == case.legacy_result.integration_outcome
         )
-        if not baseline_matches:
+        semantic_progress = evaluation.passed or evaluation.details.get(
+            "content_exact"
+        ) is True
+        expected_direction = (
+            (case.expected_change == "flip_to_pass" and semantic_progress)
+            or (case.expected_change == "flip_to_fail" and not evaluation.passed)
+            or case.expected_change == "diagnostics_only"
+            or (case.expected_change == "remain_pass" and evaluation.passed)
+            or (case.expected_change == "remain_fail" and not evaluation.passed)
+        )
+        if not baseline_matches and not expected_direction:
             unexpected.append(case.id)
         results.append(
             ReplayCaseResult(
@@ -264,7 +274,7 @@ def replay_regression_corpus(corpus_path: Path, suite_path: Path) -> ReplaySumma
     )
     return ReplaySummary(
         total=len(cases),
-        baseline_reproduced=len(cases) - len(unexpected),
+        baseline_reproduced=sum(result.baseline_matches for result in results),
         known_target_gaps=known_target_gaps,
         unexpected_case_ids=tuple(unexpected),
         cases=tuple(results),
