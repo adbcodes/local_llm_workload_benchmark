@@ -1496,16 +1496,29 @@ def _score_set(item: DatasetItem, answer: str) -> ScoreResult:
     actual = {normalize(value) for value in actual_values}
     intersection = expected & actual
     union = expected | actual
-    score = len(intersection) / len(union) if union else 1.0
+    jaccard = len(intersection) / len(union) if union else 1.0
+    precision = len(intersection) / len(actual) if actual else float(not expected)
+    recall = len(intersection) / len(expected) if expected else float(not actual)
+    f1 = (
+        2 * precision * recall / (precision + recall)
+        if precision + recall
+        else 0.0
+    )
+    exact_match = actual == expected and len(actual_values) == len(expected_values)
     return ScoreResult(
-        passed=actual == expected and len(actual_values) == len(expected_values),
-        score=score,
+        passed=exact_match,
+        score=f1,
         details={
             "expected": sorted(expected),
             "actual": sorted(actual),
             "missing": sorted(expected - actual),
             "extra": sorted(actual - expected),
             "duplicate_count": len(actual_values) - len(actual),
+            "exact_match": exact_match,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "jaccard": jaccard,
         },
     )
 
@@ -1615,72 +1628,149 @@ def _score_behavior(item: DatasetItem, answer: str) -> ScoreResult:
 
 
 def _score_tool_trace(item: DatasetItem, answer: str) -> ScoreResult:
-    protocol_compliant = True
-    wrapper: str | None = None
-    try:
-        actual = json.loads(answer)
-    except json.JSONDecodeError:
+    parsed = parse_answer(answer, "tool", allow_recovery=True)
+    protocol_violations = list(parsed.protocol_violations)
+    protocol_compliant = parsed.parsed and not protocol_violations
+    actual = parsed.value
+    if isinstance(actual, dict) and isinstance(actual.get("tool"), str):
+        actual = {"calls": [actual]}
+        protocol_violations.append("single_tool_call_envelope")
         protocol_compliant = False
-        actual = None
-        if item.scoring.parameters.get("allow_diagnostic_normalization", False):
-            actual, wrapper = _extract_diagnostic_json(answer)
+    elif isinstance(actual, dict) and "final_state" in actual and "calls" not in actual:
+        actual = {"calls": [], "observations": [], **actual}
+        protocol_violations.append("final_state_only_envelope")
+        protocol_compliant = False
     if not isinstance(actual, dict) or not isinstance(actual.get("calls"), list):
         return ScoreResult(
             passed=False,
             score=0,
             details={
                 "reason": "invalid_tool_trace",
-                "protocol_compliant": protocol_compliant,
-                "diagnostic_wrapper": wrapper,
+                **_answer_parse_details(parsed),
+                "parseable": False,
+                "parse_status": parsed.status,
+                "protocol_compliant": False,
+                "protocol_violations": protocol_violations,
+                "diagnostic_wrapper": (
+                    protocol_violations[0] if protocol_violations else None
+                ),
             },
         )
     expected = item.expected["value"]
     expected_calls = expected["calls"]
     actual_calls = actual["calls"]
     call_scores: list[float] = []
+    tool_choice_scores: list[float] = []
+    argument_scores: list[float] = []
     for index in range(max(len(expected_calls), len(actual_calls))):
         if index >= len(expected_calls) or index >= len(actual_calls):
             call_scores.append(0.0)
+            tool_choice_scores.append(0.0)
+            argument_scores.append(0.0)
             continue
         expected_call = expected_calls[index]
         actual_call = actual_calls[index]
         if not isinstance(actual_call, dict):
             call_scores.append(0.0)
+            tool_choice_scores.append(0.0)
+            argument_scores.append(0.0)
             continue
         tool_ok = actual_call.get("tool") == expected_call["tool"]
-        args_ok = _json_values_equal(
+        args_ok = _contract_value_matches(
             actual_call.get("arguments"), expected_call["arguments"]
         )
+        tool_choice_scores.append(float(tool_ok))
+        argument_scores.append(float(args_ok))
         call_scores.append((float(tool_ok) + float(args_ok)) / 2)
     calls_score = sum(call_scores) / len(call_scores) if call_scores else 1.0
+    tool_choice_accuracy = (
+        sum(tool_choice_scores) / len(tool_choice_scores)
+        if tool_choice_scores
+        else 1.0
+    )
+    argument_accuracy = (
+        sum(argument_scores) / len(argument_scores) if argument_scores else 1.0
+    )
+    expected_order = [call["tool"] for call in expected_calls]
+    actual_order = [
+        call.get("tool") if isinstance(call, dict) else None for call in actual_calls
+    ]
+    order_ok = actual_order == expected_order
+    call_count_ok = len(actual_calls) == len(expected_calls)
+    unnecessary_calls_ok = len(actual_calls) <= len(expected_calls)
     final_state_required = "final_state" in expected
-    final_state_ok = not final_state_required or _json_values_equal(
+    final_state_ok = not final_state_required or _contract_value_matches(
         actual.get("final_state"), expected["final_state"]
     )
     observations_required = "observations" in expected
-    observations_ok = not observations_required or _json_values_equal(
+    observations_ok = not observations_required or _contract_value_matches(
         actual.get("observations"), expected["observations"]
     )
     score_parts = (
-        [calls_score]
+        [tool_choice_accuracy, argument_accuracy, float(order_ok), float(call_count_ok)]
         + ([float(observations_ok)] if observations_required else [])
         + ([float(final_state_ok)] if final_state_required else [])
     )
     score = sum(score_parts) / len(score_parts)
-    passed = protocol_compliant and score == 1.0
+    integration_success = score == 1.0 and unnecessary_calls_ok
+    passed = protocol_compliant and integration_success
     return ScoreResult(
         passed=passed,
         score=score,
         details={
+            **_answer_parse_details(parsed),
             "protocol_compliant": protocol_compliant,
-            "diagnostic_wrapper": wrapper,
+            "protocol_violations": protocol_violations,
+            "diagnostic_wrapper": (
+                protocol_violations[0] if protocol_violations else None
+            ),
+            "parseable": True,
+            "parse_status": parsed.status,
             "call_scores": call_scores,
+            "calls_score": calls_score,
+            "tool_choice_accuracy": tool_choice_accuracy,
+            "argument_accuracy": argument_accuracy,
+            "order_ok": order_ok,
+            "call_count_ok": call_count_ok,
+            "unnecessary_calls_ok": unnecessary_calls_ok,
             "call_count_expected": len(expected_calls),
             "call_count_actual": len(actual_calls),
             "final_state_ok": final_state_ok,
             "observations_ok": observations_ok,
+            "observation_use_accuracy": float(observations_ok),
+            "final_state_accuracy": float(final_state_ok),
+            "integration_success": integration_success,
         },
     )
+
+
+def _contract_value_matches(actual: Any, expected: Any) -> bool:
+    """Compare tool values by declared expected type, allowing safe scalar cleanup."""
+
+    if isinstance(expected, bool) or expected is None:
+        return type(actual) is type(expected) and actual == expected
+    if isinstance(expected, (int, float)) and not isinstance(expected, bool):
+        if isinstance(actual, str):
+            parsed = parse_answer(actual, "number")
+            actual = parsed.value if parsed.parsed else actual
+        return (
+            isinstance(actual, (int, float))
+            and not isinstance(actual, bool)
+            and float(actual) == float(expected)
+        )
+    if isinstance(expected, str):
+        return isinstance(actual, str) and actual.strip() == expected.strip()
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(
+            key in actual and _contract_value_matches(actual[key], value)
+            for key, value in expected.items()
+        )
+    if isinstance(expected, list):
+        return isinstance(actual, list) and len(actual) == len(expected) and all(
+            _contract_value_matches(left, right)
+            for left, right in zip(actual, expected)
+        )
+    return type(actual) is type(expected) and actual == expected
 
 
 def _score_confidence(item: DatasetItem, answer: str) -> ScoreResult:

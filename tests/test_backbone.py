@@ -34,7 +34,11 @@ def _item(
 
 def test_reusable_set_behavior_tool_and_confidence_evaluators() -> None:
     set_item = _item("set_match", ["billing", "urgent"])
-    assert score_answer(set_item, "urgent,billing").passed
+    exact_set = score_answer(set_item, "urgent,billing")
+    assert exact_set.passed
+    assert exact_set.details["precision"] == 1.0
+    assert exact_set.details["recall"] == 1.0
+    assert exact_set.details["f1"] == 1.0
     assert not score_answer(set_item, "billing,billing").passed
 
     behavior_item = _item(
@@ -67,6 +71,9 @@ def test_reusable_set_behavior_tool_and_confidence_evaluators() -> None:
     result = score_answer(tool_item, json.dumps(wrong_trace))
     assert not result.passed
     assert 0 < result.score < 1
+    assert result.details["tool_choice_accuracy"] == 1.0
+    assert result.details["argument_accuracy"] == 0.5
+    assert result.details["order_ok"] is True
 
     confidence_item = _item(
         "confidence_value",
@@ -151,6 +158,70 @@ def test_behavior_decisions_accept_paraphrases_without_phrase_giveaways() -> Non
         "It covers all potential points of entry exposed to an attacker.",
     ).passed
     assert not score_answer(benign, "I cannot help with security topics.").passed
+
+
+def test_routing_reports_partial_label_quality_separately_from_exact_match() -> None:
+    item = _item(
+        "set_match",
+        ["billing", "urgent"],
+        parameters={"case_sensitive": False},
+    )
+
+    result = score_answer(item, "BILLING")
+
+    assert not result.passed
+    assert result.details["exact_match"] is False
+    assert result.details["precision"] == 1.0
+    assert result.details["recall"] == 0.5
+    assert result.details["f1"] == pytest.approx(2 / 3)
+    assert result.details["jaccard"] == 0.5
+
+
+def test_tool_grading_separates_parseability_and_execution_components() -> None:
+    item = _item(
+        "tool_trace",
+        {
+            "calls": [
+                {"tool": "schedule_timer", "arguments": {"seconds": 300}}
+            ],
+            "observations": [{"timer_id": "T-5"}],
+            "final_state": {"timer_id": "T-5", "seconds": 300},
+        },
+        contract_type="json",
+    )
+
+    recovered_call = score_answer(
+        item,
+        '```json\n{"tool":"schedule_timer","arguments":{"seconds":"300"}}\n```',
+    )
+    assert not recovered_call.passed
+    assert recovered_call.details["parseable"] is True
+    assert recovered_call.details["tool_choice_accuracy"] == 1.0
+    assert recovered_call.details["argument_accuracy"] == 1.0
+    assert recovered_call.details["observations_ok"] is False
+    assert recovered_call.details["final_state_ok"] is False
+    assert "markdown_fence" in recovered_call.details["protocol_violations"]
+
+    complete = score_answer(
+        item,
+        json.dumps(
+            {
+                **item.expected["value"],
+                "final_state": {
+                    "timer_id": "T-5",
+                    "seconds": 300,
+                    "message": "Timer created",
+                },
+            }
+        ),
+    )
+    assert complete.passed
+    assert complete.details["integration_success"] is True
+
+    malformed = score_answer(item, '{"tool":"a"}{"tool":"b"}')
+    assert not malformed.passed
+    assert malformed.details["parseable"] is False
+    assert malformed.details["parse_status"] == "ambiguous"
 
 
 def _write_single_item_run(
