@@ -20,6 +20,7 @@ from llm_workload_benchmark.judge import (
     create_judge_backend,
     evaluate_summary,
 )
+from llm_workload_benchmark.evaluation import finalize_evaluation
 from llm_workload_benchmark.runner import rebuild_run_summary
 
 
@@ -105,7 +106,18 @@ def rejudge_experiment(
                     config=config.judge,
                     seed=int(record["seed"]),
                 )
+                result = finalize_evaluation(
+                    result,
+                    primary_outcome=suite.definitions[
+                        item.benchmark
+                    ].evaluation_policy.primary_outcome,
+                    scoring_method=item.scoring.method,
+                    raw_response=answer,
+                    finish_reason=record.get("finish_reason"),
+                )
                 record["evaluation"] = result.model_dump(mode="json")
+                record["integration_outcome"] = result.integration_outcome
+                record["schema_version"] = 3
                 completed_judgments += 1
                 if progress_callback is not None:
                     progress_callback(model_id, completed_judgments, total_judgments)

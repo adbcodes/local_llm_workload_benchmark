@@ -58,11 +58,11 @@ def test_tool_trace_figure_reports_parseability_not_correctness(tmp_path: Path) 
                 [
                     {
                         **_item(family, quantization, "tool_use"),
-                        "integration_outcome": "scored",
+                        "integration_outcome": "scored_after_recovery",
                     },
                     {
                         **_item(family, quantization, "tool_use"),
-                        "integration_outcome": "unparseable_output",
+                        "integration_outcome": "unparseable",
                     },
                 ]
             )

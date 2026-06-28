@@ -1258,7 +1258,7 @@ def _score_exact(item: DatasetItem, answer: str) -> ScoreResult:
                     },
                 )
             actual = unique_candidates[0]
-    if not item.scoring.parameters.get("case_sensitive", True):
+    if not item.scoring.parameters.get("case_sensitive", False):
         actual, actual_steps = normalize_text(actual)
         expected, _ = normalize_text(expected)
         parse_details.setdefault("normalization_steps", []).extend(
@@ -1490,7 +1490,7 @@ def _score_set(item: DatasetItem, answer: str) -> ScoreResult:
         separator = item.scoring.parameters.get("separator", ",")
         raw_values = [value.strip() for value in answer.strip().split(separator) if value.strip()]
         actual_values = raw_values
-    case_sensitive = item.scoring.parameters.get("case_sensitive", True)
+    case_sensitive = item.scoring.parameters.get("case_sensitive", False)
     normalize = (lambda value: value) if case_sensitive else (lambda value: normalize_text(value)[0])
     expected = {normalize(value) for value in expected_values}
     actual = {normalize(value) for value in actual_values}
@@ -1659,6 +1659,10 @@ def _score_tool_trace(item: DatasetItem, answer: str) -> ScoreResult:
     expected = item.expected["value"]
     expected_calls = expected["calls"]
     actual_calls = actual["calls"]
+    arguments_well_formed = all(
+        isinstance(call, dict) and isinstance(call.get("arguments"), dict)
+        for call in actual_calls
+    )
     call_scores: list[float] = []
     tool_choice_scores: list[float] = []
     argument_scores: list[float] = []
@@ -1730,6 +1734,7 @@ def _score_tool_trace(item: DatasetItem, answer: str) -> ScoreResult:
             "calls_score": calls_score,
             "tool_choice_accuracy": tool_choice_accuracy,
             "argument_accuracy": argument_accuracy,
+            "arguments_well_formed": arguments_well_formed,
             "order_ok": order_ok,
             "call_count_ok": call_count_ok,
             "unnecessary_calls_ok": unnecessary_calls_ok,
@@ -1798,7 +1803,7 @@ def _score_confidence(item: DatasetItem, answer: str) -> ScoreResult:
             item.scoring.parameters.get("absolute_tolerance", 0)
         )
     else:
-        if item.scoring.parameters.get("case_sensitive", True):
+        if item.scoring.parameters.get("case_sensitive", False):
             actual_value = answer.splitlines()[0].strip()
             expected_value = str(expected).strip()
         else:

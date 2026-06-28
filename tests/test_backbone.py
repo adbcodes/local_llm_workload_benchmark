@@ -306,7 +306,7 @@ def test_runner_supports_message_history_and_suite_confidence_intervals(tmp_path
     )
     record = json.loads((run / "results.jsonl").read_text())
     assert record["suite"] == "E"
-    assert record["integration_outcome"] == "scored"
+    assert record["integration_outcome"] == "scored_cleanly"
 
 
 def test_json_fence_is_integration_friction_not_a_wrong_scorable_answer(tmp_path: Path) -> None:
@@ -326,13 +326,17 @@ def test_json_fence_is_integration_friction_not_a_wrong_scorable_answer(tmp_path
     )
     record = json.loads((run / "results.jsonl").read_text())
     totals = json.loads((run / "summary.json").read_text())["totals"]
-    assert record["integration_outcome"] == "markdown_fence"
+    assert record["integration_outcome"] == "scored_after_recovery"
     assert record["evaluation"]["score"] == 1.0
     assert record["evaluation"]["details"]["content_exact"] is True
     assert totals["scored"] == 1
-    assert totals["integration_failures"] == 1
+    assert totals["integration_failures"] == 0
     assert totals["integration_friction_rate"] == 1.0
-    assert totals["pass_rate"] == 0.0
+    assert totals["recovery_rate"] == 1.0
+    assert totals["recoverable_friction_rate"] == 1.0
+    assert totals["semantic_pass_rate"] == 1.0
+    assert totals["protocol_compliance_rate"] == 0.0
+    assert totals["pass_rate"] == 1.0
     assert totals["mean_score"] == 1.0
 
 

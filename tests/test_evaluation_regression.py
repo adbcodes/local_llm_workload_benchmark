@@ -72,14 +72,15 @@ def test_failure_corpus_covers_real_failures_and_controls() -> None:
     }
 
 
-def test_failure_corpus_changes_only_in_declared_directions() -> None:
+def test_failure_corpus_matches_every_declared_target_outcome() -> None:
     summary = replay_regression_corpus(CORPUS_PATH, SUITE_PATH)
 
     assert summary.total == 30
     assert summary.baseline_reproduced < 30
-    assert summary.known_target_gaps == 24
+    assert summary.known_target_gaps == 0
     assert summary.unexpected_case_ids == ()
     assert any(not case.baseline_matches for case in summary.cases)
+    assert all(case.target_matches for case in summary.cases)
 
 
 def test_failure_corpus_rejects_duplicate_case_ids(tmp_path: Path) -> None:
@@ -120,7 +121,7 @@ def test_replay_cli_is_read_only() -> None:
     assert result.exit_code == 0, result.output
     assert "Cases: 30" in result.output
     assert "Baseline reproduced:" in result.output
-    assert "Known target gaps: 24" in result.output
+    assert "Known target gaps: 0" in result.output
     assert "Unexpected results: 0" in result.output
     assert hashlib.sha256(CORPUS_PATH.read_bytes()).hexdigest() == before
 

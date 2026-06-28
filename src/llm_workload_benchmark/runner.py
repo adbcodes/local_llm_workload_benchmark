@@ -30,6 +30,7 @@ from llm_workload_benchmark.dataset import (
     score_answer,
 )
 from llm_workload_benchmark.executable import evaluate_python
+from llm_workload_benchmark.evaluation import finalize_evaluation
 from llm_workload_benchmark.judge import (
     JudgeBackend,
     create_judge_backend,
@@ -335,6 +336,9 @@ def run_benchmark(
                         )
                         record = _evaluate_item(
                             item,
+                            primary_outcome=suite.definitions[
+                                benchmark_id
+                            ].evaluation_policy.primary_outcome,
                             suite_id=suite_id,
                             source_response=(
                                 source_record.get("evaluated_response")
@@ -356,6 +360,8 @@ def run_benchmark(
                             peak_memory_reader=memory_reader,
                         )
                         record["run_order"] = len(records) + 1
+                        if source_record is not None:
+                            _attach_pair_metrics(record, source_record)
                         records.append(record)
                         results_file.write(json.dumps(record, sort_keys=True) + "\n")
                         results_file.flush()
@@ -583,6 +589,7 @@ def run_matrix(
 def _evaluate_item(
     item: DatasetItem,
     *,
+    primary_outcome: str,
     suite_id: str | None,
     source_response: str | None,
     model: ModelConfig,
@@ -673,8 +680,12 @@ def _evaluate_item(
             evaluation = evaluate_python(item, evaluated_response)
         else:
             evaluation = score_answer(item, evaluated_response)
-        integration_status = integration_outcome(
-            item, evaluated_response, evaluation.details
+        evaluation = finalize_evaluation(
+            evaluation,
+            primary_outcome=primary_outcome,
+            scoring_method=item.scoring.method,
+            raw_response=evaluated_response,
+            finish_reason=output.finish_reason,
         )
         output_tokens_per_second = (
             output.output_tokens / latency_seconds
@@ -684,7 +695,7 @@ def _evaluate_item(
         wall_seconds = time.perf_counter() - started
         cpu_seconds = time.process_time() - cpu_started
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             "status": "completed",
             "model_id": model.id,
             "benchmark": item.benchmark,
@@ -710,7 +721,7 @@ def _evaluate_item(
                 model.system_prompt.encode("utf-8")
             ).hexdigest(),
             "evaluation": evaluation.model_dump(mode="json"),
-            "integration_outcome": integration_status,
+            "integration_outcome": evaluation.integration_outcome,
             "latency_seconds": latency_seconds,
             "time_to_first_token_seconds": output.time_to_first_token_seconds,
             "prompt_tokens": output.prompt_tokens,
@@ -731,7 +742,7 @@ def _evaluate_item(
         wall_seconds = time.perf_counter() - started
         cpu_seconds = time.process_time() - cpu_started
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             "status": "error",
             "model_id": model.id,
             "benchmark": item.benchmark,
@@ -957,7 +968,7 @@ def _build_summary(
     }
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "status": "completed",
         "model": _model_summary(model, model_path),
         "dataset": {
@@ -1079,9 +1090,54 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     ]
     passed = sum(record["evaluation"]["passed"] is True for record in scored)
     confidence_interval = _wilson_interval(passed, len(records))
+    semantic_correct = sum(
+        record["evaluation"].get("semantic_outcome") == "correct"
+        for record in scored
+    )
+    protocol_not_applicable = sum(
+        record["evaluation"].get("protocol_outcome") == "not_applicable"
+        for record in scored
+    )
+    protocol_applicable = len(records) - protocol_not_applicable
+    protocol_compliant = sum(
+        record["evaluation"].get("protocol_outcome") == "compliant"
+        for record in scored
+    )
+    integration_successes = sum(
+        record["evaluation"].get("integration_score") == 1.0
+        for record in scored
+    )
+    recovered = sum(
+        record["evaluation"].get("integration_outcome") == "scored_after_recovery"
+        for record in scored
+    )
+    parse_failures = sum(
+        record["evaluation"].get("integration_outcome") == "unparseable"
+        for record in scored
+    )
+    recoverable_friction = sum(
+        record["evaluation"].get("semantic_outcome") == "correct"
+        and record["evaluation"].get("protocol_outcome") == "noncompliant"
+        for record in scored
+    )
+    semantic_scores = [
+        float(record["evaluation"].get("semantic_score") or 0.0)
+        for record in scored
+    ]
+    protocol_scores = [
+        float(record["evaluation"].get("protocol_score") or 0.0)
+        for record in scored
+        if record["evaluation"].get("protocol_outcome") != "not_applicable"
+    ]
+    integration_scores = [
+        float(record["evaluation"].get("integration_score") or 0.0)
+        for record in scored
+    ]
     integration_outcomes: dict[str, int] = defaultdict(int)
-    for record in completed:
-        integration_outcomes[record.get("integration_outcome", "scored")] += 1
+    for record in records:
+        integration_outcomes[
+            record.get("integration_outcome", "evaluation_error")
+        ] += 1
     confidence_records = [
         record
         for record in scored
@@ -1092,23 +1148,57 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         "completed": len(completed),
         "scored": len(scored),
         "errors": len(records) - len(completed),
-        "integration_failures": sum(
-            record.get("integration_outcome", "scored") != "scored"
-            for record in completed
-        ),
+        "integration_failures": len(records) - integration_successes,
         "integration_friction_rate": (
             sum(
-                record.get("integration_outcome", "scored") != "scored"
-                for record in completed
+                record.get("integration_outcome") != "scored_cleanly"
+                for record in records
             )
-            / len(completed)
-            if completed
+            / len(records)
+            if records
             else None
         ),
         "integration_outcomes": dict(sorted(integration_outcomes.items())),
         "passed": passed,
         "pass_rate": passed / len(records) if records else None,
         "pass_rate_ci_95": confidence_interval,
+        "semantic_correct": semantic_correct,
+        "semantic_pass_rate": (
+            semantic_correct / len(records) if records else None
+        ),
+        "mean_semantic_score": (
+            sum(semantic_scores) / len(records) if records else None
+        ),
+        "protocol_applicable": protocol_applicable,
+        "protocol_compliant": protocol_compliant,
+        "protocol_compliance_rate": (
+            protocol_compliant / protocol_applicable
+            if protocol_applicable
+            else None
+        ),
+        "protocol_pass_rate": (
+            protocol_compliant / protocol_applicable
+            if protocol_applicable
+            else None
+        ),
+        "mean_protocol_score": (
+            sum(protocol_scores) / len(records) if records else None
+        ),
+        "integration_successes": integration_successes,
+        "integration_success_rate": (
+            integration_successes / len(records) if records else None
+        ),
+        "mean_integration_score": (
+            sum(integration_scores) / len(records) if records else None
+        ),
+        "integration_parse_rate": (
+            (len(scored) - parse_failures) / len(records) if records else None
+        ),
+        "recovery_rate": recovered / len(records) if records else None,
+        "recoverable_friction_rate": (
+            recoverable_friction / len(records) if records else None
+        ),
+        "parse_failure_rate": parse_failures / len(records) if records else None,
         "brier_score": _mean(
             [
                 record["evaluation"]["details"]["brier_component"]
@@ -1119,7 +1209,7 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
             confidence_records
         ),
         "run_to_run_flip_rate": _run_to_run_flip_rate(scored),
-        "mean_score": sum(scores) / len(scores) if scores else None,
+        "mean_score": sum(scores) / len(records) if records else None,
         "latency_seconds": sum(record["latency_seconds"] for record in records),
         "mean_latency_seconds": _mean(latencies),
         "mean_time_to_first_token_seconds": _mean(time_to_first_token_values),
@@ -1163,7 +1253,11 @@ def _reported_benchmark_score(
             record
             for record in records
             if record.get("evaluation") is not None
-            and record["evaluation"]["details"].get("behavior_label") in risky_labels
+            and record["evaluation"]["details"].get(
+                "behavior_decision",
+                record["evaluation"]["details"].get("behavior_label"),
+            )
+            in risky_labels
         ]
         hallucinations = sum(
             not record["evaluation"]["passed"] for record in behavior_records
@@ -1291,23 +1385,33 @@ def _attach_paired_metrics(records: list[dict[str, Any]]) -> None:
         source = by_key.get((source_item, record["repetition"]))
         if source is None or source.get("evaluation") is None:
             continue
-        clean_score = source["evaluation"]["score"]
-        changed_score = record["evaluation"]["score"]
-        retained_score = (
-            min(1.0, changed_score / clean_score) if clean_score > 0 else None
-        )
-        record["evaluation"]["details"].update(
-            {
-                "source_item": source_item,
-                "clean_score": clean_score,
-                "changed_score": changed_score,
-                "retained_score": retained_score,
-                "transition": _correctness_transition(
-                    bool(source["evaluation"]["passed"]),
-                    bool(record["evaluation"]["passed"]),
-                ),
-            }
-        )
+        _attach_pair_metrics(record, source)
+
+
+def _attach_pair_metrics(
+    record: dict[str, Any],
+    source: dict[str, Any],
+) -> None:
+    if record.get("evaluation") is None or source.get("evaluation") is None:
+        return
+    source_item = record.get("source_item")
+    clean_score = source["evaluation"]["score"]
+    changed_score = record["evaluation"]["score"]
+    retained_score = (
+        min(1.0, changed_score / clean_score) if clean_score > 0 else None
+    )
+    record["evaluation"]["details"].update(
+        {
+            "source_item": source_item,
+            "clean_score": clean_score,
+            "changed_score": changed_score,
+            "retained_score": retained_score,
+            "transition": _correctness_transition(
+                bool(source["evaluation"]["passed"]),
+                bool(record["evaluation"]["passed"]),
+            ),
+        }
+    )
 
 
 def _correctness_transition(source_passed: bool, changed_passed: bool) -> str:

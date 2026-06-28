@@ -112,7 +112,8 @@ def quantization_tool_trace_parseability(
         if family not in FAMILY_COLORS or quantization not in QUANT_ORDER:
             continue
         grouped.setdefault((family, quantization), []).append(
-            source.get("integration_outcome") == "scored"
+            source.get("integration_outcome")
+            in {"scored", "scored_cleanly", "scored_after_recovery"}
         )
 
     rows = [

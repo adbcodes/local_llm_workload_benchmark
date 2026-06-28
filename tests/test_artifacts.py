@@ -43,6 +43,16 @@ def _write_experiment(tmp_path: Path) -> Path:
         "passed": 1,
         "pass_rate": 1.0,
         "mean_score": 1.0,
+        "semantic_pass_rate": 1.0,
+        "mean_semantic_score": 1.0,
+        "protocol_compliance_rate": 1.0,
+        "mean_protocol_score": 1.0,
+        "integration_success_rate": 1.0,
+        "mean_integration_score": 1.0,
+        "integration_parse_rate": 1.0,
+        "recovery_rate": 0.0,
+        "recoverable_friction_rate": 0.0,
+        "parse_failure_rate": 0.0,
         "latency_seconds": 0.2,
         "mean_latency_seconds": 0.2,
         "mean_time_to_first_token_seconds": 0.05,
@@ -99,7 +109,17 @@ def _write_experiment(tmp_path: Path) -> Path:
                 "scoring_method": "numeric_tolerance",
                 "difficulty": "easy",
                 "repetition": 1,
-                "evaluation": {"passed": True, "score": 1.0},
+                "evaluation": {
+                    "passed": True,
+                    "score": 1.0,
+                    "semantic_outcome": "correct",
+                    "semantic_score": 1.0,
+                    "protocol_outcome": "compliant",
+                    "protocol_score": 1.0,
+                    "protocol_violations": [],
+                    "integration_outcome": "scored_cleanly",
+                    "integration_score": 1.0,
+                },
                 "latency_seconds": 0.2,
                 "time_to_first_token_seconds": 0.05,
                 "output_tokens_per_second_end_to_end": 20.0,
@@ -203,7 +223,7 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     paths = export_experiment_artifacts(experiment)
 
     manifest = json.loads(paths["manifest"].read_text())
-    assert manifest["schema_version"] == 2
+    assert manifest["schema_version"] == 3
     assert manifest["experiment_status"] == "partial_failure"
     assert manifest["experiment_elapsed_seconds"] == 1.5
     assert manifest["machine"]["environment"]["machine_model"] == "test-machine"
@@ -233,6 +253,9 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     assert item["run_order"] == "1"
     assert json.loads(item["tags"]) == ["short"]
     assert json.loads(item["response_contract"])["type"] == "number"
+    assert item["semantic_outcome"] == "correct"
+    assert item["protocol_outcome"] == "compliant"
+    assert item["integration_outcome"] == "scored_cleanly"
 
 
 def test_artifact_pass_rate_counts_errors_for_older_saved_summaries(

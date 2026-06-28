@@ -19,6 +19,7 @@ from pydantic import (
 
 from llm_workload_benchmark.dataset import DatasetItem, load_suite, score_answer
 from llm_workload_benchmark.executable import evaluate_python
+from llm_workload_benchmark.evaluation import finalize_evaluation
 from llm_workload_benchmark.runner import integration_outcome
 
 
@@ -134,6 +135,9 @@ class ReplayCaseResult:
     actual_passed: bool
     actual_score: float
     actual_integration_outcome: str
+    actual_semantic_outcome: str | None
+    actual_protocol_outcome: str | None
+    target_matches: bool
 
 
 @dataclass(frozen=True)
@@ -224,38 +228,57 @@ def replay_regression_corpus(corpus_path: Path, suite_path: Path) -> ReplaySumma
             raise RegressionCorpusError(
                 f"case {case.id!r} uses non-deterministic llm_judge scoring"
             )
-        evaluation = (
+        legacy_evaluation = (
             evaluate_python(item, case.response.legacy_input)
             if item.scoring.method == "executable_python"
             else score_answer(item, case.response.legacy_input)
         )
-        actual_integration = integration_outcome(
-            item,
-            case.response.legacy_input,
-            evaluation.details,
+        legacy_integration = integration_outcome(
+            item, case.response.legacy_input, legacy_evaluation.details
         )
         baseline_matches = (
-            evaluation.evaluator == case.legacy_result.evaluator
-            and evaluation.passed is case.legacy_result.passed
+            legacy_evaluation.evaluator == case.legacy_result.evaluator
+            and legacy_evaluation.passed is case.legacy_result.passed
             and math.isclose(
-                evaluation.score,
+                legacy_evaluation.score,
                 case.legacy_result.score,
                 rel_tol=0,
                 abs_tol=1e-12,
             )
-            and actual_integration == case.legacy_result.integration_outcome
+            and legacy_integration == case.legacy_result.integration_outcome
         )
-        semantic_progress = evaluation.passed or evaluation.details.get(
-            "content_exact"
-        ) is True
-        expected_direction = (
-            (case.expected_change == "flip_to_pass" and semantic_progress)
-            or (case.expected_change == "flip_to_fail" and not evaluation.passed)
-            or case.expected_change == "diagnostics_only"
-            or (case.expected_change == "remain_pass" and evaluation.passed)
-            or (case.expected_change == "remain_fail" and not evaluation.passed)
+        policy = suite.definitions[case.source.benchmark].evaluation_policy
+        evaluation = finalize_evaluation(
+            legacy_evaluation,
+            primary_outcome=policy.primary_outcome,
+            scoring_method=item.scoring.method,
+            raw_response=case.response.legacy_input,
+            finish_reason=case.response.finish_reason,
         )
-        if not baseline_matches and not expected_direction:
+        component_values = _regression_components(item, evaluation.details)
+        target = case.expected_result
+        semantic_score_matches = (
+            evaluation.semantic_score is None
+            if target.semantic_score is None
+            else evaluation.semantic_score is not None
+            and math.isclose(
+                evaluation.semantic_score,
+                target.semantic_score,
+                rel_tol=0,
+                abs_tol=1e-12,
+            )
+        )
+        target_matches = (
+            evaluation.semantic_outcome == target.semantic_outcome
+            and semantic_score_matches
+            and evaluation.protocol_outcome == target.protocol_outcome
+            and evaluation.integration_outcome == target.integration_outcome
+            and all(
+                component_values.get(name) is expected
+                for name, expected in target.components.items()
+            )
+        )
+        if not target_matches:
             unexpected.append(case.id)
         results.append(
             ReplayCaseResult(
@@ -263,15 +286,15 @@ def replay_regression_corpus(corpus_path: Path, suite_path: Path) -> ReplaySumma
                 baseline_matches=baseline_matches,
                 actual_passed=evaluation.passed,
                 actual_score=evaluation.score,
-                actual_integration_outcome=actual_integration,
+                actual_integration_outcome=evaluation.integration_outcome
+                or "evaluation_error",
+                actual_semantic_outcome=evaluation.semantic_outcome,
+                actual_protocol_outcome=evaluation.protocol_outcome,
+                target_matches=target_matches,
             )
         )
 
-    known_target_gaps = sum(
-        case.expected_change
-        in {"flip_to_pass", "flip_to_fail", "diagnostics_only"}
-        for case in cases
-    )
+    known_target_gaps = sum(not result.target_matches for result in results)
     return ReplaySummary(
         total=len(cases),
         baseline_reproduced=sum(result.baseline_matches for result in results),
@@ -279,6 +302,29 @@ def replay_regression_corpus(corpus_path: Path, suite_path: Path) -> ReplaySumma
         unexpected_case_ids=tuple(unexpected),
         cases=tuple(results),
     )
+
+
+def _regression_components(
+    item: DatasetItem,
+    details: dict[str, object],
+) -> dict[str, bool]:
+    expected_value = item.expected["value"]
+    expected_calls = (
+        expected_value.get("calls", [])
+        if isinstance(expected_value, dict)
+        else []
+    )
+    return {
+        "tool_choice": details.get("tool_choice_accuracy") == 1.0,
+        "arguments": (
+            details.get("argument_accuracy") == 1.0
+            if expected_calls
+            else details.get("arguments_well_formed") is True
+        ),
+        "observations": details.get("observations_ok") is True,
+        "final_state": details.get("final_state_ok") is True,
+        "unnecessary_calls": details.get("unnecessary_calls_ok") is True,
+    }
 
 
 def _validate_item_snapshot(case: RegressionCase, item: DatasetItem) -> None:

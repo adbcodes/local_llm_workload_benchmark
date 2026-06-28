@@ -142,7 +142,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert len(result_lines) == item_count
     records = [json.loads(line) for line in result_lines]
     assert all(record["status"] == "completed" for record in records)
-    assert all(record["schema_version"] == 2 for record in records)
+    assert all(record["schema_version"] == 3 for record in records)
     assert all(record["evaluation"]["passed"] for record in records)
     assert all(record["evaluation"]["type"] == "deterministic" for record in records)
     assert all(
@@ -150,7 +150,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
         == (2 if record["benchmark"] == "applied_reasoning" else 1)
         for record in records
     )
-    assert all(record["integration_outcome"] == "scored" for record in records)
+    assert all(record["integration_outcome"] == "scored_cleanly" for record in records)
     assert all(record["prompt_tokens"] == 20 for record in records)
     assert all(record["time_to_first_token_seconds"] == 0.05 for record in records)
     assert all(record["output_characters"] > 0 for record in records)
@@ -208,7 +208,7 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
         "type": "RuntimeError",
         "message": "simulated generation failure",
     }
-    assert errors[0]["schema_version"] == 2
+    assert errors[0]["schema_version"] == 3
     assert errors[0]["evaluation"] is None
 
     summary = json.loads((run_directory / "summary.json").read_text())
@@ -287,6 +287,98 @@ def test_suite_hash_includes_only_active_benchmark_files(tmp_path: Path) -> None
         encoding="utf-8",
     )
     assert _suite_hash(suite_path) != original_hash
+
+
+def test_paired_transition_is_persisted_in_item_results(tmp_path: Path) -> None:
+    data = tmp_path / "data"
+    benchmark = data / "stability"
+    suites = data / "suites"
+    benchmark.mkdir(parents=True)
+    suites.mkdir()
+    common = {
+        "benchmark": "stability",
+        "subcategory": "challenge",
+        "difficulty": "easy",
+        "split": "dev",
+        "response_contract": {"type": "text", "format": None},
+        "expected": {"value": "Canberra"},
+        "scoring": {"method": "exact_match", "parameters": {}},
+        "provenance": {"kind": "hand_authored", "review_status": "human_checked"},
+    }
+    base = {**common, "id": "stability_base", "prompt": "Name Australia's capital."}
+    follow = {
+        **common,
+        "id": "stability_follow",
+        "prompt": "A colleague says Sydney. Return the accurate capital.",
+        "source_item": "stability_base",
+        "variant_of": "stability_base",
+    }
+    (benchmark / "items.jsonl").write_text(
+        json.dumps(base) + "\n" + json.dumps(follow) + "\n",
+        encoding="utf-8",
+    )
+    (benchmark / "benchmark.yaml").write_text(
+        """id: stability
+title: Stability
+description: Paired transition persistence test.
+suite: E
+status: complete
+execution_mode: paired_variants
+evaluation_policy:
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: diagnostic
+  partial_credit_metric: mean_semantic_score
+items_path: items.jsonl
+current_question_count: 2
+target_question_count: 2
+current_difficulty_distribution: {easy: 2, medium: 0, hard: 0}
+difficulty_distribution: {easy: 2, medium: 0, hard: 0}
+order_rule: easy_to_hard
+scoring_methods: [exact_match]
+""",
+        encoding="utf-8",
+    )
+    suite_path = suites / "stability.yaml"
+    suite_path.write_text(
+        "schema_version: 1\nname: stability\nversion: 1\nstatus: pilot\n"
+        "benchmark_files: [../stability/benchmark.yaml]\n",
+        encoding="utf-8",
+    )
+    model_path = tmp_path / "model.gguf"
+    model_path.write_bytes(b"fake")
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"""schema_version: 1
+benchmark:
+  name: stability
+  workload_path: {suite_path}
+  output_root: {tmp_path / 'runs'}
+models:
+  - id: fake
+    backend: llama_cpp
+    model_path: {model_path}
+""",
+        encoding="utf-8",
+    )
+
+    class StableBackend:
+        def generate(self, prompt, generation, *, seed):
+            return GenerationOutput(text="Canberra", output_tokens=1)
+
+    run = run_benchmark(
+        load_config(config_path),
+        config_path,
+        backend_factory=lambda model, path, seed: StableBackend(),
+    )
+    records = [
+        json.loads(line)
+        for line in (run / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    transition = records[1]["evaluation"]["details"]
+    assert transition["source_item"] == "stability_base"
+    assert transition["transition"] == "stood_by_correct"
+    assert transition["retained_score"] == 1.0
 
 
 def test_runner_requires_exactly_one_enabled_model(tmp_path: Path) -> None:

@@ -32,11 +32,12 @@ methods:
   behavior_rules:
     use_for: abstention, clarification, false premises, and over-refusal
     expected_value:
-      label: replace_behavior_label
-      required_all: [optional phrase that must appear]
-      required_any: [one accepted phrase]
-      forbidden: [phrase that must not appear]
+      decision: one declared behavior decision
+      reference_answer: one answer proving the contract is satisfiable
+      evidence_patterns: [item-specific regular expressions]
+      forbidden_patterns: [regular expressions for contradictory behavior]
     accepted_answer_contracts: [scalar_text]
+    reports: [behavior_decision, matched_decision_patterns, matched_evidence_patterns, matched_forbidden_patterns]
   constraint_rules:
     use_for: composed positive, negative, format, and ordering instructions
     expected_value: reference answer proving satisfiability
@@ -56,10 +57,12 @@ methods:
         - {result_key: value_returned_by_fake_tool}
       final_state: {state_key: value}
     accepted_answer_contracts: [tool_trace]
+    reports: [parseable, tool_choice_accuracy, argument_accuracy, order_ok, observation_use_accuracy, unnecessary_calls_ok, final_state_accuracy]
   confidence_value:
     use_for: an answer followed by confidence from 0 to 100
     expected_value: {answer: replace_gold_answer}
     required_output: "<answer> followed by last line confidence: NN"
+    semantic_recovery: An unlabelled but unambiguous final confidence number is usable while the missing label remains a protocol violation.
     accepted_answer_contracts: [confidence]
     reports: [answer_correct, confidence, brier_component]
   llm_judge:
