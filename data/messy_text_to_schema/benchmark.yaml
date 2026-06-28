@@ -14,6 +14,11 @@ task_types:
   - unit conversion and derived values
 metrics: [exact_match_rate, leaf_accuracy, integration_friction_rate]
 score_formula: mean_score
+evaluation_policy:
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: diagnostic
+  partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml

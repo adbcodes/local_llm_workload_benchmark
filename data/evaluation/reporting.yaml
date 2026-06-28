@@ -1,13 +1,60 @@
-schema_version: 1
-id: benchmark_reporting_v1
-headline_scores:
+schema_version: 2
+id: benchmark_reporting_v2
+
+outcomes:
+  semantic:
+    question: Did the response solve the task correctly?
+    strict_metric: semantic_pass_rate
+    partial_credit_metric: mean_semantic_score
+  protocol:
+    question: Did the response follow the required output envelope and format?
+    strict_metric: protocol_pass_rate
+    partial_credit_metric: mean_protocol_score
+  integration:
+    question: Could the response be parsed, executed, and consumed end to end?
+    strict_metric: integration_success_rate
+    partial_credit_metric: mean_integration_score
+
+headline_contract:
+  passed:
+    semantic_primary: semantic outcome is correct
+    protocol_primary: semantic outcome is correct and protocol outcome is compliant
+    integration_primary: the declared end-to-end task completed successfully
+  pass_rate:
+    formula: passed / attempted
+    denominator: Every attempted item; generation and evaluation errors are failures.
+  mean_score:
+    formula: sum of the benchmark policy partial-credit value / attempted
+    denominator: Every attempted item; missing scores and errors contribute zero.
+  separation_rule: Never present strict pass rate and partial-credit mean as the same metric.
+
+diagnostic_metrics:
+  semantic_pass_rate: semantically correct attempts / attempted
+  protocol_compliance_rate: protocol-compliant attempts / applicable attempts
+  integration_parse_rate: cleanly or recoverably parsed attempts / attempted
+  recovery_rate: attempts scored after recovery / attempted
+  recoverable_friction_rate: semantically correct attempts with protocol violations / attempted
+  parse_failure_rate: unparseable attempts / attempted
+
+headline_groups:
   capability: [A, B]
   control: [C, D]
   trust: [E]
-rules:
-  - Capability and Control use absolute scores.
-  - Trust is reported as percent of the matched clean score retained.
-  - Never average retained-score deltas with absolute scores.
-  - Every binomial pass rate includes a 95 percent Wilson confidence interval.
+
+score_formulas:
+  mean_score: Report the policy's named mean score alongside its strict pass rate.
+  accuracy_minus_hallucination: Subtract the declared hallucination penalty from semantic accuracy.
+  clean_score_retained: Report the paired variant score as a percentage of its matched clean score.
+
+experiment_tracks:
+  standardized_prompting:
+    role: headline comparison
+    rule: Use one shared prompting policy across model families.
+  family_optimized_prompting:
+    role: separately labelled deployment comparison
+    rule: Report independently and never merge with standardized-prompting aggregates.
+
+statistical_rules:
+  - Every binomial rate includes a 95 percent Wilson confidence interval.
   - Models with overlapping confidence intervals are not ranked against each other.
-  - Integration friction is reported separately from answer correctness.
+  - Never average retained-score deltas with absolute scores.

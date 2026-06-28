@@ -33,6 +33,17 @@ ScoringMethod = Literal[
     "tool_trace",
     "confidence_value",
 ]
+PrimaryOutcome = Literal["semantic", "protocol", "integration"]
+PrimaryMetric = Literal[
+    "semantic_pass_rate",
+    "protocol_pass_rate",
+    "integration_success_rate",
+]
+PartialCreditMetric = Literal[
+    "mean_semantic_score",
+    "mean_protocol_score",
+    "mean_integration_score",
+]
 
 DIFFICULTY_ORDER: dict[Difficulty, int] = {
     "easy": 0,
@@ -57,6 +68,47 @@ class ScoringSpec(BaseModel):
 
     method: ScoringMethod
     parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class EvaluationPolicy(BaseModel):
+    """Declare which independent evaluation outcome represents benchmark success."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    primary_outcome: PrimaryOutcome
+    primary_metric: PrimaryMetric
+    protocol_requirement: Literal["required", "diagnostic", "not_applicable"]
+    partial_credit_metric: PartialCreditMetric
+
+    @model_validator(mode="after")
+    def metric_names_match_the_primary_outcome(self) -> Self:
+        expected_metrics: dict[
+            PrimaryOutcome,
+            tuple[PrimaryMetric, PartialCreditMetric],
+        ] = {
+            "semantic": ("semantic_pass_rate", "mean_semantic_score"),
+            "protocol": ("protocol_pass_rate", "mean_protocol_score"),
+            "integration": ("integration_success_rate", "mean_integration_score"),
+        }
+        expected_primary, expected_partial = expected_metrics[self.primary_outcome]
+        if self.primary_metric != expected_primary:
+            raise ValueError(
+                f"primary outcome {self.primary_outcome!r} requires "
+                f"primary metric {expected_primary!r}"
+            )
+        if self.partial_credit_metric != expected_partial:
+            raise ValueError(
+                f"primary outcome {self.primary_outcome!r} requires "
+                f"partial-credit metric {expected_partial!r}"
+            )
+        if (
+            self.primary_outcome == "protocol"
+            and self.protocol_requirement != "required"
+        ):
+            raise ValueError(
+                "a protocol-primary benchmark must require protocol compliance"
+            )
+        return self
 
 
 class SourceReference(BaseModel):
@@ -236,6 +288,7 @@ class BenchmarkDefinition(BaseModel):
     reporting_dimensions: list[str] = Field(default_factory=list)
     redesign_notes: list[str] = Field(default_factory=list)
     metrics: list[str] = Field(default_factory=list)
+    evaluation_policy: EvaluationPolicy
     score_formula: Literal[
         "mean_score",
         "accuracy_minus_hallucination",
@@ -253,6 +306,13 @@ class BenchmarkDefinition(BaseModel):
 
     @model_validator(mode="after")
     def difficulty_counts_match_target(self) -> Self:
+        if (
+            self.evaluation_policy.primary_outcome == "integration"
+            and self.execution_mode != "tool_scenario"
+        ):
+            raise ValueError(
+                "an integration-primary benchmark must use tool_scenario execution"
+            )
         if self.current_question_count > self.target_question_count:
             raise ValueError("current_question_count cannot exceed target_question_count")
         if set(self.current_difficulty_distribution) != {"easy", "medium", "hard"}:

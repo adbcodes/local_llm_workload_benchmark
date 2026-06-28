@@ -173,6 +173,24 @@ def _definition(spec: dict[str, Any]) -> dict[str, Any]:
             "score_formula",
             "clean_score_retained" if spec["suite"] == "E" else "mean_score",
         ),
+        "evaluation_policy": {
+            "primary_outcome": (
+                "integration"
+                if spec.get("execution_mode") == "tool_scenario"
+                else "semantic"
+            ),
+            "primary_metric": (
+                "integration_success_rate"
+                if spec.get("execution_mode") == "tool_scenario"
+                else "semantic_pass_rate"
+            ),
+            "protocol_requirement": "diagnostic",
+            "partial_credit_metric": (
+                "mean_integration_score"
+                if spec.get("execution_mode") == "tool_scenario"
+                else "mean_semantic_score"
+            ),
+        },
         "items_path": "items.jsonl",
         "authoring_paths": ["questions.yaml"],
         "current_question_count": 0,

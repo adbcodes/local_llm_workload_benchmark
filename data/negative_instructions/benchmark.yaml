@@ -14,6 +14,11 @@ metrics:
 - strict_all_pass_rate
 - prohibition_compliance
 score_formula: mean_score
+evaluation_policy:
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: diagnostic
+  partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml

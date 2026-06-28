@@ -1,15 +1,112 @@
-schema_version: 1
-id: shared_answer_normalization_v1
-steps:
-  - preserve the raw response unchanged
-  - remove trailing whitespace for evaluation only
-  - detect Markdown fences and surrounding chatter before any diagnostic extraction
-  - use Unicode-aware whole-word case-insensitive lexical checks
-  - use the repository sentence splitter and word tokenizer
-outcomes:
-  - scored
-  - missing_answer
-  - unparseable_output
-  - markdown_fence
-  - surrounding_text
-rule: Integration failures are reported separately from wrong, scorable answers.
+schema_version: 2
+id: shared_answer_normalization_v2
+
+principles:
+  - Preserve the raw response unchanged.
+  - Apply cleanup only to an evaluated copy and record every applied step.
+  - Extract an explicit FINAL answer before type-specific normalization.
+  - Never use cleanup to erase a protocol violation.
+  - Reject ambiguous values instead of guessing.
+
+cleanup_policies:
+  content:
+    use_for: semantic or integration evaluation
+    permitted_steps:
+      - trim_outer_whitespace
+      - extract_single_final_slot
+      - strip_one_markdown_fence
+      - strip_declared_scalar_wrapper
+    protocol_effect: Any detected wrapper or surrounding text remains a protocol violation.
+  raw_protocol:
+    use_for: protocol-primary evaluation
+    permitted_steps: []
+    protocol_effect: Score the original response exactly as delivered.
+
+accepted_answer_contracts:
+  scalar_text:
+    accepted_forms:
+      - exact semantic text after permitted cleanup
+    normalization:
+      - unicode_normalization
+      - casefold_when_case_is_not_part_of_the_item_contract
+      - trim_nonsemantic_outer_punctuation
+  option_label:
+    accepted_forms:
+      - canonical option label
+      - label in parentheses or square brackets
+      - exact option text when the item declares option text
+    normalization:
+      - unicode_normalization
+      - casefold_label
+      - remove_declared_label_wrapper
+    rejection_rule: Reject responses containing more than one candidate option.
+  number:
+    accepted_forms:
+      - integer or decimal
+      - declared fraction or percentage
+      - configured currency symbol and grouping separators
+    normalization:
+      - unicode_normalization
+      - remove_configured_currency_symbol
+      - remove_grouping_separators
+      - parse_decimal_fraction_or_percentage_as_declared
+    rejection_rule: Reject responses containing multiple plausible final numbers.
+  date:
+    canonical_form: YYYY-MM-DD
+    accepted_forms:
+      - ISO date
+      - unambiguous month-name date
+      - numeric date only when the item declares its order
+    normalization:
+      - unicode_normalization
+      - parse_declared_date_form
+      - convert_to_iso_date
+    rejection_rule: Reject ambiguous numeric dates rather than guessing month and day.
+  json:
+    accepted_forms:
+      - one JSON value
+      - one fenced JSON value under content cleanup
+    normalization:
+      - strip_one_markdown_fence_when_permitted
+      - parse_json
+      - compare_typed_values
+    rejection_rule: Reject invalid JSON and multiple candidate JSON values.
+  code:
+    accepted_forms:
+      - raw code
+      - one fenced code block under content cleanup
+    normalization:
+      - strip_one_markdown_fence_when_permitted
+      - preserve_code_contents
+  set:
+    accepted_forms:
+      - declared delimiter-separated labels
+      - declared JSON label array
+    normalization:
+      - parse_declared_container
+      - normalize_each_label_under_its_text_contract
+      - compare_without_order_when_declared
+    rejection_rule: Duplicate labels remain invalid unless the item explicitly allows them.
+  confidence:
+    accepted_forms:
+      - semantic answer followed by one final confidence line from 0 to 100
+    normalization:
+      - parse_answer_under_its_declared_contract
+      - casefold_confidence_keyword
+      - parse_bounded_numeric_confidence
+  tool_trace:
+    accepted_forms:
+      - declared tool-call JSON envelope
+      - one fenced envelope under content cleanup
+    normalization:
+      - strip_one_markdown_fence_when_permitted
+      - parse_json
+      - normalize_each_argument_under_its_declared_type
+      - validate_declared_call_and_state_schema
+
+integration_outcomes:
+  - scored_cleanly
+  - scored_after_recovery
+  - unparseable
+  - execution_failed
+  - evaluation_error

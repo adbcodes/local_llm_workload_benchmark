@@ -87,7 +87,11 @@ def _write_runtime_fixture(tmp_path: Path) -> Path:
     (benchmark / "benchmark.yaml").write_text(
         "id: tiny\ntitle: Tiny\ndescription: Tiny runtime fixture.\nsuite: A\n"
         "status: started\nexecution_mode: single_turn\ntask_types: [fact]\n"
-        "metrics: [accuracy]\nscore_formula: mean_score\nitems_path: items.jsonl\n"
+        "metrics: [accuracy]\nscore_formula: mean_score\n"
+        "evaluation_policy:\n  primary_outcome: semantic\n"
+        "  primary_metric: semantic_pass_rate\n"
+        "  protocol_requirement: diagnostic\n"
+        "  partial_credit_metric: mean_semantic_score\nitems_path: items.jsonl\n"
         "authoring_paths: []\ncurrent_question_count: 1\ntarget_question_count: 1\n"
         "current_difficulty_distribution: {easy: 1, medium: 0, hard: 0}\n"
         "difficulty_distribution: {easy: 1, medium: 0, hard: 0}\n"

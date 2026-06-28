@@ -14,6 +14,11 @@ task_types:
   - ordering and constraint puzzles
 metrics: [accuracy, mean_score]
 score_formula: mean_score
+evaluation_policy:
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: diagnostic
+  partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
   - external.yaml

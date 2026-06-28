@@ -14,6 +14,11 @@ task_types:
   - audit and compliance findings
 metrics: [judge_pass_rate, faithfulness, coverage, word_limit_compliance]
 score_formula: mean_score
+evaluation_policy:
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: diagnostic
+  partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml

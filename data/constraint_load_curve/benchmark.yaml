@@ -22,6 +22,11 @@ reporting_dimensions:
   - interacting constraint pair
 metrics: [strict_all_pass_rate, mean_rule_compliance, first_failed_rule]
 score_formula: mean_score
+evaluation_policy:
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: diagnostic
+  partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml

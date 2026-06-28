@@ -1,26 +1,33 @@
-schema_version: 1
-id: scoring_contracts_v1
+schema_version: 2
+id: scoring_contracts_v2
+contract_rule: Each method evaluates a parsed value; benchmark policy decides whether semantic, protocol, or integration success is primary.
 methods:
   exact_match:
     use_for: one exact text label or answer
     expected_value: scalar
+    accepted_answer_contracts: [scalar_text, option_label]
   numeric_tolerance:
     use_for: arithmetic and table totals
     expected_value: number
+    accepted_answer_contracts: [number]
     parameters: {absolute_tolerance: 0, allow_surrounding_text: false}
   rational_value:
     use_for: fractions and exact ratios
     expected_value: fraction string
+    accepted_answer_contracts: [number]
   date_value:
     use_for: calendar and normalized date answers
     expected_value: YYYY-MM-DD
+    accepted_answer_contracts: [date]
   json_exact:
     use_for: structured extraction and raw JSON
     expected_value: object or array
+    accepted_answer_contracts: [json]
     reports: [protocol_compliance, leaf_accuracy, missing_paths, extra_paths]
   set_match:
     use_for: unordered row IDs or multiple labels
     expected_value: list of strings
+    accepted_answer_contracts: [set]
     parameters: {separator: ',', case_sensitive: true}
   behavior_rules:
     use_for: abstention, clarification, false premises, and over-refusal
@@ -29,13 +36,16 @@ methods:
       required_all: [optional phrase that must appear]
       required_any: [one accepted phrase]
       forbidden: [phrase that must not appear]
+    accepted_answer_contracts: [scalar_text]
   constraint_rules:
     use_for: composed positive, negative, format, and ordering instructions
     expected_value: reference answer proving satisfiability
+    accepted_answer_contracts: [scalar_text]
     reports: [content_score, per_rule_checks, rule_compliance]
   executable_python:
     use_for: implementation and repair
     expected_value: {entry_point: function_name, tests: []}
+    accepted_answer_contracts: [code]
     reports: [tests_passed, tests_total, timeout, error]
   tool_trace:
     use_for: tool selection, arguments, order, and final fake-environment state
@@ -45,12 +55,15 @@ methods:
       observations:
         - {result_key: value_returned_by_fake_tool}
       final_state: {state_key: value}
+    accepted_answer_contracts: [tool_trace]
   confidence_value:
     use_for: an answer followed by confidence from 0 to 100
     expected_value: {answer: replace_gold_answer}
     required_output: "<answer> followed by last line confidence: NN"
+    accepted_answer_contracts: [confidence]
     reports: [answer_correct, confidence, brier_component]
   llm_judge:
     use_for: fact-safe summaries and reviewed communication criteria
     expected_value: human-written reference answer
+    accepted_answer_contracts: [scalar_text]
     reports: [faithfulness, coverage, relevance, clarity, concision, judge_usage]

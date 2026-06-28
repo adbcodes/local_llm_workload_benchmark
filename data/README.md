@@ -22,8 +22,11 @@ uv run llm-benchmark dataset validate --catalog data/catalog.yaml
 uv run pytest -q
 ```
 
-Use `evaluation/scoring_contracts.yaml` to choose the scorer. Reliability items
-use `source_item` to point to their clean version. Multi-turn items use
+Use `evaluation/scoring_contracts.yaml` to choose the scorer and add an
+`evaluation_policy` to declare the benchmark's primary outcome and metrics.
+Accepted answer forms and cleanup rules live in `evaluation/normalization.yaml`;
+metric formulas and denominators live in `evaluation/reporting.yaml`.
+Reliability items use `source_item` to point to their clean version. Multi-turn items use
 `conversation`; `{{source_response}}` inserts an earlier model answer into a
 later challenge. Runtime-effect experiments live in `runtime_effects/plan.yaml`.
 The historical 40-item probe is retained for audit; final setting tests use

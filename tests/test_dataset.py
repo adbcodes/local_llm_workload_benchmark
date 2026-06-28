@@ -23,6 +23,12 @@ def test_zero_count_benchmarks_can_use_an_empty_dataset(tmp_path: Path) -> None:
             "id": "planned_benchmark",
             "title": "Planned benchmark",
             "description": "An empty benchmark template.",
+            "evaluation_policy": {
+                "primary_outcome": "semantic",
+                "primary_metric": "semantic_pass_rate",
+                "protocol_requirement": "diagnostic",
+                "partial_credit_metric": "mean_semantic_score",
+            },
             "items_path": "items.jsonl",
             "authoring_paths": ["questions.yaml"],
             "current_question_count": 0,
@@ -43,6 +49,51 @@ def test_zero_count_benchmarks_can_use_an_empty_dataset(tmp_path: Path) -> None:
     assert load_dataset(dataset_path, allow_empty=True) == []
     with pytest.raises(DatasetError, match="contains no items"):
         load_dataset(dataset_path)
+
+
+@pytest.mark.parametrize(
+    ("policy", "message"),
+    [
+        (
+            {
+                "primary_outcome": "semantic",
+                "primary_metric": "protocol_pass_rate",
+                "protocol_requirement": "diagnostic",
+                "partial_credit_metric": "mean_semantic_score",
+            },
+            "requires primary metric 'semantic_pass_rate'",
+        ),
+        (
+            {
+                "primary_outcome": "protocol",
+                "primary_metric": "protocol_pass_rate",
+                "protocol_requirement": "diagnostic",
+                "partial_credit_metric": "mean_protocol_score",
+            },
+            "must require protocol compliance",
+        ),
+    ],
+)
+def test_benchmark_definition_rejects_inconsistent_evaluation_policy(
+    policy: dict[str, str],
+    message: str,
+) -> None:
+    definition = {
+        "id": "invalid_policy",
+        "title": "Invalid policy",
+        "description": "Exercise evaluation-policy validation.",
+        "evaluation_policy": policy,
+        "items_path": "items.jsonl",
+        "current_question_count": 0,
+        "target_question_count": 1,
+        "current_difficulty_distribution": {"easy": 0, "medium": 0, "hard": 0},
+        "difficulty_distribution": {"easy": 1, "medium": 0, "hard": 0},
+        "order_rule": "easy_to_hard",
+        "scoring_methods": ["exact_match"],
+    }
+
+    with pytest.raises(ValueError, match=message):
+        BenchmarkDefinition.model_validate(definition)
 
 
 def test_active_pilot_suite_loads_with_difficulty_progression() -> None:

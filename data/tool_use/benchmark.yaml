@@ -18,6 +18,11 @@ metrics:
 - unnecessary_call_rate
 - final_state_accuracy
 score_formula: mean_score
+evaluation_policy:
+  primary_outcome: integration
+  primary_metric: integration_success_rate
+  protocol_requirement: diagnostic
+  partial_credit_metric: mean_integration_score
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml

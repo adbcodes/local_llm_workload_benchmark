@@ -50,7 +50,63 @@ def test_every_catalog_definition_exists_and_declares_its_task_types() -> None:
             assert definition["suite"] == entry["suite"]
             assert definition["task_types"]
             assert definition["metrics"]
+            assert definition["evaluation_policy"]
             assert definition["scoring_methods"]
+
+
+def test_every_question_set_has_a_consistent_primary_evaluation_policy() -> None:
+    suite = load_suite(Path("data/suites/all.yaml"))
+    policies = {
+        benchmark_id: definition.evaluation_policy
+        for benchmark_id, definition in suite.definitions.items()
+    }
+
+    assert set(policies) == QUESTION_SET_IDS
+    assert policies["raw_output_discipline"].primary_outcome == "protocol"
+    assert policies["raw_output_discipline"].protocol_requirement == "required"
+    assert policies["tool_use"].primary_outcome == "integration"
+    assert {
+        benchmark_id
+        for benchmark_id, policy in policies.items()
+        if policy.primary_outcome == "semantic"
+    } == QUESTION_SET_IDS - {"raw_output_discipline", "tool_use"}
+
+
+def test_evaluation_contract_files_cover_declared_scorers_and_metrics() -> None:
+    suite = load_suite(Path("data/suites/all.yaml"))
+    scoring = yaml.safe_load(
+        Path("data/evaluation/scoring_contracts.yaml").read_text(encoding="utf-8")
+    )
+    normalization = yaml.safe_load(
+        Path("data/evaluation/normalization.yaml").read_text(encoding="utf-8")
+    )
+    reporting = yaml.safe_load(
+        Path("data/evaluation/reporting.yaml").read_text(encoding="utf-8")
+    )
+
+    declared_scorers = {
+        scorer
+        for definition in suite.definitions.values()
+        for scorer in definition.scoring_methods
+    }
+    assert scoring["schema_version"] == 2
+    assert set(scoring["methods"]) == declared_scorers
+
+    answer_contracts = set(normalization["accepted_answer_contracts"])
+    referenced_contracts = {
+        contract
+        for method in scoring["methods"].values()
+        for contract in method["accepted_answer_contracts"]
+    }
+    assert normalization["schema_version"] == 2
+    assert referenced_contracts <= answer_contracts
+
+    assert reporting["schema_version"] == 2
+    for definition in suite.definitions.values():
+        policy = definition.evaluation_policy
+        outcome = reporting["outcomes"][policy.primary_outcome]
+        assert outcome["strict_metric"] == policy.primary_metric
+        assert outcome["partial_credit_metric"] == policy.partial_credit_metric
 
 
 def test_planned_question_sets_are_empty_but_runnable_templates() -> None:

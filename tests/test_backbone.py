@@ -96,6 +96,12 @@ def _write_single_item_run(
                 "id": item["benchmark"], "title": "Backbone", "description": "Test",
                 "suite": "E", "status": "started", "execution_mode": "multi_turn",
                 "task_types": ["memory"], "metrics": ["accuracy"],
+                "evaluation_policy": {
+                    "primary_outcome": "semantic",
+                    "primary_metric": "semantic_pass_rate",
+                    "protocol_requirement": "diagnostic",
+                    "partial_credit_metric": "mean_semantic_score",
+                },
                 "items_path": "items.jsonl", "current_question_count": 1,
                 "target_question_count": 1,
                 "current_difficulty_distribution": {"easy": 1, "medium": 0, "hard": 0},
