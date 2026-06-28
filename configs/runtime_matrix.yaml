@@ -43,7 +43,7 @@ axes:
   top_p: [1.0]
   top_k: [40]
   repeat_penalty: [1.0, 1.1]
-  max_output_tokens: [512]
+  max_output_tokens: [4096]
   constrained_decoding: [none, json_when_requested]
   context_window: [16384]
   threads: [null]

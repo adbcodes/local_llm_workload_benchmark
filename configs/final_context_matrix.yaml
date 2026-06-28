@@ -18,7 +18,7 @@ models:
     gpu_layers: -1
     batch_size: 512
     flash_attention: true
-    generation: {max_output_tokens: 64, temperature: 0.0, top_p: 1.0, top_k: 40, repeat_penalty: 1.0, constrained_decoding: none}
+    generation: {max_output_tokens: 4096, temperature: 0.0, top_p: 1.0, top_k: 40, repeat_penalty: 1.0, constrained_decoding: none}
   - {<<: *qwen25, id: qwen2.5-3b-q6-context, model_path: models/qwen2.5-3b-instruct-q6_k.gguf, quantization: Q6_K}
   - {<<: *qwen25, id: qwen2.5-3b-q4-context, model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf, quantization: Q4_K_M}
   - {<<: *qwen25, id: qwen2.5-3b-q3-context, model_path: models/qwen2.5-3b-instruct-q3_k_m.gguf, quantization: Q3_K_M}

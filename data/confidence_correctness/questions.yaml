@@ -797,6 +797,7 @@ items:
     parameters:
       answer_type: numeric
       absolute_tolerance: 0
+      answer_unit: '%'
   provenance:
     kind: synthetic
     review_status: draft
@@ -1109,6 +1110,7 @@ items:
     parameters:
       answer_type: numeric
       absolute_tolerance: 0
+      answer_unit: '%'
   provenance:
     kind: synthetic
     review_status: draft

@@ -58,7 +58,15 @@ def finalize_evaluation(
         violations.append(wrapper)
     if details.get("protocol_compliant") is False and not violations:
         violations.append("unparseable_output")
-    if finish_reason == "length" and "output_truncated" not in violations:
+    complete_final_answer = (
+        details.get("final_marker_compliant") is True
+        and details.get("answer_parse_status") in {"parsed", "recovered"}
+    )
+    if (
+        finish_reason == "length"
+        and not complete_final_answer
+        and "output_truncated" not in violations
+    ):
         violations.append("output_truncated")
     if not raw_response.strip() and "missing_answer" not in violations:
         violations.append("missing_answer")
@@ -68,8 +76,10 @@ def finalize_evaluation(
     )
     protocol_score = float(protocol_outcome == "compliant")
 
-    truncation_invalidates_answer = finish_reason == "length" and (
-        evaluation.passed or "final_marker_compliant" in details
+    truncation_invalidates_answer = (
+        finish_reason == "length"
+        and not complete_final_answer
+        and (evaluation.passed or "final_marker_compliant" in details)
     )
     parse_failed = (
         not raw_response.strip()

@@ -58,11 +58,13 @@ def parse_answer(
     separator: str = ",",
     date_formats: tuple[str, ...] = (),
     confidence_answer_kind: Literal["text", "number"] = "text",
+    answer_unit: str | None = None,
+    unit_aliases: tuple[str, ...] = (),
     finish_reason: str | None = None,
 ) -> ParsedAnswer:
     """Extract one unambiguous typed answer under an explicit contract."""
 
-    if finish_reason == "length":
+    if finish_reason == "length" and not _has_complete_final_slot(response, require_final):
         return _result(
             response,
             kind,
@@ -125,7 +127,11 @@ def parse_answer(
         elif kind == "option":
             value, applied = _parse_option(extracted, option_text or {})
         elif kind == "number":
-            value, applied = _parse_number(extracted)
+            value, applied = _parse_number(
+                extracted,
+                answer_unit=answer_unit,
+                unit_aliases=unit_aliases,
+            )
         elif kind == "date":
             value, applied = _parse_date(extracted, date_formats)
         elif kind == "set":
@@ -134,6 +140,8 @@ def parse_answer(
             value, applied, confidence_violations = _parse_confidence(
                 extracted,
                 confidence_answer_kind,
+                answer_unit,
+                unit_aliases,
             )
             violations.extend(confidence_violations)
         elif kind == "code":
@@ -216,6 +224,21 @@ def _extract_answer_slot(
     return None, [], ["missing_final_marker"], "missing"
 
 
+def _has_complete_final_slot(response: str, require_final: bool) -> bool:
+    """Return whether truncation happened after a complete explicit final line."""
+
+    if not require_final:
+        return False
+    candidates = re.findall(r"(?im)^\s*FINAL\s*:\s*(.*?)\s*$", response)
+    lines = [line.strip() for line in response.splitlines() if line.strip()]
+    return (
+        len(candidates) == 1
+        and bool(candidates[0].strip())
+        and bool(lines)
+        and re.fullmatch(r"(?i)FINAL\s*:\s*.+", lines[-1]) is not None
+    )
+
+
 def _parse_option(value: str, option_text: dict[str, str]) -> tuple[str, list[str]]:
     candidate = value.strip().rstrip(".!?")
     steps = ["strip_whitespace"] if candidate != value else []
@@ -237,26 +260,59 @@ def _parse_option(value: str, option_text: dict[str, str]) -> tuple[str, list[st
     return matches[0], [*steps, *text_steps, "map_option_text_to_label"]
 
 
-def _parse_number(value: str) -> tuple[int | float, list[str]]:
+def _parse_number(
+    value: str,
+    *,
+    answer_unit: str | None = None,
+    unit_aliases: tuple[str, ...] = (),
+) -> tuple[int | float, list[str]]:
     candidate = value.strip()
     steps = ["strip_whitespace"] if candidate != value else []
     quoted = re.fullmatch(r"(['\"])(.*?)\1", candidate)
     if quoted:
         candidate = quoted.group(2).strip()
         steps.append("remove_scalar_quotes")
+    assignment = re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*\s*=\s*(.+)", candidate)
+    if assignment:
+        candidate = assignment.group(1).strip()
+        steps.append("remove_variable_assignment")
     without_terminal = candidate.rstrip("!?")
     if re.fullmatch(r"[-+]?(?:\d[\d,]*)\.", without_terminal):
         without_terminal = without_terminal[:-1]
     if without_terminal != candidate:
         candidate = without_terminal
         steps.append("remove_terminal_punctuation")
-    currency = re.fullmatch(r"([₹$£€])?\s*(.*?)\s*", candidate)
-    assert currency is not None
-    if currency.group(1):
-        steps.append("remove_currency_symbol")
-    numeric = currency.group(2)
-    if not re.fullmatch(r"[-+]?(?:\d+(?:,\d{2,3})*|\d+)(?:\.\d+)?", numeric):
+    declared_units = tuple(
+        dict.fromkeys(unit for unit in (answer_unit, *unit_aliases) if unit)
+    )
+    # Preserve the established currency-symbol behavior while using the same
+    # generic prefix/suffix parser as explicitly declared units.
+    accepted_units = tuple(dict.fromkeys((*declared_units, "₹", "$", "£", "€")))
+    unit_pattern = "|".join(
+        re.escape(unit) for unit in sorted(accepted_units, key=len, reverse=True)
+    )
+    numeric_pattern = r"[-+]?(?:\d+(?:,\d{2,3})*|\d+)(?:\.\d+)?"
+    quantity = re.fullmatch(
+        rf"(?:(?P<prefix>{unit_pattern})\s*)?"
+        rf"(?P<number>{numeric_pattern})"
+        rf"(?:\s*(?P<suffix>{unit_pattern}))?",
+        candidate,
+        flags=re.IGNORECASE,
+    )
+    if quantity is None or (quantity.group("prefix") and quantity.group("suffix")):
         raise ValueError("not one numeric value")
+    supplied_unit = quantity.group("prefix") or quantity.group("suffix")
+    if supplied_unit:
+        if declared_units and not any(
+            supplied_unit.casefold() == unit.casefold() for unit in declared_units
+        ):
+            raise ValueError("numeric unit does not match the scoring contract")
+        steps.append(
+            "remove_declared_unit"
+            if declared_units
+            else "remove_currency_symbol"
+        )
+    numeric = quantity.group("number")
     if "," in numeric:
         numeric = numeric.replace(",", "")
         steps.append("remove_grouping_separators")
@@ -294,6 +350,8 @@ def _parse_set(value: str, separator: str) -> tuple[list[str], list[str]]:
 def _parse_confidence(
     value: str,
     answer_kind: Literal["text", "number"],
+    answer_unit: str | None,
+    unit_aliases: tuple[str, ...],
 ) -> tuple[dict[str, Any], list[str], list[str]]:
     lines = [line.strip() for line in value.splitlines() if line.strip()]
     if len(lines) != 2:
@@ -311,7 +369,11 @@ def _parse_confidence(
         steps = ["recover_unlabelled_confidence"]
         violations.append("missing_confidence_label")
     if answer_kind == "number":
-        answer, answer_steps = _parse_number(lines[0])
+        answer, answer_steps = _parse_number(
+            lines[0],
+            answer_unit=answer_unit,
+            unit_aliases=unit_aliases,
+        )
     else:
         answer, answer_steps = normalize_text(lines[0])
     return {"answer": answer, "confidence": confidence}, [*answer_steps, *steps], violations

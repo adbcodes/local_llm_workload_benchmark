@@ -141,6 +141,32 @@ def test_truncation_invalidates_a_gold_looking_unfinished_answer() -> None:
     assert result.integration_outcome == "unparseable"
 
 
+def test_truncation_keeps_a_complete_parsed_final_answer() -> None:
+    legacy = EvaluationResult(
+        type="deterministic",
+        evaluator="rational_value",
+        passed=True,
+        score=1.0,
+        details={
+            "answer_parse_status": "parsed",
+            "final_marker_compliant": True,
+        },
+    )
+
+    result = finalize_evaluation(
+        legacy,
+        primary_outcome="semantic",
+        scoring_method="rational_value",
+        raw_response="working\nFINAL: 27/128",
+        finish_reason="length",
+    )
+
+    assert result.passed
+    assert result.semantic_outcome == "correct"
+    assert result.protocol_outcome == "compliant"
+    assert result.integration_outcome == "scored_cleanly"
+
+
 def test_integration_policy_uses_partial_tool_score_and_strict_success() -> None:
     partial = EvaluationResult(
         type="deterministic",

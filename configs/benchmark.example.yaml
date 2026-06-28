@@ -14,11 +14,11 @@ models:
     model_path: models/example-model.gguf
     quantization: q4
     enabled: false
-    context_window: 4096
+    context_window: 16384
     gpu_layers: -1
     response_cleanup: none
     verbose: false
     generation:
-      max_output_tokens: 256
+      max_output_tokens: 4096
       temperature: 0.0
       top_p: 1.0

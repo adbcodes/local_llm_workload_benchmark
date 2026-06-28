@@ -14,7 +14,7 @@ class ConfigError(ValueError):
 class GenerationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    max_output_tokens: int = Field(default=256, ge=1)
+    max_output_tokens: int = Field(default=4096, ge=1)
     temperature: float = Field(default=0.0, ge=0.0)
     top_p: float = Field(default=1.0, gt=0.0, le=1.0)
     top_k: int = Field(default=40, ge=0)
@@ -33,7 +33,7 @@ class ModelConfig(BaseModel):
     family: str | None = None
     role: Literal["candidate", "difficulty_anchor"] = "candidate"
     enabled: bool = True
-    context_window: int = Field(default=4096, ge=512)
+    context_window: int = Field(default=16384, ge=512)
     gpu_layers: int = Field(default=-1, ge=-1)
     threads: int | None = Field(default=None, ge=1)
     batch_size: int = Field(default=512, ge=1)

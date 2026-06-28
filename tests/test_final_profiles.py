@@ -29,6 +29,7 @@ def test_final_profiles_have_expected_configuration_counts() -> None:
         "json_when_requested"
     }
     assert {model.generation.repeat_penalty for model in repetition.models} == {1.1}
+    assert {model.generation.max_output_tokens for model in default.models} == {4096}
     assert {(model.architecture, model.quantization) for model in default.models} == {
         (architecture, quantization)
         for architecture in ("qwen2.5-3b", "gemma-3-4b", "qwen3-8b")

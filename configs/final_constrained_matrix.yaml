@@ -20,7 +20,7 @@ models:
     batch_size: 512
     flash_attention: true
     generation: &grammar
-      {max_output_tokens: 512, temperature: 0.0, top_p: 1.0, top_k: 40,
+      {max_output_tokens: 4096, temperature: 0.0, top_p: 1.0, top_k: 40,
        repeat_penalty: 1.0, constrained_decoding: json_when_requested}
   - {<<: *qwen25, id: qwen2.5-3b-q6-grammar, model_path: models/qwen2.5-3b-instruct-q6_k.gguf, quantization: Q6_K}
   - {<<: *qwen25, id: qwen2.5-3b-q4-grammar, model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf, quantization: Q4_K_M}

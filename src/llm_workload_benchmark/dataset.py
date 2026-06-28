@@ -441,7 +441,12 @@ def _validate_scoring_parameters(
     parameters: dict[str, Any],
 ) -> None:
     allowed_parameters: dict[ScoringMethod, set[str]] = {
-        "numeric_tolerance": {"absolute_tolerance", "allow_surrounding_text"},
+        "numeric_tolerance": {
+            "absolute_tolerance",
+            "allow_surrounding_text",
+            "answer_unit",
+            "unit_aliases",
+        },
         "rational_value": {"absolute_tolerance", "allow_surrounding_text"},
         "date_value": set(),
         "exact_match": {
@@ -470,6 +475,8 @@ def _validate_scoring_parameters(
             "answer_type",
             "absolute_tolerance",
             "case_sensitive",
+            "answer_unit",
+            "unit_aliases",
         },
     }
     unknown = set(parameters) - allowed_parameters[method]
@@ -479,6 +486,21 @@ def _validate_scoring_parameters(
     for name in ("allow_surrounding_text", "strip", "case_sensitive"):
         if name in parameters and not isinstance(parameters[name], bool):
             raise ValueError(f"{name} must be a boolean")
+
+    if method in {"numeric_tolerance", "confidence_value"}:
+        answer_unit = parameters.get("answer_unit")
+        if answer_unit is not None and (
+            not isinstance(answer_unit, str) or not answer_unit.strip()
+        ):
+            raise ValueError("answer_unit must be a non-empty string")
+        unit_aliases = parameters.get("unit_aliases", [])
+        if (
+            not isinstance(unit_aliases, list)
+            or any(not isinstance(alias, str) or not alias.strip() for alias in unit_aliases)
+        ):
+            raise ValueError("unit_aliases must be a list of non-empty strings")
+        if unit_aliases and answer_unit is None:
+            raise ValueError("unit_aliases requires answer_unit")
 
     if method in {"numeric_tolerance", "rational_value"}:
         return
@@ -1077,6 +1099,7 @@ def _parse_applied_reasoning_answer(item: DatasetItem, answer: str) -> ParsedAns
         recover_missing_final=True,
         option_text=options,
         date_formats=date_formats,
+        **_number_parse_options(item.scoring.parameters),
     )
 
 
@@ -1102,6 +1125,15 @@ def _answer_parse_details(parsed: ParsedAnswer) -> dict[str, Any]:
     }
 
 
+def _number_parse_options(parameters: dict[str, Any]) -> dict[str, Any]:
+    answer_unit = parameters.get("answer_unit")
+    aliases = parameters.get("unit_aliases", [])
+    return {
+        "answer_unit": answer_unit if isinstance(answer_unit, str) else None,
+        "unit_aliases": tuple(aliases) if isinstance(aliases, list) else (),
+    }
+
+
 def _extract_numeric_values(answer: str) -> list[float]:
     matches = re.findall(
         r"(?<![\w.])[-+]?(?:\d[\d,]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
@@ -1121,7 +1153,11 @@ def _extract_numeric_values(answer: str) -> list[float]:
 def _score_numeric(item: DatasetItem, answer: str) -> ScoreResult:
     expected = float(item.expected["value"])
     tolerance = float(item.scoring.parameters.get("absolute_tolerance", 0))
-    parsed = parse_answer(answer, "number")
+    parsed = parse_answer(
+        answer,
+        "number",
+        **_number_parse_options(item.scoring.parameters),
+    )
     if parsed.parsed:
         actual = float(parsed.value)
     elif item.scoring.parameters.get("allow_surrounding_text", False):
@@ -1784,6 +1820,7 @@ def _score_confidence(item: DatasetItem, answer: str) -> ScoreResult:
         answer,
         "confidence",
         confidence_answer_kind="number" if answer_type == "numeric" else "text",
+        **_number_parse_options(item.scoring.parameters),
     )
     if not parsed.parsed:
         return ScoreResult(

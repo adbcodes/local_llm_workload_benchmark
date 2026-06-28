@@ -62,6 +62,39 @@ def test_number_parser_rejects_surrounding_explanation() -> None:
     assert parse_answer("The answer is 300", "number").status == "unparseable"
 
 
+@pytest.mark.parametrize(
+    ("response", "answer_unit", "unit_aliases", "expected"),
+    [
+        ("x = 8", None, (), 8),
+        ("$30", "$", (), 30),
+        ("30$", "$", (), 30),
+        ("45km", "km", ("kilometres",), 45),
+        ("45 kilometres", "km", ("kilometres",), 45),
+    ],
+)
+def test_number_parser_handles_generic_wrappers_and_declared_units(
+    response: str,
+    answer_unit: str | None,
+    unit_aliases: tuple[str, ...],
+    expected: int,
+) -> None:
+    parsed = parse_answer(
+        response,
+        "number",
+        answer_unit=answer_unit,
+        unit_aliases=unit_aliases,
+    )
+
+    assert parsed.value == expected
+
+
+def test_number_parser_rejects_undeclared_or_mismatched_units() -> None:
+    assert parse_answer("45 furlongs", "number").status == "unparseable"
+    assert (
+        parse_answer("45mi", "number", answer_unit="km").status == "unparseable"
+    )
+
+
 def test_dates_require_declared_unambiguous_formats() -> None:
     assert parse_answer("3rd March 2001", "date").status == "unparseable"
     assert parse_answer(
@@ -121,6 +154,18 @@ def test_confidence_parser_separates_value_from_missing_label() -> None:
     assert parsed.protocol_violations == ["missing_confidence_label"]
 
 
+def test_confidence_numeric_answer_uses_the_declared_unit_contract() -> None:
+    parsed = parse_answer(
+        "25%\nconfidence: 100",
+        "confidence",
+        confidence_answer_kind="number",
+        answer_unit="%",
+    )
+
+    assert parsed.value == {"answer": 25, "confidence": 100}
+    assert "remove_declared_unit" in parsed.normalization_steps
+
+
 def test_code_fence_recovery_is_logged() -> None:
     parsed = parse_answer("```python\ndef solve():\n    return 1\n```", "code")
     assert parsed.value.startswith("def solve")
@@ -131,3 +176,15 @@ def test_truncated_output_is_never_recovered_from_a_gold_looking_value() -> None
     parsed = parse_answer("reasoning... FINAL: B", "option", finish_reason="length")
     assert parsed.status == "truncated"
     assert parsed.value is None
+
+
+def test_truncated_output_keeps_a_complete_explicit_final_slot() -> None:
+    parsed = parse_answer(
+        "reasoning...\nFINAL: 27/128",
+        "text",
+        require_final=True,
+        finish_reason="length",
+    )
+
+    assert parsed.parsed
+    assert parsed.extracted_answer == "27/128"

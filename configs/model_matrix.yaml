@@ -14,10 +14,10 @@ models:
     model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf
     quantization: Q4_K_M
     enabled: true
-    context_window: 4096
+    context_window: 16384
     gpu_layers: -1
     generation:
-      max_output_tokens: 256
+      max_output_tokens: 4096
       temperature: 0.0
       top_p: 1.0
 
@@ -26,10 +26,10 @@ models:
     model_path: models/gemma-3-4b-it-Q4_K_M.gguf
     quantization: Q4_K_M
     enabled: true
-    context_window: 4096
+    context_window: 16384
     gpu_layers: -1
     generation:
-      max_output_tokens: 256
+      max_output_tokens: 4096
       temperature: 0.0
       top_p: 1.0
 
@@ -38,13 +38,13 @@ models:
     model_path: models/Qwen3-8B-Q4_K_M.gguf
     quantization: Q4_K_M
     enabled: true
-    context_window: 4096
+    context_window: 16384
     gpu_layers: -1
     response_cleanup: strip_empty_think
     system_prompt: |-
       /no_think
       Follow the user's instructions precisely. Return only the requested answer without commentary.
     generation:
-      max_output_tokens: 256
+      max_output_tokens: 4096
       temperature: 0.0
       top_p: 1.0

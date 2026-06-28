@@ -26,7 +26,8 @@ models:
 
     assert config.benchmark.name == "test-run"
     assert config.benchmark.repetitions == 1
-    assert config.models[0].context_window == 4096
+    assert config.models[0].context_window == 16384
+    assert config.models[0].generation.max_output_tokens == 4096
     assert config.models[0].gpu_layers == -1
     assert config.models[0].response_cleanup == "none"
     assert config.models[0].generation.temperature == 0.0

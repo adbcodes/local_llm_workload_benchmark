@@ -47,7 +47,7 @@ class RuntimeModelDefaults(BaseModel):
     backend: Literal["llama_cpp"] = "llama_cpp"
     architecture: str | None = None
     family: str | None = None
-    context_window: int = Field(default=8192, ge=512)
+    context_window: int = Field(default=16384, ge=512)
     gpu_layers: int = Field(default=-1, ge=-1)
     threads: int | None = Field(default=None, ge=1)
     batch_size: int = Field(default=512, ge=1)
@@ -66,7 +66,7 @@ class RuntimeAxes(BaseModel):
     top_p: list[float] = Field(default_factory=lambda: [1.0], min_length=1)
     top_k: list[int] = Field(default_factory=lambda: [40], min_length=1)
     repeat_penalty: list[float] = Field(default_factory=lambda: [1.0], min_length=1)
-    max_output_tokens: list[int] = Field(default_factory=lambda: [256], min_length=1)
+    max_output_tokens: list[int] = Field(default_factory=lambda: [4096], min_length=1)
     constrained_decoding: list[Literal["none", "json", "json_when_requested"]] = Field(
         default_factory=lambda: ["none"], min_length=1
     )
