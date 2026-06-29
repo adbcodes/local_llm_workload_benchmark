@@ -6,11 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "data" / "code_debug_repair" / "generated_questions.yaml"
-LEGACY = ROOT / "data" / "code_debug_repair" / "questions.yaml"
 GENERATOR = "generate_coding_benchmark.py"
 SEED = 20260629
 
@@ -24,6 +21,19 @@ class Task:
     specification: str
     body: str
     cases: list[list[Any]]
+    tags: list[str]
+
+
+@dataclass(frozen=True)
+class Repair:
+    id: str
+    difficulty: str
+    name: str
+    params: str
+    specification: str
+    body: str
+    cases: list[list[Any]]
+    mutations: list[tuple[str, str, str]]
     tags: list[str]
 
 
@@ -132,17 +142,97 @@ def _implementation_items() -> list[dict[str, Any]]:
     return items
 
 
-def _legacy_diagnosis_and_repair() -> list[dict[str, Any]]:
-    document = yaml.safe_load(LEGACY.read_text(encoding="utf-8"))
-    items = [item for item in document["items"] if item["subcategory"] != "function_implementation"]
-    for index, item in enumerate(items, start=30):
-        item["split"] = "dev" if index % 4 == 0 else "test"
-        item["visibility"] = "public" if index % 2 == 0 else "held_out"
+def _diagnosis_items() -> list[dict[str, Any]]:
+    labels = (
+        "boundary_update, state_scope, row_aliasing, wrong_precedence, "
+        "stale_cache_key, direction_error, lossy_conversion, "
+        "mutation_iteration, missing_finalization, tie_break_error"
+    )
+    cases = [
+        ("diagnose_page_cursor_001", "easy", "boundary_update", "def page_after(items, cursor):\n    index = items.index(cursor)\n    return items[index:]", "page_after(['a','b','c'], 'b') should return ['c'] but returns ['b','c'].", ["boundaries"]),
+        ("diagnose_daily_totals_001", "easy", "state_scope", "def daily_totals(days):\n    total = 0\n    result = []\n    for values in days:\n        for value in values: total += value\n        result.append(total)\n    return result", "daily_totals([[2],[3]]) should return [2,3] but returns [2,5].", ["state_scope"]),
+        ("diagnose_matrix_template_001", "easy", "row_aliasing", "def matrix(rows, cols):\n    values = [[None] * cols] * rows\n    values[0][0] = 'x'\n    return values", "matrix(2,2) should change only the first row, but both rows start with 'x'.", ["aliasing"]),
+        ("diagnose_access_rule_001", "medium", "wrong_precedence", "def allowed(active, admin, suspended):\n    return active or admin and not suspended", "allowed(True, False, True) must be False because suspension overrides every role, but it returns True.", ["boolean_logic"]),
+        ("diagnose_price_cache_001", "medium", "stale_cache_key", "def priced(items, tax):\n    cache = {}\n    def one(item):\n        if item['sku'] in cache: return cache[item['sku']]\n        value = item['price'] + tax\n        cache[item['sku']] = value\n        return value\n    return [one(item) for item in items]", "Two records may share a sku but have different prices; the second result incorrectly reuses the first price.", ["memoization"]),
+        ("diagnose_dependency_edges_001", "medium", "direction_error", "def dependents(edges, changed):\n    result = set(changed)\n    for service, dependency in edges:\n        if service in result: result.add(dependency)\n    return sorted(result)", "With edge ['api','db'] and changed ['db'], the result should include api but does not.", ["graph"]),
+        ("diagnose_average_latency_001", "medium", "lossy_conversion", "def average_latency(values):\n    return int(sum(values) / len(values))", "average_latency([1,2]) should preserve 1.5 but returns 1.", ["numeric_semantics"]),
+        ("diagnose_remove_expired_001", "medium", "mutation_iteration", "def remove_expired(records):\n    for record in records:\n        if record['expired']:\n            records.remove(record)\n    return records", "Adjacent expired records cause one expired record to remain.", ["collection_mutation"]),
+        ("diagnose_flush_groups_001", "hard", "missing_finalization", "def groups(values):\n    result = []\n    current = []\n    for value in values:\n        if current and value != current[-1]:\n            result.append(current); current = []\n        current.append(value)\n    return result", "groups(['a','a','b']) should include the final ['b'] group but does not.", ["state_machine"]),
+        ("diagnose_route_choice_001", "hard", "tie_break_error", "def best(routes):\n    return min(routes, key=lambda route: len(route))", "Among equally short routes, the contract requires the lexicographically smallest sequence, but input order currently decides.", ["tie_breaking"]),
+    ]
+    items = []
+    for offset, (item_id, difficulty, label, source, observation, tags) in enumerate(cases, start=30):
+        prompt = (
+            f"Inspect this function and observed failure:\n\n{source}\n\n{observation}\n\n"
+            f"Choose the primary fault category: {labels}. Return only the category."
+        )
+        items.append({
+            "id": item_id,
+            "subcategory": "bug_diagnosis",
+            "difficulty": difficulty,
+            "split": "dev" if offset % 4 == 0 else "test",
+            "visibility": "public" if offset % 2 == 0 else "held_out",
+            "prompt": prompt,
+            "response_contract": {"type": "text", "format": "diagnostic_label"},
+            "expected": {"value": label},
+            "scoring": {"method": "exact_match", "parameters": {"strip": True, "case_sensitive": False}},
+            "provenance": {"kind": "synthetic", "review_status": "human_checked", "generator": GENERATOR, "seed": SEED},
+            "tags": ["python", "diagnosis", "failure_trace", *tags],
+        })
+    return items
+
+
+def _repair_items() -> list[dict[str, Any]]:
+    repairs = [
+        Repair("repair_quota_adjustments_001", "easy", "quota_after_adjustments", "quota, adjustments", "Apply integer adjustments in order and clamp the result to zero after every adjustment.", "value = quota\nfor adjustment in adjustments:\n    value = max(0, value + adjustment)\nreturn value", [[5, [-3, -4, 2]], [0, [3]], [5, [5, -10]], [4, [-4, -1]]], [("clamp_only_at_end", "value = max(0, value + adjustment)", "value = value + adjustment"), ("ignore_order", "for adjustment in adjustments:", "for adjustment in sorted(adjustments):"), ("wrong_floor", "max(0, value + adjustment)", "max(1, value + adjustment)")], ["state_tracking"]),
+        Repair("repair_latest_webhooks_001", "easy", "latest_webhooks", "events", "Keep the greatest sequence per webhook id; equal sequences keep the later event. Return [id,payload] rows ordered by id.", "latest = {}\nfor event_id, sequence, payload in events:\n    if event_id not in latest or sequence >= latest[event_id][0]:\n        latest[event_id] = [sequence, payload]\nreturn [[event_id, latest[event_id][1]] for event_id in sorted(latest)]", [[["b", 1, "x"], ["a", 2, "old"], ["a", 3, "new"]], [["a", 1, "x"], ["a", 1, "y"]], [], [["z", 0, "p"]]], [("keeps_smallest", "sequence >= latest[event_id][0]", "sequence <= latest[event_id][0]"), ("drops_equal_update", "sequence >= latest[event_id][0]", "sequence > latest[event_id][0]"), ("input_order_output", "for event_id in sorted(latest)", "for event_id in latest")], ["records", "versioning"]),
+        Repair("repair_refund_total_001", "easy", "refund_total", "refunds, reversed_ids", "Sum positive refund amounts whose ids are not reversed. Duplicate non-reversed ids count once using their latest amount.", "reversed_set = set(reversed_ids)\nlatest = {}\nfor refund_id, amount in refunds:\n    if refund_id not in reversed_set and amount > 0:\n        latest[refund_id] = amount\nreturn sum(latest.values())", [[[["r1", 3], ["r2", 5], ["r1", 4]], ["r2"]], [[], []], [[["r", -2]], []], [[["r", 2]], ["r"]]], [("counts_duplicates", "latest[refund_id] = amount", "latest[refund_id] = latest.get(refund_id, 0) + amount"), ("includes_reversed", "refund_id not in reversed_set", "refund_id in reversed_set"), ("includes_negative", "and amount > 0", "")], ["aggregation", "deduplication"]),
+        Repair("repair_availability_windows_001", "medium", "availability_windows", "windows, minimum", "Merge overlapping or touching half-open windows and return merged windows whose length is at least minimum.", "merged = []\nfor start, end in sorted(windows):\n    if merged and start <= merged[-1][1]:\n        merged[-1][1] = max(merged[-1][1], end)\n    else:\n        merged.append([start, end])\nreturn [window for window in merged if window[1] - window[0] >= minimum]", [[[[1, 3], [3, 5], [8, 9]], 2], [[], 1], [[[5, 7], [1, 2]], 1], [[[1, 2]], 2]], [("does_not_merge_touching", "start <= merged[-1][1]", "start < merged[-1][1]"), ("keeps_short_windows", ">= minimum", "> 0"), ("loses_final_window", "return [window for window in merged", "return [window for window in merged[:-1]")], ["intervals", "boundaries"]),
+        Repair("repair_cumulative_retries_001", "medium", "cumulative_retries", "start, delays", "Return retry timestamps obtained by cumulatively adding each delay to start.", "result = []\ntime = start\nfor delay in delays:\n    time += delay\n    result.append(time)\nreturn result", [[10, [1, 2, 4]], [0, []], [5, [3, 1]], [-2, [2, 2]]], [("uses_fixed_start", "time += delay", "time = start + delay"), ("skips_first_retry", "result.append(time)", "\n    if len(result): result.append(time)"), ("sorts_delays", "for delay in delays:", "for delay in sorted(delays):")], ["scheduling", "cumulative_state"]),
+        Repair("repair_blocked_dependents_001", "medium", "blocked_dependents", "services, dependencies, blocked", "dependencies are [service,dependency]. Return all blocked services and every transitive dependent, sorted.", "result = set(blocked)\nchanged = True\nwhile changed:\n    changed = False\n    for service, dependency in dependencies:\n        if dependency in result and service not in result:\n            result.add(service)\n            changed = True\nreturn sorted(service for service in result if service in services)", [[["db", "api", "web"], [["web", "api"], ["api", "db"]], ["db"]], [["a", "b"], [["b", "a"]], []], [["a"], [], ["a"]], [["a", "b"], [["b", "a"]], ["x"]]], [("wrong_edge_direction", "if dependency in result", "if service in result"), ("only_one_pass", "while changed:", "if changed:"), ("keeps_unknown", " if service in services", "")], ["graph", "dependency_propagation"]),
+        Repair("repair_stock_allocation_001", "medium", "stock_allocation", "stock, orders", "Process [id,sku,quantity] orders in order. Fully allocate only when enough stock remains. Return fulfilled ids and remaining stock.", "remaining = dict(stock)\nfulfilled = []\nfor order_id, sku, quantity in orders:\n    if remaining.get(sku, 0) >= quantity:\n        remaining[sku] -= quantity\n        fulfilled.append(order_id)\nreturn [fulfilled, {sku: remaining[sku] for sku in sorted(remaining)}]", [[{"a": 5}, [["z", "a", 3], ["a", "a", 3]]], [{}, [["o", "x", 1]]], [{"b": 1, "a": 2}, []], [{"a": 2}, [["o", "a", 2]]]], [("allows_partial", ">= quantity", "> 0"), ("does_not_decrement", "remaining[sku] -= quantity", "remaining[sku] = remaining[sku]"), ("reorders_orders", "for order_id, sku, quantity in orders:", "for order_id, sku, quantity in sorted(orders):")], ["allocation", "state_tracking"]),
+        Repair("repair_eligible_route_001", "hard", "eligible_route", "nodes, edges, start, end, disabled", "Return the lexicographically smallest node sequence among shortest undirected routes avoiding disabled nodes, or [].", "blocked = set(disabled)\nif start in blocked or end in blocked:\n    return []\ngraph = {node: [] for node in nodes}\nfor left, right in edges:\n    graph[left].append(right)\n    graph[right].append(left)\nqueue = [[start]]\nseen = {start}\nwhile queue:\n    path = queue.pop(0)\n    if path[-1] == end:\n        return path\n    for neighbor in sorted(graph[path[-1]]):\n        if neighbor not in blocked and neighbor not in seen:\n            seen.add(neighbor)\n            queue.append(path + [neighbor])\nreturn []", [[["a", "b", "c", "d"], [["a", "b"], ["b", "d"], ["a", "c"], ["c", "d"]], "a", "d", []], [["a", "b", "c"], [["a", "b"], ["b", "c"]], "a", "c", ["b"]], [["a"], [], "a", "a", []], [["a", "b"], [["b", "a"]], "a", "b", []]], [("uses_stack", "queue.pop(0)", "queue.pop()"), ("ignores_disabled", "neighbor not in blocked and ", ""), ("directed_only", "graph[right].append(left)", "graph[right] = graph[right]")], ["graph", "shortest_path", "tie_breaking"]),
+    ]
+    items = []
+    for offset, repair in enumerate(repairs, start=40):
+        source = _source(Task(repair.id, repair.difficulty, repair.name, repair.params, repair.specification, repair.body, repair.cases, repair.tags))
+        tests = []
+        for args in repair.cases:
+            if repair.id == "repair_latest_webhooks_001":
+                args = [args]
+            preserved = [i for i, value in enumerate(args) if isinstance(value, (list, dict))]
+            test = {"args": args, "expected": _expected(source, repair.name, args)}
+            if preserved:
+                test["preserve_args"] = preserved
+            tests.append(test)
+        mutants = []
+        for mutant_id, old, new in repair.mutations:
+            if old not in source:
+                raise ValueError(f"mutation {mutant_id} does not match {repair.id}")
+            mutants.append({"id": mutant_id, "source": source.replace(old, new, 1)})
+        buggy = mutants[0]["source"]
+        prompt = (
+            f"Repair this function so it satisfies the contract: {repair.specification}\n\n"
+            f"{buggy}\n\nReturn only the corrected {repair.name} function and use no imports."
+        )
+        items.append({
+            "id": repair.id,
+            "subcategory": "code_repair",
+            "difficulty": repair.difficulty,
+            "split": "dev" if offset % 4 == 0 else "test",
+            "visibility": "public" if offset % 2 == 0 else "held_out",
+            "prompt": prompt,
+            "response_contract": {"type": "code", "format": "python_function"},
+            "expected": {"value": {"entry_point": repair.name, "tests": tests, "reference_solution": source, "mutants": mutants}},
+            "scoring": {"method": "executable_python", "parameters": {"timeout_seconds": 1.0, "memory_limit_mb": 128, "max_output_characters": 10000}},
+            "provenance": {"kind": "synthetic", "review_status": "human_checked", "generator": GENERATOR, "seed": SEED},
+            "tags": ["python", "repair", "generated_mutation", "pass_at_1", *repair.tags],
+        })
     return items
 
 
 def generate() -> str:
-    items = _implementation_items() + _legacy_diagnosis_and_repair()
+    items = _implementation_items() + _diagnosis_items() + _repair_items()
     header = ["schema_version: 1", "benchmark: code_debug_repair", f"generated_by: {GENERATOR}", f"seed: {SEED}", "items:"]
     lines = header + ["  - " + json.dumps(item, ensure_ascii=False, separators=(",", ":")) for item in items]
     return "\n".join(lines) + "\n"

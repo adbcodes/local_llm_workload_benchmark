@@ -2,7 +2,7 @@
 
 The active benchmark is generated from locally authored scenario specifications,
 reference implementations, and code-computed expected values. The former classic
-algorithm set remains inactive in `questions.yaml` as a contamination reference;
+algorithm set remains inactive under `archive/` as a contamination reference;
 the active authoring source is `generated_questions.yaml`.
 
 ## Design
@@ -22,8 +22,8 @@ so a correct return value cannot hide an input-mutation violation.
 | Task family | Count | Evaluation |
 |---|---:|---|
 | Fresh practical implementation | 30 | Restricted Python tests and postconditions |
-| Bug diagnosis | 10 | Exact diagnostic label |
-| Code repair | 8 | Restricted Python tests |
+| Failure-trace diagnosis | 10 | Exact diagnostic category |
+| Generated code repair | 8 | Restricted Python tests and mutant killing |
 | **Total** | **48** | |
 
 Public and held-out visibility are balanced 24/24. Development scenarios are

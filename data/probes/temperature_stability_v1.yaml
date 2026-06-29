@@ -21,9 +21,9 @@ item_ids:
   - code_normalize_event_codes_001
   - code_reconcile_windows_001
   - code_eligible_shortest_route_001
-  - diagnose_missing_base_case_001
-  - repair_sliding_window_001
-  - repair_course_order_001
+  - diagnose_access_rule_001
+  - repair_quota_adjustments_001
+  - repair_blocked_dependents_001
   - tables_to_decisions_012
   - tables_to_decisions_028
   - inbox_routing_009

@@ -59,6 +59,22 @@ def test_bug_diagnosis_items_use_deterministic_labels() -> None:
         assert score_answer(item, item.expected["value"].upper()).passed
 
 
+def test_repair_items_use_verified_references_and_three_killed_mutants() -> None:
+    items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+    repairs = [item for item in items if item.subcategory == "code_repair"]
+
+    assert len(repairs) == 8
+    for item in repairs:
+        specification = item.expected["value"]
+        assert "generated_mutation" in item.tags
+        assert evaluate_python(item, specification["reference_solution"]).passed
+        assert len(specification["mutants"]) >= 3
+        assert all(
+            not evaluate_python(item, mutant["source"]).passed
+            for mutant in specification["mutants"]
+        )
+
+
 def test_coding_fixture_uses_restricted_executable_contract() -> None:
     item = _coding_item()
 
