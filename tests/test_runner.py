@@ -162,7 +162,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     }
     assert sum(record["dataset_origin"] == "licensed_anchor" for record in records) == 0
     assert sum(record["dataset_origin"] == "fresh_generated" for record in records) == 100
-    assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 30
+    assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 48
 
     summary = json.loads((run_directory / "summary.json").read_text())
     assert summary["status"] == "completed"

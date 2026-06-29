@@ -103,17 +103,17 @@ def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
         "applied_reasoning",
         "messy_text_to_schema",
     }
-    assert sum(len(items) for items in suite.items.values()) == 130
+    assert sum(len(items) for items in suite.items.values()) == 148
     reasoning = suite.items["applied_reasoning"]
     assert len(reasoning) == 100
     assert [item.difficulty for item in reasoning].count("easy") == 8
     assert [item.difficulty for item in reasoning].count("medium") == 44
     assert [item.difficulty for item in reasoning].count("hard") == 48
     schema_items = suite.items["messy_text_to_schema"]
-    assert len(schema_items) == 30
+    assert len(schema_items) == 48
     assert [item.difficulty for item in schema_items].count("easy") == 8
-    assert [item.difficulty for item in schema_items].count("medium") == 15
-    assert [item.difficulty for item in schema_items].count("hard") == 7
+    assert [item.difficulty for item in schema_items].count("medium") == 25
+    assert [item.difficulty for item in schema_items].count("hard") == 15
     assert sum(item.split == "dev" for item in reasoning) == 8
 
 

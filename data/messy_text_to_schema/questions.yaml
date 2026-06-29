@@ -1,17 +1,21 @@
 schema_version: 1
 benchmark: messy_text_to_schema
-generated_by: schema_and_summary_v1
+generated_by: messy_text_to_schema_v2
 items:
 - id: schema_invoice_001
   subcategory: clean_invoice
   difficulty: easy
   split: dev
-  prompt: 'Extract invoice_number, vendor, currency, total from the text below. Return valid JSON with
-    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Text: Invoice INV-204 from Acme Paper. Total
-    due: INR 4,250.00.'
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"invoice_number\": \"string\"\
+    ,\n  \"vendor\": \"string\",\n  \"currency\": \"string\",\n  \"total\": \"number\"\n}\n\nOutput rules:\
+    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
+    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
+    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
+    \ the last must be }. Do not add an explanation. Text: Invoice INV-204 from Acme Paper. Total due:\
+    \ INR 4,250.00."
   response_contract:
     type: json
     format: object
@@ -28,19 +32,26 @@ items:
   provenance:
     kind: hand_authored
     review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_invoice
+  - feature_clean_single_record
 - id: schema_contact_001
   subcategory: clean_contact
   difficulty: easy
-  split: dev
-  prompt: 'Extract name, email, phone, city from the text below. Return valid JSON with exactly the requested
-    structure and nothing else. Return the raw JSON directly, for example {"key":"value"}. Do not wrap
-    it in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not
-    add an explanation before or after it. Use JSON null for a requested value that is missing. Keep numbers
-    and booleans as JSON values, not strings. Text: Account contact: Meera Nair | meera.nair@example.com
-    | +91 98765 43210 | Pune.'
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"name\": \"string\",\n  \"email\"\
+    : \"string\",\n  \"phone\": \"string\",\n  \"city\": \"string\"\n}\n\nOutput rules: use JSON null\
+    \ when a requested source value is missing; use lowercase JSON true/false for booleans; emit numbers\
+    \ without currency symbols, unit labels, thousands separators, or number words. Return raw JSON only.\
+    \ Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must\
+    \ be }. Do not add an explanation. Text: Account contact: Meera Nair | meera.nair@example.com | +91\
+    \ 98765 43210 | Pune."
   response_contract:
     type: json
     format: object
@@ -56,20 +67,27 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_contact
+  - feature_clean_single_record
 - id: schema_shipment_001
   subcategory: clean_shipment
   difficulty: easy
   split: dev
-  prompt: 'Extract shipment_id, carrier, origin, destination, expected_date from the text below. Return
-    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
-    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
-    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
-    value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Shipment SH-882
-    leaves Jaipur on 2026-09-03 and is expected in Kochi on 2026-09-07. Carrier: BlueDart.'
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"shipment_id\": \"string\",\n  \"carrier\"\
+    : \"string\",\n  \"origin\": \"string\",\n  \"destination\": \"string\",\n  \"expected_date\": \"\
+    string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when a requested source value is missing;\
+    \ use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit labels,\
+    \ thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown\
+    \ fences. The first character must be { and the last must be }. Do not add an explanation. Text: Shipment\
+    \ SH-882 leaves Jaipur on 2026-09-03 and is expected in Kochi on 2026-09-07. Carrier: BlueDart."
   response_contract:
     type: json
     format: object
@@ -86,20 +104,29 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_shipment
+  - feature_clean_single_record
+  - feature_date_normalization
 - id: schema_booking_001
   subcategory: clean_booking
   difficulty: easy
-  split: dev
-  prompt: 'Extract booking_id, guest, rooms, check_in, check_out from the text below. Return valid JSON
-    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Format both dates as YYYY-MM-DD. Text: Booking
-    BK-310: guest Arjun Rao, 2 rooms, check-in 14 October 2026, check-out 17 October 2026.'
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"booking_id\": \"string\",\n\
+    \  \"guest\": \"string\",\n  \"rooms\": \"number\",\n  \"check_in\": \"string (YYYY-MM-DD)\",\n  \"\
+    check_out\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when a requested source value\
+    \ is missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit\
+    \ labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json\
+    \ Markdown fences. The first character must be { and the last must be }. Do not add an explanation.\
+    \ Format both dates as YYYY-MM-DD. Text: Booking BK-310: guest Arjun Rao, 2 rooms, check-in 14 October\
+    \ 2026, check-out 17 October 2026."
   response_contract:
     type: json
     format: object
@@ -116,20 +143,28 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_booking
+  - feature_clean_single_record
+  - feature_date_normalization
 - id: schema_product_001
   subcategory: clean_product
   difficulty: easy
   split: dev
-  prompt: 'Extract sku, name, category, price, in_stock from the text below. Return valid JSON with exactly
-    the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Text: SKU KB-14, Compact Keyboard, category
-    Accessories, price USD 49.95, in stock: yes.'
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"sku\": \"string\",\n  \"name\": \"string\"\
+    ,\n  \"category\": \"string\",\n  \"price\": \"number\",\n  \"in_stock\": \"boolean\"\n}\n\nOutput\
+    \ rules: use JSON null when a requested source value is missing; use lowercase JSON true/false for\
+    \ booleans; emit numbers without currency symbols, unit labels, thousands separators, or number words.\
+    \ Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must\
+    \ be { and the last must be }. Do not add an explanation. Text: SKU KB-14, Compact Keyboard, category\
+    \ Accessories, price USD 49.95, in stock: yes."
   response_contract:
     type: json
     format: object
@@ -146,20 +181,29 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_product
+  - feature_clean_single_record
+  - feature_typed_values
 - id: schema_event_002
   subcategory: clean_event
   difficulty: easy
-  split: dev
-  prompt: 'Extract title, event_date, city, start_time, capacity from the text below. Return valid JSON
-    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Format event_date as YYYY-MM-DD and start_time
-    as HH:MM. Text: Cloud Basics Workshop; 12 November 2026; Chennai; starts 09:30; capacity 80.'
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"title\": \"string\",\n  \"event_date\": \"\
+    string (YYYY-MM-DD)\",\n  \"city\": \"string\",\n  \"start_time\": \"string (HH:MM)\",\n  \"capacity\"\
+    : \"number\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Format event_date as YYYY-MM-DD\
+    \ and start_time as HH:MM. Text: Cloud Basics Workshop; 12 November 2026; Chennai; starts 09:30; capacity\
+    \ 80."
   response_contract:
     type: json
     format: object
@@ -176,20 +220,28 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_event
+  - feature_clean_single_record
+  - feature_date_normalization
 - id: schema_employee_001
   subcategory: clean_employee
   difficulty: easy
   split: dev
-  prompt: 'Extract employee_id, name, team, joined_on, active from the text below. Return valid JSON with
-    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Text: Employee E-091 is Sana Kapoor from the
-    Data team. Joined 2023-06-12. Active: true.'
+  visibility: public
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"employee_id\": \"string\",\n  \"name\": \"\
+    string\",\n  \"team\": \"string\",\n  \"joined_on\": \"string (YYYY-MM-DD)\",\n  \"active\": \"boolean\"\
+    \n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Text: Employee E-091 is Sana Kapoor\
+    \ from the Data team. Joined 2023-06-12. Active: true."
   response_contract:
     type: json
     format: object
@@ -206,20 +258,28 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_employee
+  - feature_clean_single_record
+  - feature_typed_values
 - id: schema_support_001
   subcategory: clean_support
   difficulty: easy
-  split: dev
-  prompt: 'Extract ticket_id, customer, priority, topic, status from the text below. Return valid JSON
-    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Text: Ticket T-551 was opened by Vikram Sen.
-    Priority high. Topic: duplicate charge. Status: open.'
+  split: test
+  visibility: held_out
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"ticket_id\": \"string\",\n  \"customer\"\
+    : \"string\",\n  \"priority\": \"string\",\n  \"topic\": \"string\",\n  \"status\": \"string\"\n}\n\
+    \nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Text: Ticket T-551 was opened by Vikram\
+    \ Sen. Priority high. Topic: duplicate charge. Status: open."
   response_contract:
     type: json
     format: object
@@ -236,21 +296,28 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - clean_support
+  - feature_clean_single_record
 - id: schema_event_001
   subcategory: missing_fields
   difficulty: medium
   split: dev
-  prompt: 'Extract title, event_date, city, contact_email from the text below. Return valid JSON with
-    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Format event_date as YYYY-MM-DD. Text: Drafted
-    on 4 August 2026. The Bengaluru Data Meetup will happen in Bengaluru''s Indiranagar neighbourhood
-    on 19 August 2026. Registration details will be shared later.'
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"title\": \"string\",\n  \"\
+    event_date\": \"string (YYYY-MM-DD)\",\n  \"city\": \"string\",\n  \"contact_email\": \"string or\
+    \ null\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Format event_date as YYYY-MM-DD.\
+    \ Text: Drafted on 4 August 2026. The Bengaluru Data Meetup will happen in Bengaluru's Indiranagar\
+    \ neighbourhood on 19 August 2026. Registration details will be shared later."
   response_contract:
     type: json
     format: object
@@ -267,21 +334,29 @@ items:
   provenance:
     kind: hand_authored
     review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - missing_fields
+  - feature_missing_value
+  - feature_date_normalization
   - distractor_date
 - id: schema_invoice_002
   subcategory: distracting_numbers
   difficulty: medium
-  split: dev
-  prompt: 'Extract invoice_number, vendor, currency, subtotal, tax, total from the text below. Return
-    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
-    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
-    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
-    value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Reminder 2 of
-    3, sent 07/09/2026. Bill no. B-778 from North Star Office. Terms: 30 days. Subtotal INR 18,000; GST
-    INR 3,240; amount payable INR 21,240.'
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"invoice_number\": \"string\",\n  \"vendor\"\
+    : \"string\",\n  \"currency\": \"string\",\n  \"subtotal\": \"number\",\n  \"tax\": \"number\",\n\
+    \  \"total\": \"number\"\n}\n\nOutput rules: use JSON null when a requested source value is missing;\
+    \ use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit labels,\
+    \ thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown\
+    \ fences. The first character must be { and the last must be }. Do not add an explanation. Text: Reminder\
+    \ 2 of 3, sent 07/09/2026. Bill no. B-778 from North Star Office. Terms: 30 days. Subtotal INR 18,000;\
+    \ GST INR 3,240; amount payable INR 21,240."
   response_contract:
     type: json
     format: object
@@ -299,21 +374,29 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - distracting_numbers
+  - feature_numeric_distractors
+  - feature_currency_normalization
 - id: schema_subscription_001
   subcategory: optional_fields
   difficulty: medium
   split: dev
-  prompt: 'Extract organization_id, plan, seats, renewal_date, coupon, auto_renew from the text below.
-    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
-    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
-    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
-    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Plan
-    change for org ORG-42: Pro annual, 35 seats, renewal 2027-01-15. Coupon field left blank. Auto-renew
-    is OFF.'
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"organization_id\": \"string\",\n  \"plan\"\
+    : \"string\",\n  \"seats\": \"number\",\n  \"renewal_date\": \"string (YYYY-MM-DD)\",\n  \"coupon\"\
+    : \"string or null\",\n  \"auto_renew\": \"boolean\"\n}\n\nOutput rules: use JSON null when a requested\
+    \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
+    \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
+    \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
+    \ add an explanation. Text: Plan change for org ORG-42: Pro annual, 35 seats, renewal 2027-01-15.\
+    \ Coupon field left blank. Auto-renew is OFF."
   response_contract:
     type: json
     format: object
@@ -331,30 +414,29 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - optional_fields
+  - feature_missing_value
+  - feature_typed_values
 - id: schema_candidate_001
   subcategory: mixed_format
   difficulty: medium
-  split: dev
-  prompt: 'Extract candidate_id, name, role, notice_days, expected_ctc_inr, remote from the text below.
-    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
-    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
-    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
-    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: CANDIDATE
-    / C-18
-
-    name=Leena D''Souza
-
-    role :: Backend Engineer
-
-    notice period: forty-five days
-
-    expected CTC INR 24.5 lakh
-
-    remote? YES'
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"candidate_id\": \"string\",\n  \"name\":\
+    \ \"string\",\n  \"role\": \"string\",\n  \"notice_days\": \"number\",\n  \"expected_ctc_inr\": \"\
+    number\",\n  \"remote\": \"boolean\"\n}\n\nOutput rules: use JSON null when a requested source value\
+    \ is missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit\
+    \ labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json\
+    \ Markdown fences. The first character must be { and the last must be }. Do not add an explanation.\
+    \ Convert lakh to base INR, so 24.5 lakh becomes 2450000. Text: CANDIDATE / C-18\nname=Leena D'Souza\n\
+    role :: Backend Engineer\nnotice period: forty-five days\nexpected CTC INR 24.5 lakh\nremote? YES"
   response_contract:
     type: json
     format: object
@@ -372,21 +454,30 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - mixed_format
+  - feature_mixed_layout
+  - feature_unit_conversion
+  - feature_word_to_number
 - id: schema_delivery_001
   subcategory: ocr_noise
   difficulty: medium
   split: dev
-  prompt: 'Extract delivery_id, origin, destination, cartons, weight_kg, fragile, eta from the text below.
-    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
-    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
-    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
-    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. The date
-    is DD-MM-YYYY; return eta as YYYY-MM-DD. Text: DELlVERY D-909 | fr0m: Surat | t0: Nagpur | 6 cart0ns
-    | wt 42.5 kg | fragile: N0 | ETA 03-12-2026'
+  visibility: public
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"delivery_id\": \"string\",\n  \"origin\"\
+    : \"string\",\n  \"destination\": \"string\",\n  \"cartons\": \"number\",\n  \"weight_kg\": \"number\"\
+    ,\n  \"fragile\": \"boolean\",\n  \"eta\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null\
+    \ when a requested source value is missing; use lowercase JSON true/false for booleans; emit numbers\
+    \ without currency symbols, unit labels, thousands separators, or number words. Return raw JSON only.\
+    \ Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must\
+    \ be }. Do not add an explanation. The date is DD-MM-YYYY; return eta as YYYY-MM-DD. Text: DELlVERY\
+    \ D-909 | fr0m: Surat | t0: Nagpur | 6 cart0ns | wt 42.5 kg | fragile: N0 | ETA 03-12-2026"
   response_contract:
     type: json
     format: object
@@ -405,21 +496,31 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - ocr_noise
+  - feature_ocr_errors
+  - feature_date_normalization
+  - feature_typed_values
 - id: schema_meeting_001
   subcategory: missing_fields
   difficulty: medium
-  split: dev
-  prompt: 'Extract meeting, date, time, timezone, owner, location, recording_url from the text below.
-    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
-    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
-    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
-    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Minutes
-    header: Project Cedar sync, Friday 6 March 2026, 15:00 IST. Owner: Omar Ali. Room changed twice; final
-    location is Zoom. No recording link was added.'
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"meeting\": \"string\",\n  \"\
+    date\": \"string (YYYY-MM-DD)\",\n  \"time\": \"string (HH:MM)\",\n  \"timezone\": \"string\",\n \
+    \ \"owner\": \"string\",\n  \"location\": \"string\",\n  \"recording_url\": \"string or null\"\n}\n\
+    \nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Text: Minutes header: Project Cedar\
+    \ sync, Friday 6 March 2026, 15:00 IST. Owner: Omar Ali. Room changed twice; final location is Zoom.\
+    \ No recording link was added."
   response_contract:
     type: json
     format: object
@@ -438,22 +539,30 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - missing_fields
+  - feature_missing_value
+  - feature_date_normalization
 - id: schema_refund_001
   subcategory: status_history
   difficulty: medium
   split: dev
-  prompt: 'Extract refund_id, order_id, amount, currency, current_status, last_action_date from the text
-    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
-    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
-    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
-    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
-    All dates are in 2026; format last_action_date as YYYY-MM-DD. Text: Refund RF-650 for order O-188.
-    Requested 2 May; approved 4 May; bank transfer failed 5 May; retried 7 May. Current state: processing.
-    Amount ₹1,899.00.'
+  visibility: public
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"refund_id\": \"string\",\n  \"order_id\"\
+    : \"string\",\n  \"amount\": \"number\",\n  \"currency\": \"string\",\n  \"current_status\": \"string\"\
+    ,\n  \"last_action_date\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when a requested\
+    \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
+    \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
+    \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
+    \ add an explanation. All dates are in 2026; format last_action_date as YYYY-MM-DD. Text: Refund RF-650\
+    \ for order O-188. Requested 2 May; approved 4 May; bank transfer failed 5 May; retried 7 May. Current\
+    \ state: processing. Amount ₹1,899.00."
   response_contract:
     type: json
     format: object
@@ -471,30 +580,30 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - status_history
+  - feature_timeline
+  - feature_date_normalization
+  - feature_state_selection
 - id: schema_address_001
   subcategory: multiline_address
   difficulty: medium
-  split: dev
-  prompt: 'Extract recipient, line1, line2, city, state, postal_code, country, landmark from the text
-    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
-    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
-    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
-    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
-    Text: Ship to: Riya Menon
-
-    Flat 8B, Lake View Towers
-
-    17 M.G. Road
-
-    Ernakulam, Kerala 682016
-
-    Country: India
-
-    Landmark: —'
+  split: test
+  visibility: held_out
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"recipient\": \"string\",\n  \"line1\": \"\
+    string\",\n  \"line2\": \"string\",\n  \"city\": \"string\",\n  \"state\": \"string\",\n  \"postal_code\"\
+    : \"string\",\n  \"country\": \"string\",\n  \"landmark\": \"string or null\"\n}\n\nOutput rules:\
+    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
+    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
+    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
+    \ the last must be }. Do not add an explanation. Text: Ship to: Riya Menon\nFlat 8B, Lake View Towers\n\
+    17 M.G. Road\nErnakulam, Kerala 682016\nCountry: India\nLandmark: —"
   response_contract:
     type: json
     format: object
@@ -514,21 +623,29 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - multiline_address
+  - feature_multiline_layout
+  - feature_missing_value
 - id: schema_asset_001
   subcategory: conflicting_values
   difficulty: medium
   split: dev
-  prompt: 'Extract asset_id, employee_id, serial_number, purchase_date, warranty_end from the text below.
-    Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly,
-    for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character
-    must be { and the last must be }. Do not add an explanation before or after it. Use JSON null for
-    a requested value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Asset
-    register correction: laptop LT-44 was first entered as assigned to E-120. That entry is wrong. Final
-    owner E-128, serial SN9K22, purchased 2025-11-09, warranty expires 2028-11-08.'
+  visibility: public
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"asset_id\": \"string\",\n  \"employee_id\"\
+    : \"string\",\n  \"serial_number\": \"string\",\n  \"purchase_date\": \"string (YYYY-MM-DD)\",\n \
+    \ \"warranty_end\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when a requested source\
+    \ value is missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols,\
+    \ unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ```\
+    \ or ```json Markdown fences. The first character must be { and the last must be }. Do not add an\
+    \ explanation. Text: Asset register correction: laptop LT-44 was first entered as assigned to E-120.\
+    \ That entry is wrong. Final owner E-128, serial SN9K22, purchased 2025-11-09, warranty expires 2028-11-08."
   response_contract:
     type: json
     format: object
@@ -545,21 +662,29 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - conflicting_values
+  - feature_revision
+  - feature_conflicting_value
 - id: schema_payment_001
   subcategory: redacted_fields
   difficulty: medium
-  split: dev
-  prompt: 'Extract payment_id, payer, method, last_four, amount, currency, authorization_code, settled
-    from the text below. Return valid JSON with exactly the requested structure and nothing else. Return
-    the raw JSON directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences.
-    The first character must be { and the last must be }. Do not add an explanation before or after it.
-    Use JSON null for a requested value that is missing. Keep numbers and booleans as JSON values, not
-    strings. Text: Payment P-771 | payer: Bright Foods Pvt Ltd | method: card ending 4412 | amount USD
-    860.50 | auth code [REDACTED] | settled yes.'
+  split: test
+  visibility: held_out
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"payment_id\": \"string\",\n  \"payer\": \"\
+    string\",\n  \"method\": \"string\",\n  \"last_four\": \"string\",\n  \"amount\": \"number\",\n  \"\
+    currency\": \"string\",\n  \"authorization_code\": \"string or null\",\n  \"settled\": \"boolean\"\
+    \n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Text: Payment P-771 | payer: Bright\
+    \ Foods Pvt Ltd | method: card ending 4412 | amount USD 860.50 | auth code [REDACTED] | settled yes."
   response_contract:
     type: json
     format: object
@@ -579,21 +704,30 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - redacted_fields
+  - feature_redaction
+  - feature_missing_value
+  - feature_currency_normalization
 - id: schema_release_001
   subcategory: version_noise
   difficulty: medium
   split: dev
-  prompt: 'Extract build_id, app_version, platform, rollout_percent, owner, rollback_version from the
-    text below. Return valid JSON with exactly the requested structure and nothing else. Return the raw
-    JSON directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The
-    first character must be { and the last must be }. Do not add an explanation before or after it. Use
-    JSON null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
-    Text: Release notes drafted with Python 3.12. Build r2026.08.17 ships app version 4.7.2 to Android
-    only, staged at 25%, owner Mobile Platform, rollback version 4.7.1.'
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"build_id\": \"string\",\n  \"app_version\"\
+    : \"string\",\n  \"platform\": \"string\",\n  \"rollout_percent\": \"number\",\n  \"owner\": \"string\"\
+    ,\n  \"rollback_version\": \"string\"\n}\n\nOutput rules: use JSON null when a requested source value\
+    \ is missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit\
+    \ labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json\
+    \ Markdown fences. The first character must be { and the last must be }. Do not add an explanation.\
+    \ Text: Release notes drafted with Python 3.12. Build r2026.08.17 ships app version 4.7.2 to Android\
+    \ only, staged at 25%, owner Mobile Platform, rollback version 4.7.1."
   response_contract:
     type: json
     format: object
@@ -611,21 +745,30 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - version_noise
+  - feature_numeric_distractors
+  - feature_version_selection
 - id: schema_course_001
   subcategory: list_field
   difficulty: medium
-  split: dev
-  prompt: 'Extract course_id, title, instructor, duration_weeks, prerequisites from the text below. Return
-    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
-    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
-    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
-    value that is missing. Keep numbers and booleans as JSON values, not strings. Keep prerequisites in
-    the order stated and exclude recommendations. Text: Course DS-210: Practical Analytics. Instructor:
-    Nisha Rao. Runs 8 weeks. Prerequisites are Python and basic statistics. SQL is recommended, not required.'
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"course_id\": \"string\",\n\
+    \  \"title\": \"string\",\n  \"instructor\": \"string\",\n  \"duration_weeks\": \"number\",\n  \"\
+    prerequisites\": [\n    \"string\"\n  ]\n}\n\nOutput rules: use JSON null when a requested source\
+    \ value is missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols,\
+    \ unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ```\
+    \ or ```json Markdown fences. The first character must be { and the last must be }. Do not add an\
+    \ explanation. Keep prerequisites in the order stated and exclude recommendations. Text: Course DS-210:\
+    \ Practical Analytics. Instructor: Nisha Rao. Runs 8 weeks. Prerequisites are Python and basic statistics.\
+    \ SQL is recommended, not required."
   response_contract:
     type: json
     format: nested_object
@@ -644,21 +787,31 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - list_field
+  - feature_list_extraction
+  - feature_recommendation_distractor
 - id: schema_incident_001
   subcategory: timeline
   difficulty: medium
   split: dev
-  prompt: 'Extract incident_id, severity, lead, opened_at, mitigated_at, resolved_at, cause from the text
-    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
-    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
-    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
-    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
-    Text: INC-73 opened 09:12 after API errors reached 14%. Mitigation began 09:24. Errors returned below
-    1% at 09:41. Resolved 10:05. Severity SEV-2; lead Asha Iyer; cause still unknown.'
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"incident_id\": \"string\",\n\
+    \  \"severity\": \"string\",\n  \"lead\": \"string\",\n  \"opened_at\": \"string (HH:MM)\",\n  \"\
+    mitigated_at\": \"string (HH:MM)\",\n  \"resolved_at\": \"string (HH:MM)\",\n  \"cause\": \"string\
+    \ or null\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. For this record, mitigated_at\
+    \ means the time errors returned below 1%. Text: INC-73 opened 09:12 after API errors reached 14%.\
+    \ Mitigation began 09:24. Errors returned below 1% at 09:41. Resolved 10:05. Severity SEV-2; lead\
+    \ Asha Iyer; cause still unknown."
   response_contract:
     type: json
     format: object
@@ -677,21 +830,30 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - timeline
+  - feature_timeline
+  - feature_state_selection
+  - feature_missing_value
 - id: schema_feedback_001
   subcategory: quoted_text
   difficulty: medium
-  split: dev
-  prompt: 'Extract response_id, customer, rating, comment, follow_up_allowed from the text below. Return
-    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
-    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
-    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
-    value that is missing. Keep numbers and booleans as JSON values, not strings. Text: Response FB-19
-    from Maya Shah gave 8/10 and said, "Fast setup, but export labels are confusing." Follow-up allowed:
-    no.'
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"response_id\": \"string\",\n  \"customer\"\
+    : \"string\",\n  \"rating\": \"number\",\n  \"comment\": \"string\",\n  \"follow_up_allowed\": \"\
+    boolean\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Text: Response FB-19 from\
+    \ Maya Shah gave 8/10 and said, \"Fast setup, but export labels are confusing.\" Follow-up allowed:\
+    \ no."
   response_contract:
     type: json
     format: object
@@ -708,21 +870,30 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - quoted_text
+  - feature_quoted_text
+  - feature_typed_values
 - id: schema_inventory_001
   subcategory: multiple_records
   difficulty: medium
   split: dev
-  prompt: 'Extract warehouse, counted_on, items from the text below. Return valid JSON with exactly the
-    requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}. Do
-    not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must be
-    }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Each items entry must contain exactly sku,
-    name, and quantity, in source order. Text: Warehouse W2 count: A-10 / adapters / 18 units; C-07 /
-    cables / 0 units; H-22 / hubs / 6 units. Counted 2026-07-31.'
+  visibility: public
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"warehouse\": \"string\",\n  \"counted_on\"\
+    : \"string (YYYY-MM-DD)\",\n  \"items\": [\n    {\n      \"sku\": \"string\",\n      \"name\": \"\
+    string\",\n      \"quantity\": \"number\"\n    }\n  ]\n}\n\nOutput rules: use JSON null when a requested\
+    \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
+    \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
+    \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
+    \ add an explanation. Each items entry must contain exactly sku, name, and quantity, in source order.\
+    \ Text: Warehouse W2 count: A-10 / adapters / 18 units; C-07 / cables / 0 units; H-22 / hubs / 6 units.\
+    \ Counted 2026-07-31."
   response_contract:
     type: json
     format: nested_object
@@ -746,22 +917,31 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - multiple_records
+  - feature_nested_records
+  - feature_source_order
 - id: schema_order_001
   subcategory: nested_ocr_order
   difficulty: hard
-  split: dev
-  prompt: 'Extract order_id, currency, line_items, tax, total from the text below. Return valid JSON with
-    exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Each line_items entry must contain exactly
-    description, quantity, and unit_price. The OCR-like word before the identifier is only a label. Text:
-    Ord3r K-77 / curr: INR / 2 x USB-C Hub @ 1,250.00 / 3 x Cable 2m @ 300.00 / GST: 612.00 / GRAND T0TAL
-    4,012.00.'
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"order_id\": \"string\",\n  \"currency\":\
+    \ \"string\",\n  \"line_items\": [\n    {\n      \"description\": \"string\",\n      \"quantity\"\
+    : \"number\",\n      \"unit_price\": \"number\"\n    }\n  ],\n  \"tax\": \"number\",\n  \"total\"\
+    : \"number\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Each line_items entry must\
+    \ contain exactly description, quantity, and unit_price. The OCR-like word before the identifier is\
+    \ only a label. Text: Ord3r K-77 / curr: INR / 2 x USB-C Hub @ 1,250.00 / 3 x Cable 2m @ 300.00 /\
+    \ GST: 612.00 / GRAND T0TAL 4,012.00."
   response_contract:
     type: json
     format: nested_object
@@ -785,21 +965,32 @@ items:
   provenance:
     kind: hand_authored
     review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - nested_ocr_order
+  - feature_nested_records
+  - feature_ocr_errors
+  - feature_currency_normalization
 - id: schema_expense_001
   subcategory: nested_expenses
   difficulty: hard
   split: dev
-  prompt: 'Extract report_id, owner, route, items, approved_total from the text below. Return valid JSON
-    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Each items entry must contain exactly date,
-    category, amount, and approved. Format dates as YYYY-MM-DD. Text: EXP R-18 / owner Neha Jain / trip
-    BLR→DEL / 11-13 Sep 2026. Lines: 11/09 flight INR 8,450 approved; 12/09 taxi INR 780 approved; 12/09
-    minibar INR 460 rejected. Claimed 9,690; approved total 9,230.'
+  visibility: public
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"report_id\": \"string\",\n  \"owner\": \"\
+    string\",\n  \"route\": {\n    \"from\": \"string\",\n    \"to\": \"string\"\n  },\n  \"items\": [\n\
+    \    {\n      \"date\": \"string (YYYY-MM-DD)\",\n      \"category\": \"string\",\n      \"amount\"\
+    : \"number\",\n      \"approved\": \"boolean\"\n    }\n  ],\n  \"approved_total\": \"number\"\n}\n\
+    \nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Each items entry must contain exactly\
+    \ date, category, amount, and approved. Format dates as YYYY-MM-DD. Text: EXP R-18 / owner Neha Jain\
+    \ / trip BLR→DEL / 11-13 Sep 2026. Lines: 11/09 flight INR 8,450 approved; 12/09 taxi INR 780 approved;\
+    \ 12/09 minibar INR 460 rejected. Claimed 9,690; approved total 9,230."
   response_contract:
     type: json
     format: nested_object
@@ -830,22 +1021,32 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - nested_expenses
+  - feature_nested_records
+  - feature_date_normalization
+  - feature_derived_total
 - id: schema_manifest_001
   subcategory: ocr_table
   difficulty: hard
-  split: dev
-  prompt: 'Extract manifest_id, origin, destination, departure, packages, total_weight_kg from the text
-    below. Return valid JSON with exactly the requested structure and nothing else. Return the raw JSON
-    directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first
-    character must be { and the last must be }. Do not add an explanation before or after it. Use JSON
-    null for a requested value that is missing. Keep numbers and booleans as JSON values, not strings.
-    The date is DD/MM/YY. Each packages entry must contain exactly id, weight_kg, and fragile. Text: MANlFEST
-    M-55; route CCU-BOM; dep 22:10 04/12/26. PKGS: P01|12.4kg|fragile Y; P02|8kg|fragile N; P03|15.75kg|fragile
-    Y. Note: 3 pieces, total shown 36.15kg.'
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"manifest_id\": \"string\",\n\
+    \  \"origin\": \"string\",\n  \"destination\": \"string\",\n  \"departure\": \"string (YYYY-MM-DDTHH:MM)\"\
+    ,\n  \"packages\": [\n    {\n      \"id\": \"string\",\n      \"weight_kg\": \"number\",\n      \"\
+    fragile\": \"boolean\"\n    }\n  ],\n  \"total_weight_kg\": \"number\"\n}\n\nOutput rules: use JSON\
+    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
+    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
+    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
+    \ last must be }. Do not add an explanation. The date is DD/MM/YY. Each packages entry must contain\
+    \ exactly id, weight_kg, and fragile. Text: MANlFEST M-55; route CCU-BOM; dep 22:10 04/12/26. PKGS:\
+    \ P01|12.4kg|fragile Y; P02|8kg|fragile N; P03|15.75kg|fragile Y. Note: 3 pieces, total shown 36.15kg."
   response_contract:
     type: json
     format: nested_object
@@ -872,23 +1073,35 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - ocr_table
+  - feature_nested_records
+  - feature_ocr_errors
+  - feature_derived_total
+  - feature_date_normalization
 - id: schema_purchase_order_001
   subcategory: revisions
   difficulty: hard
   split: dev
-  prompt: 'Extract purchase_order, revision, vendor, items, freight, tax_rate, pre_tax_total, delivery_date
-    from the text below. Return valid JSON with exactly the requested structure and nothing else. Return
-    the raw JSON directly, for example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences.
-    The first character must be { and the last must be }. Do not add an explanation before or after it.
-    Use JSON null for a requested value that is missing. Keep numbers and booleans as JSON values, not
-    strings. Use only the final revision. Each items entry must contain exactly name, quantity, and unit_price.
-    Text: PO PO-902 rev1 (ignore): 40 chairs at 3,000. Revision 2 FINAL: vendor Cedar Works; 36 chairs
-    at INR 2,850 each and 6 tables at INR 7,200 each. Delivery 18 Jan 2027. Freight 4,500. GST 18%. Pre-tax
-    total including freight 150,300.'
+  visibility: public
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"purchase_order\": \"string\",\n  \"revision\"\
+    : \"number\",\n  \"vendor\": \"string\",\n  \"items\": [\n    {\n      \"name\": \"string\",\n   \
+    \   \"quantity\": \"number\",\n      \"unit_price\": \"number\"\n    }\n  ],\n  \"freight\": \"number\"\
+    ,\n  \"tax_rate\": \"number\",\n  \"pre_tax_total\": \"number\",\n  \"delivery_date\": \"string (YYYY-MM-DD)\"\
+    \n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Use only the final revision. Represent\
+    \ tax_rate as a decimal fraction, so 18% becomes 0.18. Each items entry must contain exactly name,\
+    \ quantity, and unit_price. Text: PO PO-902 rev1 (ignore): 40 chairs at 3,000. Revision 2 FINAL: vendor\
+    \ Cedar Works; 36 chairs at INR 2,850 each and 6 tables at INR 7,200 each. Delivery 18 Jan 2027. Freight\
+    \ 4,500. GST 18%. Pre-tax total including freight 150,300."
   response_contract:
     type: json
     format: nested_object
@@ -914,23 +1127,35 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - revisions
+  - feature_nested_records
+  - feature_revision
+  - feature_derived_total
+  - feature_date_normalization
 - id: schema_project_001
   subcategory: nested_status
   difficulty: hard
-  split: dev
-  prompt: 'Extract project, owner, target_date, risk, workstreams, blocker from the text below. Return
-    valid JSON with exactly the requested structure and nothing else. Return the raw JSON directly, for
-    example {"key":"value"}. Do not wrap it in ``` or ```json Markdown fences. The first character must
-    be { and the last must be }. Do not add an explanation before or after it. Use JSON null for a requested
-    value that is missing. Keep numbers and booleans as JSON values, not strings. Each workstreams entry
-    must contain exactly name, status, percent, and owner. Text: Project Atlas, owner Tara Bose. Old target
-    30 June is obsolete; revised target 18 July 2026. Work: API=done (Dev Patel); migration=in progress,
-    70% (Isha Rao); docs=blocked, 40% (Omar Ali). Blocker: legal review, expected 10 July. Overall risk
-    amber.'
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"project\": \"string\",\n  \"owner\": \"string\"\
+    ,\n  \"target_date\": \"string (YYYY-MM-DD)\",\n  \"risk\": \"string\",\n  \"workstreams\": [\n  \
+    \  {\n      \"name\": \"string\",\n      \"status\": \"string\",\n      \"percent\": \"number\",\n\
+    \      \"owner\": \"string\"\n    }\n  ],\n  \"blocker\": {\n    \"name\": \"string\",\n    \"expected_date\"\
+    : \"string (YYYY-MM-DD)\"\n  }\n}\n\nOutput rules: use JSON null when a requested source value is\
+    \ missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit\
+    \ labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json\
+    \ Markdown fences. The first character must be { and the last must be }. Do not add an explanation.\
+    \ Each workstreams entry must contain exactly name, status, percent, and owner. Text: Project Atlas,\
+    \ owner Tara Bose. Old target 30 June is obsolete; revised target 18 July 2026. Work: API=done (Dev\
+    \ Patel); migration=in progress, 70% (Isha Rao); docs=blocked, 40% (Omar Ali). Blocker: legal review,\
+    \ expected 10 July. Overall risk amber."
   response_contract:
     type: json
     format: nested_object
@@ -962,23 +1187,34 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - nested_status
+  - feature_nested_records
+  - feature_revision
+  - feature_missing_value
+  - feature_date_normalization
 - id: schema_sensor_001
   subcategory: mixed_units
   difficulty: hard
   split: dev
-  prompt: 'Extract station_id, readings, online, battery_percent from the text below. Return valid JSON
-    with exactly the requested structure and nothing else. Return the raw JSON directly, for example {"key":"value"}.
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must
-    be }. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Each readings entry must contain exactly time,
-    temperature_c, and humidity_percent. Convert Fahrenheit and Kelvin exactly as implied by the supplied
-    values. Text: Station S7 log: 08:00 temp 86°F humidity 61%; 12:00 temp 32°C humidity 48%; 16:00 temp
-    303.15K humidity sensor ERROR. Convert all temperatures to Celsius. Device remained online. Battery
-    37%.'
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"station_id\": \"string\",\n\
+    \  \"readings\": [\n    {\n      \"time\": \"string (HH:MM)\",\n      \"temperature_c\": \"number\"\
+    ,\n      \"humidity_percent\": \"number or null\"\n    }\n  ],\n  \"online\": \"boolean\",\n  \"battery_percent\"\
+    : \"number\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Each readings entry must\
+    \ contain exactly time, temperature_c, and humidity_percent. Convert Fahrenheit and Kelvin exactly\
+    \ as implied by the supplied values. Text: Station S7 log: 08:00 temp 86°F humidity 61%; 12:00 temp\
+    \ 32°C humidity 48%; 16:00 temp 303.15K humidity sensor ERROR. Convert all temperatures to Celsius.\
+    \ Device remained online. Battery 37%."
   response_contract:
     type: json
     format: nested_object
@@ -1003,23 +1239,32 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - mixed_units
+  - feature_nested_records
+  - feature_unit_conversion
+  - feature_missing_value
 - id: schema_batch_001
   subcategory: multiple_noisy_records
   difficulty: hard
-  split: dev
-  prompt: 'Extract the records from the text below as a JSON array. Return valid JSON with exactly the
-    requested structure and nothing else. Return the raw JSON directly, for example [{"key":"value"}].
-    Do not wrap it in ``` or ```json Markdown fences. The first character must be [ and the last must
-    be ]. Do not add an explanation before or after it. Use JSON null for a requested value that is missing.
-    Keep numbers and booleans as JSON values, not strings. Each array entry must contain exactly user_id,
-    name, email, role, and enabled. Keep the first current u-1 row and ignore the labelled old duplicate.
-    Text: Batch export: [u-1] Asha / asha@example.com / admin / enabled; [u-2] Rohan / email MISSING /
-    viewer / disabled; duplicate old row [u-1] role viewer (ignore); [u-3] Mei / mei@example.com / editor
-    / enabled.'
+  split: test
+  visibility: held_out
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON array with one element\
+    \ per current record in source order. The strings in the schema are type annotations, not literal\
+    \ output values. Preserve every key and nesting level exactly; do not add or omit fields.\n\nSchema:\n\
+    [\n  {\n    \"user_id\": \"string\",\n    \"name\": \"string\",\n    \"email\": \"string or null\"\
+    ,\n    \"role\": \"string\",\n    \"enabled\": \"boolean\"\n  }\n]\n\nOutput rules: use JSON null\
+    \ when a requested source value is missing; use lowercase JSON true/false for booleans; emit numbers\
+    \ without currency symbols, unit labels, thousands separators, or number words. Return raw JSON only.\
+    \ Do not wrap it in ``` or ```json Markdown fences. The first character must be [ and the last must\
+    \ be ]. Do not add an explanation. Each array entry must contain exactly user_id, name, email, role,\
+    \ and enabled. Keep the first current u-1 row and ignore the labelled old duplicate. Text: Batch export:\
+    \ [u-1] Asha / asha@example.com / admin / enabled; [u-2] Rohan / email MISSING / viewer / disabled;\
+    \ duplicate old row [u-1] role viewer (ignore); [u-3] Mei / mei@example.com / editor / enabled."
   response_contract:
     type: json
     format: array
@@ -1046,7 +1291,879 @@ items:
       allow_diagnostic_normalization: true
   provenance:
     kind: hand_authored
-    review_status: draft
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
   tags:
   - extraction
   - multiple_noisy_records
+  - feature_multiple_records
+  - feature_duplicate_record
+  - feature_missing_value
+- id: schema_payroll_001
+  subcategory: payroll_correction
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"payroll_id\": \"string\",\n  \"employee_id\"\
+    : \"string\",\n  \"month\": \"string\",\n  \"base_pay\": \"number\",\n  \"bonus\": \"number\",\n \
+    \ \"deduction\": \"number\",\n  \"net_pay\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput\
+    \ rules: use JSON null when a requested source value is missing; use lowercase JSON true/false for\
+    \ booleans; emit numbers without currency symbols, unit labels, thousands separators, or number words.\
+    \ Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must\
+    \ be { and the last must be }. Do not add an explanation. Use the explicitly corrected net pay, and\
+    \ represent month as YYYY-MM. Text: Payroll note PAY-88 / Aug 2026 / E-204. Base INR 72,000; performance\
+    \ bonus 5,500; deduction 1,800. An earlier net of 74,900 was wrong. Correct net pay: INR 75,700."
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      payroll_id: PAY-88
+      employee_id: E-204
+      month: 2026-08
+      base_pay: 72000.0
+      bonus: 5500.0
+      deduction: 1800.0
+      net_pay: 75700.0
+      currency: INR
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - payroll_correction
+  - feature_revision
+  - feature_currency_normalization
+  - feature_derived_total
+- id: schema_license_001
+  subcategory: license_change
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"account_id\": \"string\",\n  \"product\"\
+    : \"string\",\n  \"seats\": \"number\",\n  \"effective_date\": \"string (YYYY-MM-DD)\",\n  \"billing_cycle\"\
+    : \"string\",\n  \"purchase_order\": \"string or null\",\n  \"auto_renew\": \"boolean\"\n}\n\nOutput\
+    \ rules: use JSON null when a requested source value is missing; use lowercase JSON true/false for\
+    \ booleans; emit numbers without currency symbols, unit labels, thousands separators, or number words.\
+    \ Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must\
+    \ be { and the last must be }. Do not add an explanation. Use the approved seat count. The source\
+    \ date is DD/MM/YYYY. Text: LICENCE CHANGE\nacct: AC-71\nproduct :: Design Pro\nold seats 18\napproved\
+    \ seats 24 effective 01/10/2026\nbilling annual | PO not supplied | auto-renew YES"
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      account_id: AC-71
+      product: Design Pro
+      seats: 24
+      effective_date: '2026-10-01'
+      billing_cycle: annual
+      purchase_order: null
+      auto_renew: true
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - license_change
+  - feature_mixed_layout
+  - feature_revision
+  - feature_missing_value
+- id: schema_meter_001
+  subcategory: meter_ocr
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"meter_id\": \"string\",\n \
+    \ \"site\": \"string\",\n  \"reading_date\": \"string (YYYY-MM-DD)\",\n  \"previous_kwh\": \"number\"\
+    ,\n  \"current_kwh\": \"number\",\n  \"multiplier\": \"number\"\n}\n\nOutput rules: use JSON null\
+    \ when a requested source value is missing; use lowercase JSON true/false for booleans; emit numbers\
+    \ without currency symbols, unit labels, thousands separators, or number words. Return raw JSON only.\
+    \ Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must\
+    \ be }. Do not add an explanation. The date is DD-MM-YY. The photo count is not part of the record.\
+    \ Text: METER R3AD M-440 | site Nashik | read 06-11-26 | prev 018842.7 kWh | curr 019106.2 kWh | multiplier\
+    \ 1.0 | photo 2/2"
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      meter_id: M-440
+      site: Nashik
+      reading_date: '2026-11-06'
+      previous_kwh: 18842.7
+      current_kwh: 19106.2
+      multiplier: 1.0
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - meter_ocr
+  - feature_ocr_errors
+  - feature_date_normalization
+  - feature_numeric_distractors
+- id: schema_return_001
+  subcategory: return_timeline
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"return_id\": \"string\",\n  \"order_id\"\
+    : \"string\",\n  \"reason\": \"string\",\n  \"current_status\": \"string\",\n  \"last_action\": \"\
+    string\",\n  \"last_action_date\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when\
+    \ a requested source value is missing; use lowercase JSON true/false for booleans; emit numbers without\
+    \ currency symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not\
+    \ wrap it in ``` or ```json Markdown fences. The first character must be { and the last must be }.\
+    \ Do not add an explanation. Use the latest timeline event for last_action and last_action_date. Text:\
+    \ Return RA-620 for order O-992: requested 3 Sep 2026, parcel received 8 Sep, inspection passed 10\
+    \ Sep, refund queued 11 Sep. Current status is refund_pending; reason: wrong size."
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      return_id: RA-620
+      order_id: O-992
+      reason: wrong size
+      current_status: refund_pending
+      last_action: refund queued
+      last_action_date: '2026-09-11'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - return_timeline
+  - feature_timeline
+  - feature_state_selection
+  - feature_date_normalization
+- id: schema_attendance_001
+  subcategory: attendance_list
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"workshop_id\": \"string\",\n  \"room\": \"\
+    string\",\n  \"present_registered\": [\n    \"string\"\n  ],\n  \"absent_registered\": [\n    \"string\"\
+    \n  ]\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON\
+    \ true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Include registered attendees\
+    \ only and preserve their source order. Text: Workshop WS-19 check-in: registered attendees Anil (present),\
+    \ Fatima (absent), Jo (present), Kavya (present). Wait-list visitor Dev also arrived but was not registered.\
+    \ Room 4B."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      workshop_id: WS-19
+      room: 4B
+      present_registered:
+      - Anil
+      - Jo
+      - Kavya
+      absent_registered:
+      - Fatima
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - attendance_list
+  - feature_list_extraction
+  - feature_status_filter
+- id: schema_campaign_001
+  subcategory: campaign_report
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"campaign_id\": \"string\",\n\
+    \  \"start_date\": \"string (YYYY-MM-DD)\",\n  \"end_date\": \"string (YYYY-MM-DD)\",\n  \"budget\"\
+    : \"number\",\n  \"spend\": \"number\",\n  \"currency\": \"string\",\n  \"impressions\": \"number\"\
+    ,\n  \"clicks\": \"number\",\n  \"signups\": \"number\",\n  \"status\": \"string\"\n}\n\nOutput rules:\
+    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
+    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
+    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
+    \ the last must be }. Do not add an explanation. All dates are in 2026. Ignore the prior campaign\
+    \ statistic. Text: Campaign C-52 / 1-7 July / budget INR 40,000 / actual spend ₹31,500 / 48,000 impressions\
+    \ / 1,260 clicks / 84 sign-ups / status completed. Prior campaign CTR: 3.1%."
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      campaign_id: C-52
+      start_date: '2026-07-01'
+      end_date: '2026-07-07'
+      budget: 40000.0
+      spend: 31500.0
+      currency: INR
+      impressions: 48000
+      clicks: 1260
+      signups: 84
+      status: completed
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - campaign_report
+  - feature_numeric_distractors
+  - feature_currency_normalization
+  - feature_typed_values
+- id: schema_maintenance_001
+  subcategory: maintenance_record
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"work_order\": \"string\",\n\
+    \  \"asset_id\": \"string\",\n  \"reported_at\": \"string (YYYY-MM-DDTHH:MM)\",\n  \"technician\"\
+    : \"string\",\n  \"finding\": \"string\",\n  \"action\": \"string\",\n  \"closed_at\": \"string (YYYY-MM-DDTHH:MM)\"\
+    ,\n  \"replacement_part\": \"string or null\"\n}\n\nOutput rules: use JSON null when a requested source\
+    \ value is missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols,\
+    \ unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ```\
+    \ or ```json Markdown fences. The first character must be { and the last must be }. Do not add an\
+    \ explanation. The closure occurred on the reported date. Use YYYY-MM-DDTHH:MM timestamps. Text: WORK\
+    \ ORDER WO-318\nasset: freezer F-09\nreported: 2026-08-14 07:20\ntechnician: Lata Sen\nfinding: loose\
+    \ door seal\naction: seal reseated\nclosed 09:05\nreplacement part: none"
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      work_order: WO-318
+      asset_id: F-09
+      reported_at: 2026-08-14T07:20
+      technician: Lata Sen
+      finding: loose door seal
+      action: seal reseated
+      closed_at: 2026-08-14T09:05
+      replacement_part: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - maintenance_record
+  - feature_multiline_layout
+  - feature_missing_value
+  - feature_state_selection
+- id: schema_transfer_001
+  subcategory: transfer_deduplication
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"transfer_id\": \"string\",\n  \"sender\"\
+    : \"string\",\n  \"beneficiary_id\": \"string\",\n  \"amount\": \"number\",\n  \"fee\": \"number\"\
+    ,\n  \"currency\": \"string\",\n  \"status\": \"string\",\n  \"bank_reference\": \"string\"\n}\n\n\
+    Output rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Return one transfer using the bank\
+    \ confirmation as the final state. Text: Transfer log: TX-770 initiated by Orion Foods to beneficiary\
+    \ B-18 for USD 2,400. Duplicate webhook row says TX-770 pending at 14:02. Bank confirmation at 14:07\
+    \ says completed, reference BR-991. Fee USD 12."
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      transfer_id: TX-770
+      sender: Orion Foods
+      beneficiary_id: B-18
+      amount: 2400.0
+      fee: 12.0
+      currency: USD
+      status: completed
+      bank_reference: BR-991
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - transfer_deduplication
+  - feature_duplicate_record
+  - feature_conflicting_value
+- id: schema_vehicle_001
+  subcategory: vehicle_inspection
+  difficulty: medium
+  split: dev
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"vehicle_id\": \"string\",\n  \"odometer_km\"\
+    : \"number\",\n  \"front_left_psi\": \"number\",\n  \"front_right_psi\": \"number\",\n  \"brake_test_passed\"\
+    : \"boolean\",\n  \"emissions_percent\": \"number\",\n  \"spare_tyre_psi\": \"string or null\",\n\
+    \  \"inspection_date\": \"string (YYYY-MM-DD)\",\n  \"inspector\": \"string\"\n}\n\nOutput rules:\
+    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
+    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
+    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
+    \ the last must be }. Do not add an explanation. Strip unit labels but do not convert the supplied\
+    \ measurements. Text: Inspection VHC-62: odometer 38,420 km; tyre pressure FL 33 psi, FR 34 psi; brake\
+    \ test PASS; emissions 0.42%; spare tyre reading unavailable; inspected 22 Aug 2026 by R. Das."
+  response_contract:
+    type: json
+    format: object
+  expected:
+    value:
+      vehicle_id: VHC-62
+      odometer_km: 38420
+      front_left_psi: 33
+      front_right_psi: 34
+      brake_test_passed: true
+      emissions_percent: 0.42
+      spare_tyre_psi: null
+      inspection_date: '2026-08-22'
+      inspector: R. Das
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - vehicle_inspection
+  - feature_unit_normalization
+  - feature_missing_value
+  - feature_typed_values
+- id: schema_survey_001
+  subcategory: survey_response
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"survey_id\": \"string\",\n  \"respondent\"\
+    : \"string\",\n  \"score\": \"number\",\n  \"selected_reasons\": [\n    \"string\"\n  ],\n  \"comment\"\
+    : \"string\",\n  \"submitted_on\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when\
+    \ a requested source value is missing; use lowercase JSON true/false for booleans; emit numbers without\
+    \ currency symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not\
+    \ wrap it in ``` or ```json Markdown fences. The first character must be { and the last must be }.\
+    \ Do not add an explanation. Exclude choices explicitly described as not selected. Text: Survey SV-203\
+    \ from Noor Khan, score 7/10. Selected reasons: 'easy setup' and 'fast support'; 'lower price' was\
+    \ shown but not selected. Comment: \"Reports need better filters.\" Submitted 2026-09-16."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      survey_id: SV-203
+      respondent: Noor Khan
+      score: 7
+      selected_reasons:
+      - easy setup
+      - fast support
+      comment: Reports need better filters.
+      submitted_on: '2026-09-16'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - survey_response
+  - feature_quoted_text
+  - feature_list_extraction
+  - feature_numeric_distractors
+- id: schema_contract_001
+  subcategory: contract_amendment
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"contract_id\": \"string\",\n  \"vendor\"\
+    : \"string\",\n  \"amendment\": \"number\",\n  \"end_date\": \"string (YYYY-MM-DD)\",\n  \"monthly_fee\"\
+    : \"number\",\n  \"currency\": \"string\",\n  \"milestones\": [\n    {\n      \"name\": \"string\"\
+    ,\n      \"due_date\": \"string (YYYY-MM-DD)\"\n    }\n  ],\n  \"owner\": \"string\",\n  \"termination_notice_days\"\
+    : \"number\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Use the final amendment.\
+    \ Each milestone contains exactly name and due_date. Text: Contract CT-81 with Nova Systems. Original\
+    \ end date 31 Dec 2026. Amendment 2 FINAL extends to 31 Mar 2027 and sets monthly fee USD 18,500.\
+    \ Milestones: security review due 15 Jan, migration due 28 Feb. Owner: Mira Paul; termination notice\
+    \ 30 days."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      contract_id: CT-81
+      vendor: Nova Systems
+      amendment: 2
+      end_date: '2027-03-31'
+      monthly_fee: 18500.0
+      currency: USD
+      milestones:
+      - name: security review
+        due_date: '2027-01-15'
+      - name: migration
+        due_date: '2027-02-28'
+      owner: Mira Paul
+      termination_notice_days: 30
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - contract_amendment
+  - feature_nested_records
+  - feature_revision
+  - feature_date_normalization
+- id: schema_freight_001
+  subcategory: freight_units
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"freight_id\": \"string\",\n\
+    \  \"origin\": \"string\",\n  \"destination\": \"string\",\n  \"pallets\": [\n    {\n      \"id\"\
+    : \"string\",\n      \"weight_kg\": \"number\",\n      \"sealed\": \"boolean\"\n    }\n  ],\n  \"\
+    total_weight_kg\": \"number\",\n  \"dispatch\": \"string (YYYY-MM-DDTHH:MM)\"\n}\n\nOutput rules:\
+    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
+    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
+    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
+    \ the last must be }. Do not add an explanation. Convert grams to kilograms. The date is DD/MM/YY.\
+    \ Preserve pallet order. Text: FR3IGHT F-208 / route AMD→GOI / pallets: PL1|12,500 g|sealed Y; PL2|8.25\
+    \ kg|sealed N / declared total 20.75 kg / dispatch 05/10/26 06:40 / dock note 3 of 4 ignored."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      freight_id: F-208
+      origin: AMD
+      destination: GOI
+      pallets:
+      - id: PL1
+        weight_kg: 12.5
+        sealed: true
+      - id: PL2
+        weight_kg: 8.25
+        sealed: false
+      total_weight_kg: 20.75
+      dispatch: 2026-10-05T06:40
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - freight_units
+  - feature_nested_records
+  - feature_ocr_errors
+  - feature_unit_conversion
+  - feature_derived_total
+- id: schema_roster_001
+  subcategory: corrected_roster
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"shift_date\": \"string (YYYY-MM-DD)\"\
+    ,\n  \"shift\": \"string\",\n  \"staff\": [\n    {\n      \"employee_id\": \"string\",\n      \"name\"\
+    : \"string\",\n      \"role\": \"string\",\n      \"start\": \"string (HH:MM)\",\n      \"end\": \"\
+    string (HH:MM)\",\n      \"phone\": \"string or null\"\n    }\n  ]\n}\n\nOutput rules: use JSON null\
+    \ when a requested source value is missing; use lowercase JSON true/false for booleans; emit numbers\
+    \ without currency symbols, unit labels, thousands separators, or number words. Return raw JSON only.\
+    \ Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the last must\
+    \ be }. Do not add an explanation. Apply the correction and keep the corrected roster order. Each\
+    \ staff row uses the shown schema. Text: Shift 2026-09-21 / morning roster: E11 Aditi lead 08:00-16:00;\
+    \ E12 Ben support 08:00-16:00; E13 Chen support 09:00-17:00. Correction: Ben is on leave; replace\
+    \ E12 with E19 Dina, phone not listed. Old printout still shows Ben."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      shift_date: '2026-09-21'
+      shift: morning
+      staff:
+      - employee_id: E11
+        name: Aditi
+        role: lead
+        start: 08:00
+        end: '16:00'
+        phone: null
+      - employee_id: E19
+        name: Dina
+        role: support
+        start: 08:00
+        end: '16:00'
+        phone: null
+      - employee_id: E13
+        name: Chen
+        role: support
+        start: 09:00
+        end: '17:00'
+        phone: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - corrected_roster
+  - feature_multiple_records
+  - feature_revision
+  - feature_missing_value
+- id: schema_usage_bill_001
+  subcategory: usage_invoice
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: "Convert the record below to JSON using this exact schema. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"bill_id\": \"string\",\n  \"customer\": \"\
+    string\",\n  \"billing_month\": \"string\",\n  \"currency\": \"string\",\n  \"charges\": [\n    {\n\
+    \      \"service\": \"string\",\n      \"quantity\": \"number\",\n      \"unit\": \"string\",\n  \
+    \    \"unit_price\": \"number\",\n      \"amount\": \"number\"\n    }\n  ],\n  \"subtotal\": \"number\"\
+    ,\n  \"amount_due\": \"number\",\n  \"paid\": \"boolean\"\n}\n\nOutput rules: use JSON null when a\
+    \ requested source value is missing; use lowercase JSON true/false for booleans; emit numbers without\
+    \ currency symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not\
+    \ wrap it in ``` or ```json Markdown fences. The first character must be { and the last must be }.\
+    \ Do not add an explanation. Exclude expired credits. Represent billing_month as YYYY-MM and preserve\
+    \ charge order. Text: Usage bill UB-44, Acme Labs, Sep 2026, USD. API: 1,200,000 calls at $0.0004\
+    \ = $480. Storage: 350 GB-month at $1.50 = $525. Trial credits expired last month. Subtotal and amount\
+    \ due: $1,005; paid false."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      bill_id: UB-44
+      customer: Acme Labs
+      billing_month: 2026-09
+      currency: USD
+      charges:
+      - service: API
+        quantity: 1200000
+        unit: calls
+        unit_price: 0.0004
+        amount: 480.0
+      - service: Storage
+        quantity: 350
+        unit: GB-month
+        unit_price: 1.5
+        amount: 525.0
+      subtotal: 1005.0
+      amount_due: 1005.0
+      paid: false
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - usage_invoice
+  - feature_nested_records
+  - feature_unit_conversion
+  - feature_derived_total
+- id: schema_quality_001
+  subcategory: quality_batch
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"batch_id\": \"string\",\n \
+    \ \"units_inspected\": \"number\",\n  \"defects\": [\n    {\n      \"type\": \"string\",\n      \"\
+    rejected\": \"number\"\n    }\n  ],\n  \"total_rejected\": \"number\",\n  \"accepted\": \"number\"\
+    ,\n  \"inspector\": \"string\",\n  \"inspection_date\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules:\
+    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
+    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
+    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
+    \ the last must be }. Do not add an explanation. The date is DD-MM-YY. The recheck sample is a distractor;\
+    \ preserve defect order. Text: QC B4TCH Q-17 | 500 units | checks: scratch 11 reject, seal 5 reject,\
+    \ label 2 reject | accepted 482 | inspector Isha | 18-09-26 | recheck sample 20/20 pass."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      batch_id: Q-17
+      units_inspected: 500
+      defects:
+      - type: scratch
+        rejected: 11
+      - type: seal
+        rejected: 5
+      - type: label
+        rejected: 2
+      total_rejected: 18
+      accepted: 482
+      inspector: Isha
+      inspection_date: '2026-09-18'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - quality_batch
+  - feature_nested_records
+  - feature_ocr_errors
+  - feature_derived_total
+- id: schema_itinerary_001
+  subcategory: revised_itinerary
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"trip_id\": \"string\",\n  \"\
+    traveller\": \"string\",\n  \"travel_date\": \"string (YYYY-MM-DD)\",\n  \"legs\": [\n    {\n    \
+    \  \"from\": \"string\",\n      \"to\": \"string\",\n      \"flight\": \"string\",\n      \"departure\"\
+    : \"string (HH:MM)\",\n      \"arrival\": \"string (HH:MM)\",\n      \"seat\": \"string or null\"\n\
+    \    }\n  ]\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
+    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
+    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
+    \ character must be { and the last must be }. Do not add an explanation. Ignore the draft and use\
+    \ the final itinerary. Keep local times without timezone conversion. Text: Trip TR-61 for Samir. Draft:\
+    \ BLR-BOM 6 Oct 07:10. FINAL itinerary: 07 Oct 2026, BLR→DEL AI804 dep 06:30 arr 09:15; DEL→LHR AI161\
+    \ dep 14:20 arr 19:10. All times local. Seat for first leg 12A; second leg not assigned."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      trip_id: TR-61
+      traveller: Samir
+      travel_date: '2026-10-07'
+      legs:
+      - from: BLR
+        to: DEL
+        flight: AI804
+        departure: 06:30
+        arrival: 09:15
+        seat: 12A
+      - from: DEL
+        to: LHR
+        flight: AI161
+        departure: '14:20'
+        arrival: '19:10'
+        seat: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - revised_itinerary
+  - feature_nested_records
+  - feature_revision
+  - feature_date_normalization
+- id: schema_quotes_001
+  subcategory: vendor_quotes
+  difficulty: hard
+  split: dev
+  visibility: public
+  prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
+    \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"rfq_id\": \"string\",\n  \"quantity\": \"\
+    number\",\n  \"currency\": \"string\",\n  \"quotes\": [\n    {\n      \"vendor\": \"string\",\n  \
+    \    \"revision\": \"number\",\n      \"unit_price\": \"number\",\n      \"delivery_days\": \"number\"\
+    \n    }\n  ],\n  \"tax_included\": \"boolean\",\n  \"valid_until\": \"string (YYYY-MM-DD)\"\n}\n\n\
+    Output rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Use PixelCo's corrected revision and\
+    \ exclude the withdrawn non-INR quote. Preserve vendor order. Text: RFQ-309 for 20 monitors. Quotes:\
+    \ PixelCo rev1 INR 18,200 each, corrected rev2 INR 17,800, delivery 12 days; ViewMax INR 17,500, delivery\
+    \ 18 days; ScreenHub USD quote withdrawn. GST excluded. Quotes valid through 30 Sep 2026."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      rfq_id: RFQ-309
+      quantity: 20
+      currency: INR
+      quotes:
+      - vendor: PixelCo
+        revision: 2
+        unit_price: 17800.0
+        delivery_days: 12
+      - vendor: ViewMax
+        revision: 1
+        unit_price: 17500.0
+        delivery_days: 18
+      tax_included: false
+      valid_until: '2026-09-30'
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - vendor_quotes
+  - feature_multiple_records
+  - feature_revision
+  - feature_currency_normalization
+- id: schema_energy_001
+  subcategory: energy_readings
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
+    \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"log_id\": \"string\",\n  \"\
+    date\": \"string (YYYY-MM-DD)\",\n  \"readings\": [\n    {\n      \"time\": \"string (HH:MM)\",\n\
+    \      \"line\": \"string\",\n      \"energy_kwh\": \"number\"\n    }\n  ],\n  \"total_kwh\": \"number\"\
+    ,\n  \"meter_online\": \"boolean\",\n  \"tariff\": \"string or null\"\n}\n\nOutput rules: use JSON\
+    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
+    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
+    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
+    \ last must be }. Do not add an explanation. Convert Wh to kWh and preserve reading order. Text: Energy\
+    \ log EN-5, 14 Aug 2026: 08:00 Line A 1.25 kWh; 12:00 Line A 850 Wh; 16:00 Line B 0.90 kWh. Convert\
+    \ to kWh. Total shown 3.00 kWh. Meter online yes; tariff field blank."
+  response_contract:
+    type: json
+    format: nested_object
+  expected:
+    value:
+      log_id: EN-5
+      date: '2026-08-14'
+      readings:
+      - time: 08:00
+        line: A
+        energy_kwh: 1.25
+      - time: '12:00'
+        line: A
+        energy_kwh: 0.85
+      - time: '16:00'
+        line: B
+        energy_kwh: 0.9
+      total_kwh: 3.0
+      meter_online: true
+      tariff: null
+  scoring:
+    method: json_exact
+    parameters:
+      allow_diagnostic_normalization: true
+  provenance:
+    kind: hand_authored
+    review_status: human_checked
+    generator: messy_text_to_schema_v2
+    seed: 20260731
+  tags:
+  - extraction
+  - energy_readings
+  - feature_nested_records
+  - feature_unit_conversion
+  - feature_derived_total
+seed: 20260731

@@ -187,15 +187,15 @@ def test_temporary_markdown_review_matches_dataset(tmp_path: Path) -> None:
 
     review = REVIEW_PATH.read_text(encoding="utf-8")
     assert review == regenerated_path.read_text(encoding="utf-8")
-    assert "448 questions across 16 benchmarks" in review
+    assert "466 questions across 16 benchmarks" in review
     assert "[Applied Reasoning Gauntlet](#applied-reasoning)" in review
     assert "[Following Multiple Rules](#constraint-load-curve)" in review
     assert "[Messy Text to Schema](#messy-text-to-schema)" in review
     assert "[Long-Text Retrieval](#long-text-retrieval)" in review
     assert "[Over-Refusal](#over-refusal)" in review
-    assert "Messy Text to Schema — 30 questions" in review
+    assert "Messy Text to Schema — 48 questions" in review
     assert "Confidence vs Correctness" not in review
     assert "**Conversation shown to the model**" in review
-    assert review.count("<summary><code>") == 448
-    assert review.count("<details>") == 464
+    assert review.count("<summary><code>") == 466
+    assert review.count("<details>") == 482
     assert not Path("docs/TEMP_CODE_DEBUG_REPAIR_REVIEW.html").exists()

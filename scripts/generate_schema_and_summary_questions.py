@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
@@ -9,6 +12,114 @@ import yaml
 
 SCHEMA_OUTPUT = Path("data/messy_text_to_schema/questions.yaml")
 SUMMARY_OUTPUT = Path("data/grounded_compression/questions.yaml")
+SCHEMA_GENERATOR = "messy_text_to_schema_v2"
+SCHEMA_SEED = 20260731
+
+
+SCHEMA_FEATURES: dict[str, tuple[str, ...]] = {
+    "clean_invoice": ("clean_single_record",),
+    "clean_contact": ("clean_single_record",),
+    "clean_shipment": ("clean_single_record", "date_normalization"),
+    "clean_booking": ("clean_single_record", "date_normalization"),
+    "clean_product": ("clean_single_record", "typed_values"),
+    "clean_event": ("clean_single_record", "date_normalization"),
+    "clean_employee": ("clean_single_record", "typed_values"),
+    "clean_support": ("clean_single_record",),
+    "missing_fields": ("missing_value", "date_normalization"),
+    "distracting_numbers": ("numeric_distractors", "currency_normalization"),
+    "optional_fields": ("missing_value", "typed_values"),
+    "mixed_format": ("mixed_layout", "unit_conversion", "word_to_number"),
+    "ocr_noise": ("ocr_errors", "date_normalization", "typed_values"),
+    "status_history": ("timeline", "date_normalization", "state_selection"),
+    "multiline_address": ("multiline_layout", "missing_value"),
+    "conflicting_values": ("revision", "conflicting_value"),
+    "redacted_fields": ("redaction", "missing_value", "currency_normalization"),
+    "version_noise": ("numeric_distractors", "version_selection"),
+    "list_field": ("list_extraction", "recommendation_distractor"),
+    "timeline": ("timeline", "state_selection", "missing_value"),
+    "quoted_text": ("quoted_text", "typed_values"),
+    "multiple_records": ("nested_records", "source_order"),
+    "nested_ocr_order": ("nested_records", "ocr_errors", "currency_normalization"),
+    "nested_expenses": ("nested_records", "date_normalization", "derived_total"),
+    "ocr_table": ("nested_records", "ocr_errors", "derived_total", "date_normalization"),
+    "revisions": ("nested_records", "revision", "derived_total", "date_normalization"),
+    "nested_status": ("nested_records", "revision", "missing_value", "date_normalization"),
+    "mixed_units": ("nested_records", "unit_conversion", "missing_value"),
+    "multiple_noisy_records": ("multiple_records", "duplicate_record", "missing_value"),
+    "payroll_correction": ("revision", "currency_normalization", "derived_total"),
+    "license_change": ("mixed_layout", "revision", "missing_value"),
+    "meter_ocr": ("ocr_errors", "date_normalization", "numeric_distractors"),
+    "return_timeline": ("timeline", "state_selection", "date_normalization"),
+    "attendance_list": ("list_extraction", "status_filter"),
+    "campaign_report": ("numeric_distractors", "currency_normalization", "typed_values"),
+    "maintenance_record": ("multiline_layout", "missing_value", "state_selection"),
+    "transfer_deduplication": ("duplicate_record", "conflicting_value"),
+    "vehicle_inspection": ("unit_normalization", "missing_value", "typed_values"),
+    "survey_response": ("quoted_text", "list_extraction", "numeric_distractors"),
+    "contract_amendment": ("nested_records", "revision", "date_normalization"),
+    "freight_units": ("nested_records", "ocr_errors", "unit_conversion", "derived_total"),
+    "corrected_roster": ("multiple_records", "revision", "missing_value"),
+    "usage_invoice": ("nested_records", "unit_conversion", "derived_total"),
+    "quality_batch": ("nested_records", "ocr_errors", "derived_total"),
+    "revised_itinerary": ("nested_records", "revision", "date_normalization"),
+    "vendor_quotes": ("multiple_records", "revision", "currency_normalization"),
+    "energy_readings": ("nested_records", "unit_conversion", "derived_total"),
+}
+
+
+_SCHEMA_OPENERS = (
+    "Convert the record below to JSON using this exact schema.",
+    "Extract the source record into the JSON shape shown below.",
+    "Read the messy source and return one JSON value matching this schema.",
+)
+
+
+def _annotation(key: str, value: Any) -> Any:
+    if isinstance(value, dict):
+        return {child_key: _annotation(child_key, child) for child_key, child in value.items()}
+    if isinstance(value, list):
+        if value and all(isinstance(row, dict) for row in value):
+            first_row = value[0]
+            annotated_row = {
+                child_key: _annotation_values(
+                    child_key,
+                    [row[child_key] for row in value if child_key in row],
+                )
+                for child_key in first_row
+            }
+            return [annotated_row]
+        return [_annotation(key, value[0])] if value else []
+    if value is None:
+        nullable_type = "number" if key.endswith(("_percent", "_total", "_amount")) else "string"
+        return f"{nullable_type} or null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            return "string (YYYY-MM-DD)"
+        if re.fullmatch(r"\d{2}:\d{2}", value):
+            return "string (HH:MM)"
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
+            return "string (YYYY-MM-DDTHH:MM)"
+        return "string"
+    raise TypeError(f"unsupported JSON value for {key}: {type(value).__name__}")
+
+
+def _annotation_values(key: str, values: list[Any]) -> Any:
+    non_null_values = [value for value in values if value is not None]
+    if not non_null_values:
+        return _annotation(key, None)
+    annotation = _annotation(key, non_null_values[0])
+    if len(non_null_values) != len(values) and isinstance(annotation, str):
+        return f"{annotation} or null"
+    return annotation
+
+
+def _schema_opener(item_id: str) -> str:
+    digest = hashlib.sha256(f"{SCHEMA_SEED}:{item_id}".encode()).digest()
+    return _SCHEMA_OPENERS[digest[0] % len(_SCHEMA_OPENERS)]
 
 
 def _schema_fixture(
@@ -22,26 +133,27 @@ def _schema_fixture(
     tags: list[str] | None = None,
     checked: bool = False,
 ) -> dict[str, Any]:
+    del checked  # Phase 4 review covers the complete retained set.
     if isinstance(expected, dict):
-        keys = ", ".join(expected)
-        instruction = f"Extract {keys} from the text below."
-        direct_json_example = '{"key":"value"}'
+        value_kind = "one JSON object"
         boundary_instruction = "The first character must be { and the last must be }."
         format_name = "nested_object" if any(
             isinstance(value, (dict, list)) for value in expected.values()
         ) else "object"
     else:
-        instruction = "Extract the records from the text below as a JSON array."
-        direct_json_example = '[{"key":"value"}]'
+        value_kind = "one JSON array with one element per current record in source order"
         boundary_instruction = "The first character must be [ and the last must be ]."
         format_name = "array"
+    schema = json.dumps(_annotation("root", expected), ensure_ascii=False, indent=2)
     prompt = (
-        f"{instruction} Return valid JSON with exactly the requested structure and "
-        "nothing else. Return the raw JSON directly, for example "
-        f"{direct_json_example}. Do not wrap it in ``` or ```json Markdown fences. "
-        f"{boundary_instruction} Do not add an explanation before or after it. "
-        "Use JSON null for a requested value that is missing. Keep numbers and "
-        "booleans as JSON values, not strings. "
+        f"{_schema_opener(item_id)} Return {value_kind}. The strings in the schema are "
+        "type annotations, not literal output values. Preserve every key and nesting level exactly; "
+        "do not add or omit fields.\n\n"
+        f"Schema:\n{schema}\n\n"
+        "Output rules: use JSON null when a requested source value is missing; use lowercase JSON "
+        "true/false for booleans; emit numbers without currency symbols, unit labels, thousands "
+        "separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json "
+        f"Markdown fences. {boundary_instruction} Do not add an explanation. "
     )
     if note:
         prompt += note.strip() + " "
@@ -51,6 +163,7 @@ def _schema_fixture(
         "subcategory": subcategory,
         "difficulty": difficulty,
         "split": "dev",
+        "visibility": "public",
         "prompt": prompt,
         "response_contract": {"type": "json", "format": format_name},
         "expected": {"value": expected},
@@ -60,9 +173,16 @@ def _schema_fixture(
         },
         "provenance": {
             "kind": "hand_authored",
-            "review_status": "human_checked" if checked else "draft",
+            "review_status": "human_checked",
+            "generator": SCHEMA_GENERATOR,
+            "seed": SCHEMA_SEED,
         },
-        "tags": ["extraction", subcategory, *(tags or [])],
+        "tags": [
+            "extraction",
+            subcategory,
+            *(f"feature_{feature}" for feature in SCHEMA_FEATURES[subcategory]),
+            *(tags or []),
+        ],
     }
 
 
@@ -131,6 +251,7 @@ SCHEMA_ITEMS = [
         "schema_candidate_001", "mixed_format", "medium",
         "CANDIDATE / C-18\nname=Leena D'Souza\nrole :: Backend Engineer\nnotice period: forty-five days\nexpected CTC INR 24.5 lakh\nremote? YES",
         {"candidate_id": "C-18", "name": "Leena D'Souza", "role": "Backend Engineer", "notice_days": 45, "expected_ctc_inr": 2450000, "remote": True},
+        note="Convert lakh to base INR, so 24.5 lakh becomes 2450000.",
     ),
     _schema_fixture(
         "schema_delivery_001", "ocr_noise", "medium",
@@ -179,6 +300,7 @@ SCHEMA_ITEMS = [
         "schema_incident_001", "timeline", "medium",
         "INC-73 opened 09:12 after API errors reached 14%. Mitigation began 09:24. Errors returned below 1% at 09:41. Resolved 10:05. Severity SEV-2; lead Asha Iyer; cause still unknown.",
         {"incident_id": "INC-73", "severity": "SEV-2", "lead": "Asha Iyer", "opened_at": "09:12", "mitigated_at": "09:41", "resolved_at": "10:05", "cause": None},
+        note="For this record, mitigated_at means the time errors returned below 1%.",
     ),
     _schema_fixture(
         "schema_feedback_001", "quoted_text", "medium",
@@ -213,7 +335,7 @@ SCHEMA_ITEMS = [
         "schema_purchase_order_001", "revisions", "hard",
         "PO PO-902 rev1 (ignore): 40 chairs at 3,000. Revision 2 FINAL: vendor Cedar Works; 36 chairs at INR 2,850 each and 6 tables at INR 7,200 each. Delivery 18 Jan 2027. Freight 4,500. GST 18%. Pre-tax total including freight 150,300.",
         {"purchase_order": "PO-902", "revision": 2, "vendor": "Cedar Works", "items": [{"name": "chair", "quantity": 36, "unit_price": 2850.0}, {"name": "table", "quantity": 6, "unit_price": 7200.0}], "freight": 4500.0, "tax_rate": 0.18, "pre_tax_total": 150300.0, "delivery_date": "2027-01-18"},
-        note="Use only the final revision. Each items entry must contain exactly name, quantity, and unit_price.",
+        note="Use only the final revision. Represent tax_rate as a decimal fraction, so 18% becomes 0.18. Each items entry must contain exactly name, quantity, and unit_price.",
     ),
     _schema_fixture(
         "schema_project_001", "nested_status", "hard",
@@ -233,7 +355,122 @@ SCHEMA_ITEMS = [
         [{"user_id": "u-1", "name": "Asha", "email": "asha@example.com", "role": "admin", "enabled": True}, {"user_id": "u-2", "name": "Rohan", "email": None, "role": "viewer", "enabled": False}, {"user_id": "u-3", "name": "Mei", "email": "mei@example.com", "role": "editor", "enabled": True}],
         note="Each array entry must contain exactly user_id, name, email, role, and enabled. Keep the first current u-1 row and ignore the labelled old duplicate.",
     ),
+    _schema_fixture(
+        "schema_payroll_001", "payroll_correction", "medium",
+        "Payroll note PAY-88 / Aug 2026 / E-204. Base INR 72,000; performance bonus 5,500; deduction 1,800. An earlier net of 74,900 was wrong. Correct net pay: INR 75,700.",
+        {"payroll_id": "PAY-88", "employee_id": "E-204", "month": "2026-08", "base_pay": 72000.0, "bonus": 5500.0, "deduction": 1800.0, "net_pay": 75700.0, "currency": "INR"},
+        note="Use the explicitly corrected net pay, and represent month as YYYY-MM.",
+    ),
+    _schema_fixture(
+        "schema_license_001", "license_change", "medium",
+        "LICENCE CHANGE\nacct: AC-71\nproduct :: Design Pro\nold seats 18\napproved seats 24 effective 01/10/2026\nbilling annual | PO not supplied | auto-renew YES",
+        {"account_id": "AC-71", "product": "Design Pro", "seats": 24, "effective_date": "2026-10-01", "billing_cycle": "annual", "purchase_order": None, "auto_renew": True},
+        note="Use the approved seat count. The source date is DD/MM/YYYY.",
+    ),
+    _schema_fixture(
+        "schema_meter_001", "meter_ocr", "medium",
+        "METER R3AD M-440 | site Nashik | read 06-11-26 | prev 018842.7 kWh | curr 019106.2 kWh | multiplier 1.0 | photo 2/2",
+        {"meter_id": "M-440", "site": "Nashik", "reading_date": "2026-11-06", "previous_kwh": 18842.7, "current_kwh": 19106.2, "multiplier": 1.0},
+        note="The date is DD-MM-YY. The photo count is not part of the record.",
+    ),
+    _schema_fixture(
+        "schema_return_001", "return_timeline", "medium",
+        "Return RA-620 for order O-992: requested 3 Sep 2026, parcel received 8 Sep, inspection passed 10 Sep, refund queued 11 Sep. Current status is refund_pending; reason: wrong size.",
+        {"return_id": "RA-620", "order_id": "O-992", "reason": "wrong size", "current_status": "refund_pending", "last_action": "refund queued", "last_action_date": "2026-09-11"},
+        note="Use the latest timeline event for last_action and last_action_date.",
+    ),
+    _schema_fixture(
+        "schema_attendance_001", "attendance_list", "medium",
+        "Workshop WS-19 check-in: registered attendees Anil (present), Fatima (absent), Jo (present), Kavya (present). Wait-list visitor Dev also arrived but was not registered. Room 4B.",
+        {"workshop_id": "WS-19", "room": "4B", "present_registered": ["Anil", "Jo", "Kavya"], "absent_registered": ["Fatima"]},
+        note="Include registered attendees only and preserve their source order.",
+    ),
+    _schema_fixture(
+        "schema_campaign_001", "campaign_report", "medium",
+        "Campaign C-52 / 1-7 July / budget INR 40,000 / actual spend ₹31,500 / 48,000 impressions / 1,260 clicks / 84 sign-ups / status completed. Prior campaign CTR: 3.1%.",
+        {"campaign_id": "C-52", "start_date": "2026-07-01", "end_date": "2026-07-07", "budget": 40000.0, "spend": 31500.0, "currency": "INR", "impressions": 48000, "clicks": 1260, "signups": 84, "status": "completed"},
+        note="All dates are in 2026. Ignore the prior campaign statistic.",
+    ),
+    _schema_fixture(
+        "schema_maintenance_001", "maintenance_record", "medium",
+        "WORK ORDER WO-318\nasset: freezer F-09\nreported: 2026-08-14 07:20\ntechnician: Lata Sen\nfinding: loose door seal\naction: seal reseated\nclosed 09:05\nreplacement part: none",
+        {"work_order": "WO-318", "asset_id": "F-09", "reported_at": "2026-08-14T07:20", "technician": "Lata Sen", "finding": "loose door seal", "action": "seal reseated", "closed_at": "2026-08-14T09:05", "replacement_part": None},
+        note="The closure occurred on the reported date. Use YYYY-MM-DDTHH:MM timestamps.",
+    ),
+    _schema_fixture(
+        "schema_transfer_001", "transfer_deduplication", "medium",
+        "Transfer log: TX-770 initiated by Orion Foods to beneficiary B-18 for USD 2,400. Duplicate webhook row says TX-770 pending at 14:02. Bank confirmation at 14:07 says completed, reference BR-991. Fee USD 12.",
+        {"transfer_id": "TX-770", "sender": "Orion Foods", "beneficiary_id": "B-18", "amount": 2400.0, "fee": 12.0, "currency": "USD", "status": "completed", "bank_reference": "BR-991"},
+        note="Return one transfer using the bank confirmation as the final state.",
+    ),
+    _schema_fixture(
+        "schema_vehicle_001", "vehicle_inspection", "medium",
+        "Inspection VHC-62: odometer 38,420 km; tyre pressure FL 33 psi, FR 34 psi; brake test PASS; emissions 0.42%; spare tyre reading unavailable; inspected 22 Aug 2026 by R. Das.",
+        {"vehicle_id": "VHC-62", "odometer_km": 38420, "front_left_psi": 33, "front_right_psi": 34, "brake_test_passed": True, "emissions_percent": 0.42, "spare_tyre_psi": None, "inspection_date": "2026-08-22", "inspector": "R. Das"},
+        note="Strip unit labels but do not convert the supplied measurements.",
+    ),
+    _schema_fixture(
+        "schema_survey_001", "survey_response", "medium",
+        "Survey SV-203 from Noor Khan, score 7/10. Selected reasons: 'easy setup' and 'fast support'; 'lower price' was shown but not selected. Comment: \"Reports need better filters.\" Submitted 2026-09-16.",
+        {"survey_id": "SV-203", "respondent": "Noor Khan", "score": 7, "selected_reasons": ["easy setup", "fast support"], "comment": "Reports need better filters.", "submitted_on": "2026-09-16"},
+        note="Exclude choices explicitly described as not selected.",
+    ),
+    _schema_fixture(
+        "schema_contract_001", "contract_amendment", "hard",
+        "Contract CT-81 with Nova Systems. Original end date 31 Dec 2026. Amendment 2 FINAL extends to 31 Mar 2027 and sets monthly fee USD 18,500. Milestones: security review due 15 Jan, migration due 28 Feb. Owner: Mira Paul; termination notice 30 days.",
+        {"contract_id": "CT-81", "vendor": "Nova Systems", "amendment": 2, "end_date": "2027-03-31", "monthly_fee": 18500.0, "currency": "USD", "milestones": [{"name": "security review", "due_date": "2027-01-15"}, {"name": "migration", "due_date": "2027-02-28"}], "owner": "Mira Paul", "termination_notice_days": 30},
+        note="Use the final amendment. Each milestone contains exactly name and due_date.",
+    ),
+    _schema_fixture(
+        "schema_freight_001", "freight_units", "hard",
+        "FR3IGHT F-208 / route AMD→GOI / pallets: PL1|12,500 g|sealed Y; PL2|8.25 kg|sealed N / declared total 20.75 kg / dispatch 05/10/26 06:40 / dock note 3 of 4 ignored.",
+        {"freight_id": "F-208", "origin": "AMD", "destination": "GOI", "pallets": [{"id": "PL1", "weight_kg": 12.5, "sealed": True}, {"id": "PL2", "weight_kg": 8.25, "sealed": False}], "total_weight_kg": 20.75, "dispatch": "2026-10-05T06:40"},
+        note="Convert grams to kilograms. The date is DD/MM/YY. Preserve pallet order.",
+    ),
+    _schema_fixture(
+        "schema_roster_001", "corrected_roster", "hard",
+        "Shift 2026-09-21 / morning roster: E11 Aditi lead 08:00-16:00; E12 Ben support 08:00-16:00; E13 Chen support 09:00-17:00. Correction: Ben is on leave; replace E12 with E19 Dina, phone not listed. Old printout still shows Ben.",
+        {"shift_date": "2026-09-21", "shift": "morning", "staff": [{"employee_id": "E11", "name": "Aditi", "role": "lead", "start": "08:00", "end": "16:00", "phone": None}, {"employee_id": "E19", "name": "Dina", "role": "support", "start": "08:00", "end": "16:00", "phone": None}, {"employee_id": "E13", "name": "Chen", "role": "support", "start": "09:00", "end": "17:00", "phone": None}]},
+        note="Apply the correction and keep the corrected roster order. Each staff row uses the shown schema.",
+    ),
+    _schema_fixture(
+        "schema_usage_bill_001", "usage_invoice", "hard",
+        "Usage bill UB-44, Acme Labs, Sep 2026, USD. API: 1,200,000 calls at $0.0004 = $480. Storage: 350 GB-month at $1.50 = $525. Trial credits expired last month. Subtotal and amount due: $1,005; paid false.",
+        {"bill_id": "UB-44", "customer": "Acme Labs", "billing_month": "2026-09", "currency": "USD", "charges": [{"service": "API", "quantity": 1200000, "unit": "calls", "unit_price": 0.0004, "amount": 480.0}, {"service": "Storage", "quantity": 350, "unit": "GB-month", "unit_price": 1.5, "amount": 525.0}], "subtotal": 1005.0, "amount_due": 1005.0, "paid": False},
+        note="Exclude expired credits. Represent billing_month as YYYY-MM and preserve charge order.",
+    ),
+    _schema_fixture(
+        "schema_quality_001", "quality_batch", "hard",
+        "QC B4TCH Q-17 | 500 units | checks: scratch 11 reject, seal 5 reject, label 2 reject | accepted 482 | inspector Isha | 18-09-26 | recheck sample 20/20 pass.",
+        {"batch_id": "Q-17", "units_inspected": 500, "defects": [{"type": "scratch", "rejected": 11}, {"type": "seal", "rejected": 5}, {"type": "label", "rejected": 2}], "total_rejected": 18, "accepted": 482, "inspector": "Isha", "inspection_date": "2026-09-18"},
+        note="The date is DD-MM-YY. The recheck sample is a distractor; preserve defect order.",
+    ),
+    _schema_fixture(
+        "schema_itinerary_001", "revised_itinerary", "hard",
+        "Trip TR-61 for Samir. Draft: BLR-BOM 6 Oct 07:10. FINAL itinerary: 07 Oct 2026, BLR→DEL AI804 dep 06:30 arr 09:15; DEL→LHR AI161 dep 14:20 arr 19:10. All times local. Seat for first leg 12A; second leg not assigned.",
+        {"trip_id": "TR-61", "traveller": "Samir", "travel_date": "2026-10-07", "legs": [{"from": "BLR", "to": "DEL", "flight": "AI804", "departure": "06:30", "arrival": "09:15", "seat": "12A"}, {"from": "DEL", "to": "LHR", "flight": "AI161", "departure": "14:20", "arrival": "19:10", "seat": None}]},
+        note="Ignore the draft and use the final itinerary. Keep local times without timezone conversion.",
+    ),
+    _schema_fixture(
+        "schema_quotes_001", "vendor_quotes", "hard",
+        "RFQ-309 for 20 monitors. Quotes: PixelCo rev1 INR 18,200 each, corrected rev2 INR 17,800, delivery 12 days; ViewMax INR 17,500, delivery 18 days; ScreenHub USD quote withdrawn. GST excluded. Quotes valid through 30 Sep 2026.",
+        {"rfq_id": "RFQ-309", "quantity": 20, "currency": "INR", "quotes": [{"vendor": "PixelCo", "revision": 2, "unit_price": 17800.0, "delivery_days": 12}, {"vendor": "ViewMax", "revision": 1, "unit_price": 17500.0, "delivery_days": 18}], "tax_included": False, "valid_until": "2026-09-30"},
+        note="Use PixelCo's corrected revision and exclude the withdrawn non-INR quote. Preserve vendor order.",
+    ),
+    _schema_fixture(
+        "schema_energy_001", "energy_readings", "hard",
+        "Energy log EN-5, 14 Aug 2026: 08:00 Line A 1.25 kWh; 12:00 Line A 850 Wh; 16:00 Line B 0.90 kWh. Convert to kWh. Total shown 3.00 kWh. Meter online yes; tariff field blank.",
+        {"log_id": "EN-5", "date": "2026-08-14", "readings": [{"time": "08:00", "line": "A", "energy_kwh": 1.25}, {"time": "12:00", "line": "A", "energy_kwh": 0.85}, {"time": "16:00", "line": "B", "energy_kwh": 0.9}], "total_kwh": 3.0, "meter_online": True, "tariff": None},
+        note="Convert Wh to kWh and preserve reading order.",
+    ),
 ]
+
+# Alternate visibility so both public and held-out halves retain each difficulty tier.
+# Public scenarios are development examples; held-out scenarios are the test split.
+for index, schema_item in enumerate(SCHEMA_ITEMS):
+    is_public = index % 2 == 0
+    schema_item["visibility"] = "public" if is_public else "held_out"
+    schema_item["split"] = "dev" if is_public else "test"
 
 
 def _summary_fixture(
@@ -396,13 +633,22 @@ SUMMARY_ITEMS = [
 ]
 
 
-def _write(path: Path, benchmark: str, items: list[dict[str, Any]]) -> None:
+def _write(
+    path: Path,
+    benchmark: str,
+    items: list[dict[str, Any]],
+    *,
+    generated_by: str = "schema_and_summary_v1",
+    seed: int | None = None,
+) -> None:
     document = {
         "schema_version": 1,
         "benchmark": benchmark,
-        "generated_by": "schema_and_summary_v1",
+        "generated_by": generated_by,
         "items": items,
     }
+    if seed is not None:
+        document["seed"] = seed
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         yaml.safe_dump(document, sort_keys=False, allow_unicode=True, width=100),
@@ -415,7 +661,13 @@ def main() -> None:
     parser.add_argument("--schema-output", type=Path, default=SCHEMA_OUTPUT)
     parser.add_argument("--summary-output", type=Path, default=SUMMARY_OUTPUT)
     args = parser.parse_args()
-    _write(args.schema_output, "messy_text_to_schema", SCHEMA_ITEMS)
+    _write(
+        args.schema_output,
+        "messy_text_to_schema",
+        SCHEMA_ITEMS,
+        generated_by=SCHEMA_GENERATOR,
+        seed=SCHEMA_SEED,
+    )
     _write(args.summary_output, "grounded_compression", SUMMARY_ITEMS)
 
 

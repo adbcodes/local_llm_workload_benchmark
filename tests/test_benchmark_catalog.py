@@ -135,7 +135,7 @@ def test_planned_question_sets_are_empty_but_runnable_templates() -> None:
         assert (directory / "items.jsonl").read_text(encoding="utf-8") == ""
 
     suite = load_suite(Path("data/suites/all.yaml"))
-    assert sum(len(items) for items in suite.items.values()) == 448
+    assert sum(len(items) for items in suite.items.values()) == 466
 
 
 def test_backbone_generator_reproduces_planned_templates(tmp_path: Path) -> None:
@@ -162,7 +162,7 @@ def test_evaluation_and_probe_definitions_exist() -> None:
     result = validate_catalog(CATALOG_PATH)
     assert result.benchmark_count == 24
     assert result.question_set_count == 16
-    assert result.current_question_count == 448
+    assert result.current_question_count == 466
     assert result.planned_question_set_count == 0
 
 

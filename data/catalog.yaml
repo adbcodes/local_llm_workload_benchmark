@@ -29,7 +29,7 @@ benchmarks:
   - {id: applied_reasoning, suite: A, status: complete, kind: question_set, definition_path: applied_reasoning/benchmark.yaml}
   - {id: code_debug_repair, suite: A, status: complete, kind: question_set, definition_path: code_debug_repair/benchmark.yaml}
   - {id: knowledge_abstention, suite: A, status: started, kind: question_set, definition_path: knowledge_abstention/benchmark.yaml}
-  - {id: messy_text_to_schema, suite: B, status: started, kind: question_set, definition_path: messy_text_to_schema/benchmark.yaml}
+  - {id: messy_text_to_schema, suite: B, status: complete, kind: question_set, definition_path: messy_text_to_schema/benchmark.yaml}
   - {id: tables_to_decisions, suite: B, status: started, kind: question_set, definition_path: optional/tables_to_decisions/benchmark.yaml, active: false}
   - {id: inbox_routing, suite: B, status: started, kind: question_set, definition_path: optional/inbox_routing/benchmark.yaml, active: false}
   - {id: tool_use, suite: B, status: started, kind: question_set, definition_path: tool_use/benchmark.yaml}

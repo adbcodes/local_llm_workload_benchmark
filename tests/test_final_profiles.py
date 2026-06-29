@@ -106,4 +106,4 @@ def test_final_profiles_keep_the_approved_generation_budget() -> None:
             * config.benchmark.repetitions
             * sum(map(len, suite.items.values()))
         )
-    assert attempts == 7_152
+    assert attempts == 7_368
