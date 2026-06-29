@@ -1,6 +1,6 @@
 schema_version: 1
 benchmark: applied_reasoning
-generated_by: applied_reasoning_v2
+generated_by: manually_curated_from_applied_reasoning_v2
 seed: 20260731
 prompt_suffix: 'You may show concise working. End with exactly one final line in this format: FINAL: <answer>'
 items:
@@ -62,14 +62,13 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: A device costs ₹2400. It receives a 15% discount, then a ₹120 shipping charge is added. A 12%
-    tax is applied to the discounted price plus shipping. Do not round intermediate values. What is the
-    amount charged in rupees?
+  prompt: An investment of ₹2400 gains 15%. The investor then withdraws ₹120, after which the remaining
+    balance loses 12% of its value. What balance remains in rupees? Do not round intermediate values.
   response_contract:
     type: number
     format: null
   expected:
-    value: 2419.2
+    value: 2323.2
   scoring:
     method: numeric_tolerance
     parameters:
@@ -83,20 +82,20 @@ items:
   tags:
   - fresh_generated
   - headline_core
-  - sequential_operations
+  - sequential_cash_flow
 - id: reason_arithmeticperc_004
   subcategory: arithmetic_percentages
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: A device costs ₹3250. It receives a 8% discount, then a ₹75 shipping charge is added. A 9% tax
-    is applied to the discounted price plus shipping. Do not round intermediate values. What is the amount
-    charged in rupees?
+  prompt: A sales representative earns ₹3250 before deductions. An 8% commission fee is withheld, a
+    ₹75 performance credit is then added, and 9% of that adjusted amount is contributed to a fund.
+    How many rupees remain? Do not round intermediate values.
   response_contract:
     type: number
     format: null
   expected:
-    value: 3340.85
+    value: 2789.15
   scoring:
     method: numeric_tolerance
     parameters:
@@ -110,7 +109,7 @@ items:
   tags:
   - fresh_generated
   - headline_core
-  - sequential_operations
+  - sequential_cash_flow
 - id: reason_arithmeticperc_005
   subcategory: arithmetic_percentages
   difficulty: medium
@@ -143,9 +142,9 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: One batch has 9 readings with mean 38; another has 11 readings with mean 47. Readings 55 and
-    58 from the second batch are discarded. What is the mean of all remaining readings? Give an exact
-    fraction or decimal.
+  prompt: Nine students in Section A average 38 points, while eleven students in Section B average 47.
+    The scores 55 and 58 from Section B are invalidated. What is the combined average of the remaining
+    students? Give an exact fraction or decimal.
   response_contract:
     type: number
     format: null
@@ -170,9 +169,9 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: One batch has 7 readings with mean 64; another has 13 readings with mean 52. Readings 41 and
-    44 from the second batch are discarded. What is the mean of all remaining readings? Give an exact
-    fraction or decimal.
+  prompt: A seven-day production run averaged 64 units per day. A separate thirteen-day run averaged
+    52 units per day, but its 41-unit and 44-unit days must be excluded. Across all retained days from
+    both runs, what is the mean daily output? Give an exact fraction or decimal.
   response_contract:
     type: number
     format: null
@@ -415,8 +414,9 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: Worker A alone needs 14 days for a job and worker B alone needs 21 days. At constant rates,
-    how many days do they need together? Give an exact fraction or decimal.
+  prompt: Pump A can empty a reservoir in 14 days and Pump B can empty the same reservoir in 21 days.
+    If both operate continuously at their individual constant rates, how many days will they take to
+    empty one full reservoir? Give an exact fraction or decimal.
   response_contract:
     type: number
     format: null
@@ -441,13 +441,14 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: Worker A alone needs 15 days for a job and worker B alone needs 25 days. At constant rates,
-    how many days do they need together? Give an exact fraction or decimal.
+  prompt: A pipe fills a tank in 15 days at a constant rate, while a leak would empty a full tank in
+    25 days. If both act from the moment the tank is empty, how many days will it take to fill? Give an
+    exact fraction or decimal.
   response_contract:
     type: number
     format: null
   expected:
-    value: 75/8
+    value: 75/2
   scoring:
     method: rational_value
     parameters:
@@ -461,7 +462,7 @@ items:
   tags:
   - fresh_generated
   - headline_core
-  - work_rate
+  - opposing_rates
 - id: reason_ratiosrateswor_005
   subcategory: ratios_rates_work
   difficulty: medium
@@ -493,8 +494,9 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: A 45-litre mixture is 20% concentrate. How many litres of pure concentrate must be added to
-    make it 35% concentrate?
+  prompt: A tank contains 45 litres of saline solution that is 20% salt. Only pure salt solution is
+    added, with none of the original liquid removed. How many litres must be added so that salt makes
+    up 35% of the final volume?
   response_contract:
     type: number
     format: null
@@ -519,13 +521,13 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: A 50-litre mixture is 30% concentrate. How many litres of pure concentrate must be added to
-    make it 44% concentrate?
+  prompt: A 50-litre solution is 30% salt. Only water evaporates; no salt is lost. How many litres of
+    water must evaporate for salt to become 44% of the remaining solution? Give an exact fraction or decimal.
   response_contract:
     type: number
     format: null
   expected:
-    value: 25/2
+    value: 175/11
   scoring:
     method: rational_value
     parameters:
@@ -539,7 +541,7 @@ items:
   tags:
   - fresh_generated
   - headline_core
-  - mixture
+  - evaporation
 - id: reason_ratiosrateswor_008
   subcategory: ratios_rates_work
   difficulty: hard
@@ -913,8 +915,9 @@ items:
   difficulty: hard
   split: test
   visibility: held_out
-  prompt: Positive integers x and y satisfy 3x + 5y = 164, with x < 24. What is the maximum possible value
-    of xy?
+  prompt: A shipment uses x small crates weighing 3 kg each and y large crates weighing 5 kg each.
+    The crates weigh exactly 164 kg in total, x and y are positive integers, and fewer than 24 small
+    crates may be used. What is the maximum possible value of x times y?
   response_contract:
     type: number
     format: null
@@ -940,13 +943,13 @@ items:
   difficulty: hard
   split: test
   visibility: held_out
-  prompt: Positive integers x and y satisfy 3x + 5y = 191, with x < 28. What is the maximum possible value
-    of xy?
+  prompt: Numbers x, y, and z satisfy x+y+z=23, 2x-y+z=8, and x+3y-z=35. What is the value of
+    x+2y+3z?
   response_contract:
     type: number
     format: null
   expected:
-    value: 594
+    value: 44
   scoring:
     method: numeric_tolerance
     parameters:
@@ -960,15 +963,15 @@ items:
   tags:
   - fresh_generated
   - headline_core
-  - diophantine
-  - optimization
+  - linear_system
 - id: reason_algebrawordpro_011
   subcategory: algebra_word_problems
   difficulty: hard
   split: test
   visibility: held_out
-  prompt: Positive integers x and y satisfy 3x + 5y = 218, with x < 32. What is the maximum possible value
-    of xy?
+  prompt: A display contains x three-point tokens and y five-point tokens, where x and y are positive
+    integers. Its total is 218 points and it may contain at most 31 three-point tokens. Among all valid
+    displays, what is the greatest possible value of xy?
   response_contract:
     type: number
     format: null
@@ -1025,9 +1028,9 @@ items:
   difficulty: hard
   split: test
   visibility: held_out
-  prompt: An account starts with ₹8000. After one year at an unknown annual rate, ₹1500 is deposited.
-    It grows for one more year at the same rate and ends at ₹11715.2. What was the annual growth rate?
-    Return the numeric percentage.
+  prompt: A fund initially contains ₹8000 and grows for one year at an unknown annual percentage rate.
+    Immediately after that year's growth, ₹1500 is added. After one further year at the same rate, the
+    balance is ₹11715.20. What was the annual rate? Return the numeric percentage.
   response_contract:
     type: number
     format: null
@@ -1107,7 +1110,8 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: How many integers from 1 through 720 are divisible by 9 but not by 15?
+  prompt: Tickets are numbered consecutively from 1 to 720. How many ticket numbers are multiples of
+    9 while not being multiples of 15?
   response_contract:
     type: number
     format: null
@@ -1158,8 +1162,8 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: What is the least positive integer n such that n leaves remainder 5 when divided by 8 and remainder
-    3 when divided by 7?
+  prompt: A counter shows the same positive integer n in two cyclic systems. On an 8-position cycle it
+    lands at position 5, and on a 7-position cycle it lands at position 3. What is the smallest possible n?
   response_contract:
     type: number
     format: null
@@ -1209,7 +1213,9 @@ items:
   difficulty: medium
   split: test
   visibility: held_out
-  prompt: How many positive divisors does 1080 have?
+  prompt: In how many distinct positive integer ways can 1080 be chosen as the length of a rectangle
+    whose other side is also an integer, if each possible length must divide 1080? Equivalently, count
+    the positive divisors of 1080.
   response_contract:
     type: number
     format: null

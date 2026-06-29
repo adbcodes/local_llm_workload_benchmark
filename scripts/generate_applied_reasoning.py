@@ -16,7 +16,6 @@ import yaml
 
 GENERATOR = "applied_reasoning"
 DEFAULT_SEED = 20260731
-DEFAULT_OUTPUT = Path("data/applied_reasoning/generated.yaml")
 FINAL_ANSWER_INSTRUCTION = (
     "You may show concise working. End with exactly one final line in this format: "
     "FINAL: <answer>"
@@ -673,8 +672,10 @@ def write_review(path: Path,core: list[dict[str,Any]]) -> None:
 
 
 def main() -> None:
-    parser=argparse.ArgumentParser(description="Generate the fresh 100-item Applied Reasoning bank")
-    parser.add_argument("--output",type=Path,default=DEFAULT_OUTPUT)
+    parser=argparse.ArgumentParser(
+        description="Generate an Applied Reasoning draft for manual curation"
+    )
+    parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--seed",type=int,default=DEFAULT_SEED)
     parser.add_argument("--review-output",type=Path)
     args=parser.parse_args()

@@ -1,7 +1,5 @@
 from collections import Counter
 from pathlib import Path
-import subprocess
-import sys
 
 import yaml
 
@@ -62,25 +60,17 @@ def test_licensed_anchors_record_source_and_license() -> None:
     ).is_file()
 
 
-def test_materialized_generated_yaml_matches_generator(tmp_path: Path) -> None:
+def test_applied_reasoning_yaml_is_the_curated_authoring_source() -> None:
     document = yaml.safe_load(GENERATED_PATH.read_text(encoding="utf-8"))
-    regenerated_path = tmp_path / "generated.yaml"
-    subprocess.run(
-        [
-            sys.executable,
-            "scripts/generate_applied_reasoning.py",
-            "--output",
-            str(regenerated_path),
-            "--seed",
-            str(document["seed"]),
-        ],
-        check=True,
-    )
-    regenerated = yaml.safe_load(regenerated_path.read_text(encoding="utf-8"))
 
-    assert document["generated_by"] == "applied_reasoning_v2"
+    assert document["generated_by"] == "manually_curated_from_applied_reasoning_v2"
     assert document["seed"] == 20260731
-    assert document == regenerated
+    assert len(document["items"]) == 100
+    assert len({item["prompt"] for item in document["items"]}) == 100
+    assert all(
+        item["provenance"]["review_status"] == "human_checked"
+        for item in document["items"]
+    )
 
 
 def test_quantization_config_runs_only_the_headline_suite() -> None:
