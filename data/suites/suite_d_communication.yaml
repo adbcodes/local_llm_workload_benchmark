@@ -4,4 +4,3 @@ version: 1
 status: pilot
 benchmark_files:
 - ../grounded_compression/benchmark.yaml
-- ../india_focused_tasks/benchmark.yaml

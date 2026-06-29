@@ -1,0 +1,11 @@
+schema_version: 1
+name: optional-benchmarks
+version: 1
+status: pilot
+benchmark_files:
+  - ../optional/confidence_correctness/benchmark.yaml
+  - ../optional/conversation_memory/benchmark.yaml
+  - ../optional/inbox_routing/benchmark.yaml
+  - ../optional/india_focused_tasks/benchmark.yaml
+  - ../optional/negative_instructions/benchmark.yaml
+  - ../optional/tables_to_decisions/benchmark.yaml

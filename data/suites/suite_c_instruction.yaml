@@ -4,6 +4,5 @@ version: 1
 status: pilot
 benchmark_files:
 - ../constraint_load_curve/benchmark.yaml
-- ../negative_instructions/benchmark.yaml
 - ../instruction_hierarchy/benchmark.yaml
 - ../raw_output_discipline/benchmark.yaml

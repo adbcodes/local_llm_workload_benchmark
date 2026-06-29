@@ -9,6 +9,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = "structured_work_v1"
 SEED = 20260723
+OPTIONAL_BENCHMARKS = {"inbox_routing", "tables_to_decisions"}
 
 
 def _base_item(
@@ -179,7 +180,8 @@ def _write(benchmark: str, items: list[dict[str, Any]], template: dict[str, Any]
         "item_template": template,
         "items": items,
     }
-    path = ROOT / "data" / benchmark / "questions.yaml"
+    parent = ROOT / "data" / ("optional" if benchmark in OPTIONAL_BENCHMARKS else "")
+    path = parent / benchmark / "questions.yaml"
     path.write_text(yaml.safe_dump(document, sort_keys=False, allow_unicode=True, width=100), encoding="utf-8")
 
 

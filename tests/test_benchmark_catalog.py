@@ -18,6 +18,11 @@ QUESTION_SET_IDS = {
     "false_missing_information", "answer_stability", "confidence_correctness",
     "shuffled_choices", "prompt_format_sensitivity", "over_refusal",
 }
+OPTIONAL_QUESTION_SET_IDS = {
+    "confidence_correctness", "conversation_memory", "inbox_routing",
+    "india_focused_tasks", "negative_instructions", "tables_to_decisions",
+}
+ACTIVE_QUESTION_SET_IDS = QUESTION_SET_IDS - OPTIONAL_QUESTION_SET_IDS
 POPULATED_QUESTION_SET_IDS = QUESTION_SET_IDS
 NEWLY_FILLED_QUESTION_SET_IDS = {
     "knowledge_abstention", "negative_instructions", "instruction_hierarchy",
@@ -26,6 +31,11 @@ NEWLY_FILLED_QUESTION_SET_IDS = {
     "answer_stability", "confidence_correctness", "shuffled_choices",
     "prompt_format_sensitivity", "over_refusal",
 }
+
+
+def benchmark_directory(benchmark_id: str) -> Path:
+    prefix = Path("data/optional") if benchmark_id in OPTIONAL_QUESTION_SET_IDS else Path("data")
+    return prefix / benchmark_id
 
 
 def test_catalog_matches_the_six_suite_plan() -> None:
@@ -61,7 +71,7 @@ def test_every_question_set_has_a_consistent_primary_evaluation_policy() -> None
         for benchmark_id, definition in suite.definitions.items()
     }
 
-    assert set(policies) == QUESTION_SET_IDS
+    assert set(policies) == ACTIVE_QUESTION_SET_IDS
     assert policies["raw_output_discipline"].primary_outcome == "protocol"
     assert policies["raw_output_discipline"].protocol_requirement == "required"
     assert policies["tool_use"].primary_outcome == "integration"
@@ -69,7 +79,7 @@ def test_every_question_set_has_a_consistent_primary_evaluation_policy() -> None
         benchmark_id
         for benchmark_id, policy in policies.items()
         if policy.primary_outcome == "semantic"
-    } == QUESTION_SET_IDS - {"raw_output_discipline", "tool_use"}
+    } == ACTIVE_QUESTION_SET_IDS - {"raw_output_discipline", "tool_use"}
 
 
 def test_evaluation_contract_files_cover_declared_scorers_and_metrics() -> None:
@@ -90,7 +100,7 @@ def test_evaluation_contract_files_cover_declared_scorers_and_metrics() -> None:
         for scorer in definition.scoring_methods
     }
     assert scoring["schema_version"] == 2
-    assert set(scoring["methods"]) == declared_scorers
+    assert declared_scorers <= set(scoring["methods"])
 
     answer_contracts = set(normalization["accepted_answer_contracts"])
     referenced_contracts = {
@@ -125,7 +135,7 @@ def test_planned_question_sets_are_empty_but_runnable_templates() -> None:
         assert (directory / "items.jsonl").read_text(encoding="utf-8") == ""
 
     suite = load_suite(Path("data/suites/all.yaml"))
-    assert sum(len(items) for items in suite.items.values()) == 611
+    assert sum(len(items) for items in suite.items.values()) == 448
 
 
 def test_backbone_generator_reproduces_planned_templates(tmp_path: Path) -> None:
@@ -137,7 +147,7 @@ def test_backbone_generator_reproduces_planned_templates(tmp_path: Path) -> None
     for benchmark_id in QUESTION_SET_IDS - POPULATED_QUESTION_SET_IDS:
         for filename in ("benchmark.yaml", "questions.yaml", "items.jsonl"):
             assert (generated_root / benchmark_id / filename).read_text() == (
-                Path("data") / benchmark_id / filename
+                benchmark_directory(benchmark_id) / filename
             ).read_text()
 
 
@@ -151,9 +161,18 @@ def test_evaluation_and_probe_definitions_exist() -> None:
 
     result = validate_catalog(CATALOG_PATH)
     assert result.benchmark_count == 24
-    assert result.question_set_count == 22
-    assert result.current_question_count == 611
+    assert result.question_set_count == 16
+    assert result.current_question_count == 448
     assert result.planned_question_set_count == 0
+
+
+def test_optional_suite_is_separate_from_the_active_suite() -> None:
+    active = load_suite(Path("data/suites/all.yaml"))
+    optional = load_suite(Path("data/suites/optional.yaml"))
+
+    assert set(active.definitions) == ACTIVE_QUESTION_SET_IDS
+    assert set(optional.definitions) == OPTIONAL_QUESTION_SET_IDS
+    assert set(active.definitions).isdisjoint(optional.definitions)
 
 
 def test_structured_work_sets_hit_their_targets_and_cover_task_types() -> None:
@@ -194,7 +213,7 @@ def test_structured_work_sets_hit_their_targets_and_cover_task_types() -> None:
 
     for benchmark_id, requirements in expected.items():
         document = yaml.safe_load(
-            (Path("data") / benchmark_id / "questions.yaml").read_text()
+            (benchmark_directory(benchmark_id) / "questions.yaml").read_text()
         )
         items = document["items"]
         assert len(items) == requirements["count"]
@@ -205,7 +224,7 @@ def test_structured_work_sets_hit_their_targets_and_cover_task_types() -> None:
 
 def test_newly_filled_sets_hit_targets_and_keep_sources_before_variants() -> None:
     for benchmark_id in NEWLY_FILLED_QUESTION_SET_IDS:
-        directory = Path("data") / benchmark_id
+        directory = benchmark_directory(benchmark_id)
         definition = yaml.safe_load((directory / "benchmark.yaml").read_text())
         document = yaml.safe_load((directory / "questions.yaml").read_text())
         items = document["items"]

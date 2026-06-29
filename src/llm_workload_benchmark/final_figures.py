@@ -35,10 +35,6 @@ QUANTIZATION_BENCHMARKS = {
         "messy_text_to_schema",
         "Schema Extraction vs Quantization",
     ),
-    "quant_confidence_correctness": (
-        "confidence_correctness",
-        "Confidence & Correctness vs Quantization",
-    ),
     "quant_raw_output_discipline": (
         "raw_output_discipline",
         "Raw Output Discipline vs Quantization",

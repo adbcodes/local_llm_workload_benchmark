@@ -6,7 +6,5 @@ benchmark_files:
   - ../applied_reasoning/benchmark.yaml
   - ../code_debug_repair/benchmark.yaml
   - ../messy_text_to_schema/benchmark.yaml
-  - ../tables_to_decisions/benchmark.yaml
-  - ../inbox_routing/benchmark.yaml
   - ../tool_use/benchmark.yaml
   - ../constraint_load_curve/benchmark.yaml

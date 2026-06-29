@@ -29,6 +29,7 @@ class CatalogEntry(BaseModel):
     status: Literal["planned", "started", "complete"]
     kind: Literal["question_set", "evaluation_track", "experiment_group"]
     definition_path: str = Field(min_length=1)
+    active: bool = True
 
 
 class CatalogDocument(BaseModel):
@@ -80,7 +81,8 @@ def validate_catalog(path: Path) -> CatalogValidation:
                 raise CatalogError(f"invalid benchmark definition {definition_path}: {error}") from error
             if definition.suite != entry.suite or definition.status != entry.status:
                 raise CatalogError(f"catalog metadata differs for {entry.id!r}")
-            question_set_ids.add(entry.id)
+            if entry.active:
+                question_set_ids.add(entry.id)
             planned += entry.status == "planned"
 
     for relative_path in [*catalog.evaluation_files.values(), *catalog.probe_sets]:

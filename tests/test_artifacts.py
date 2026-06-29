@@ -356,5 +356,5 @@ def test_figures_cli_writes_compact_manifest(tmp_path: Path) -> None:
     assert "Final figure manifest:" in result.output
     manifest_path = experiment / "artifacts" / "final_figures" / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
-    assert len(manifest["plots"]) == 9
+    assert len(manifest["plots"]) == 8
     assert set(manifest["sources"]) == {"default", "context"}

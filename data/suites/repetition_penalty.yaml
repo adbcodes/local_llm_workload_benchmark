@@ -4,7 +4,7 @@ version: 1
 status: frozen
 benchmark_files:
   - ../grounded_compression/benchmark.yaml
-  - ../india_focused_tasks/benchmark.yaml
+  - ../optional/india_focused_tasks/benchmark.yaml
   - ../code_debug_repair/benchmark.yaml
   - ../tool_use/benchmark.yaml
 filters:

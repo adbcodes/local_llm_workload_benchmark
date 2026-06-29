@@ -5,8 +5,8 @@ status: frozen
 benchmark_files:
   - ../applied_reasoning/benchmark.yaml
   - ../code_debug_repair/benchmark.yaml
-  - ../tables_to_decisions/benchmark.yaml
-  - ../inbox_routing/benchmark.yaml
+  - ../optional/tables_to_decisions/benchmark.yaml
+  - ../optional/inbox_routing/benchmark.yaml
   - ../tool_use/benchmark.yaml
   - ../constraint_load_curve/benchmark.yaml
   - ../answer_stability/benchmark.yaml

@@ -8,6 +8,14 @@ import yaml
 
 
 ROOT = Path("data")
+OPTIONAL_BENCHMARKS = {
+    "confidence_correctness",
+    "conversation_memory",
+    "inbox_routing",
+    "india_focused_tasks",
+    "negative_instructions",
+    "tables_to_decisions",
+}
 
 
 PLANNED: list[dict[str, Any]] = [
@@ -144,10 +152,10 @@ PLANNED: list[dict[str, Any]] = [
 
 SUITES = {
     "suite_a_core.yaml": ["applied_reasoning", "code_debug_repair", "knowledge_abstention"],
-    "suite_b_structured.yaml": ["messy_text_to_schema", "tables_to_decisions", "inbox_routing", "tool_use"],
-    "suite_c_instruction.yaml": ["constraint_load_curve", "negative_instructions", "instruction_hierarchy", "raw_output_discipline"],
-    "suite_d_communication.yaml": ["grounded_compression", "india_focused_tasks"],
-    "suite_e_reliability.yaml": ["long_text_retrieval", "conversation_memory", "clean_vs_noisy", "false_missing_information", "answer_stability", "confidence_correctness", "shuffled_choices", "prompt_format_sensitivity", "over_refusal"],
+    "suite_b_structured.yaml": ["messy_text_to_schema", "tool_use"],
+    "suite_c_instruction.yaml": ["constraint_load_curve", "instruction_hierarchy", "raw_output_discipline"],
+    "suite_d_communication.yaml": ["grounded_compression"],
+    "suite_e_reliability.yaml": ["long_text_retrieval", "clean_vs_noisy", "false_missing_information", "answer_stability", "shuffled_choices", "prompt_format_sensitivity", "over_refusal"],
 }
 
 
@@ -268,7 +276,7 @@ def _item_template(spec: dict[str, Any]) -> dict[str, Any]:
 
 def generate(root: Path = ROOT) -> None:
     for spec in PLANNED:
-        directory = root / spec["id"]
+        directory = root / ("optional" if spec["id"] in OPTIONAL_BENCHMARKS else "") / spec["id"]
         _write_yaml(directory / "benchmark.yaml", _definition(spec))
         _write_yaml(
             directory / "questions.yaml",
@@ -302,6 +310,19 @@ def generate(root: Path = ROOT) -> None:
             "version": 1,
             "status": "pilot",
             "benchmark_files": [f"../{benchmark_id}/benchmark.yaml" for benchmark_id in all_ids],
+        },
+    )
+    _write_yaml(
+        root / "suites" / "optional.yaml",
+        {
+            "schema_version": 1,
+            "name": "optional-benchmarks",
+            "version": 1,
+            "status": "pilot",
+            "benchmark_files": [
+                f"../optional/{benchmark_id}/benchmark.yaml"
+                for benchmark_id in sorted(OPTIONAL_BENCHMARKS)
+            ],
         },
     )
 

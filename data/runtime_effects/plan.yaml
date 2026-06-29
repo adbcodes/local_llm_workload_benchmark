@@ -77,7 +77,6 @@ final_figures:
     - quant_applied_reasoning
     - quant_code_debug_repair
     - quant_messy_text_to_schema
-    - quant_confidence_correctness
     - quant_raw_output_discipline
     - quant_tool_trace_parseability
     - constraint_load_score
