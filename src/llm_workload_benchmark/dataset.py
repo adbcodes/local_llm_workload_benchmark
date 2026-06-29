@@ -1238,9 +1238,21 @@ def _parse_rational(value: str) -> Fraction:
         raise ValueError("rational value must be an integer, decimal, or fraction") from error
 
 
+def _strip_scalar_markdown(value: str) -> str:
+    candidate = value.strip()
+    for marker in ("**", "__", "`", "*"):
+        if (
+            candidate.startswith(marker)
+            and candidate.endswith(marker)
+            and len(candidate) > 2 * len(marker)
+        ):
+            return candidate[len(marker) : -len(marker)].strip()
+    return candidate
+
+
 def _extract_rationals(answer: str) -> list[Fraction]:
     candidates: list[Fraction] = []
-    remaining = answer
+    remaining = _strip_scalar_markdown(answer.strip())
     patterns = (
         r"\\(?:d)?frac\{(-?\d+)\}\{([1-9]\d*)\}",
         r"(?<![\d/])(-?\d+)\s*/\s*([1-9]\d*)(?![\d/])",
@@ -1278,9 +1290,13 @@ def _score_exact(item: DatasetItem, answer: str) -> ScoreResult:
         answer_format = item.scoring.parameters.get("answer_format")
         if answer_format == "comma_separated_labels":
             label_count = len(expected.split(","))
-            pattern = rf"(?<![\w])(?:[A-Za-z0-9]+\s*,\s*){{{label_count - 1}}}[A-Za-z0-9]+(?![\w])"
+            separator = r"(?:\s*,\s*|\s+)"
+            pattern = rf"(?<![\w])(?:[A-Za-z0-9]+{separator}){{{label_count - 1}}}[A-Za-z0-9]+(?![\w])"
             candidates = re.findall(pattern, actual)
-            candidates = [re.sub(r"\s*,\s*", ",", value) for value in candidates]
+            candidates = [
+                ",".join(re.findall(r"[A-Za-z0-9]+", value))
+                for value in candidates
+            ]
         if candidates is not None:
             unique_candidates = list(dict.fromkeys(candidates))
             if len(unique_candidates) != 1:

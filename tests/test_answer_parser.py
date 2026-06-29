@@ -166,6 +166,13 @@ def test_confidence_numeric_answer_uses_the_declared_unit_contract() -> None:
     assert "remove_declared_unit" in parsed.normalization_steps
 
 
+def test_number_parser_recovers_balanced_inline_markdown() -> None:
+    parsed = parse_answer("**234**", "number")
+
+    assert parsed.value == 234
+    assert "strip_inline_markdown" in parsed.normalization_steps
+
+
 def test_code_fence_recovery_is_logged() -> None:
     parsed = parse_answer("```python\ndef solve():\n    return 1\n```", "code")
     assert parsed.value.startswith("def solve")

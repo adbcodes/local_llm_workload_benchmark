@@ -268,6 +268,10 @@ def _parse_number(
 ) -> tuple[int | float, list[str]]:
     candidate = value.strip()
     steps = ["strip_whitespace"] if candidate != value else []
+    unwrapped = _strip_scalar_markdown(candidate)
+    if unwrapped != candidate:
+        candidate = unwrapped
+        steps.append("strip_inline_markdown")
     quoted = re.fullmatch(r"(['\"])(.*?)\1", candidate)
     if quoted:
         candidate = quoted.group(2).strip()
@@ -423,6 +427,20 @@ def _strip_fence(value: str, kind: AnswerKind) -> tuple[str, str | None]:
         flags=re.DOTALL | re.IGNORECASE,
     )
     return (match.group(1).strip(), "markdown_fence") if match else (value, None)
+
+
+def _strip_scalar_markdown(value: str) -> str:
+    """Remove balanced inline Markdown around one scalar answer."""
+
+    candidate = value.strip()
+    for marker in ("**", "__", "`", "*"):
+        if (
+            candidate.startswith(marker)
+            and candidate.endswith(marker)
+            and len(candidate) > 2 * len(marker)
+        ):
+            return candidate[len(marker) : -len(marker)].strip()
+    return candidate
 
 
 def _success(
