@@ -21,7 +21,7 @@ class ExecutableEvaluationError(RuntimeError):
     """Raised when an executable task or its restricted runner is invalid."""
 
 
-EXECUTABLE_EVALUATOR_VERSION = 1
+EXECUTABLE_EVALUATOR_VERSION = 2
 _BLOCKED_NODES = (
     ast.AsyncFunctionDef,
     ast.Await,
@@ -53,6 +53,7 @@ _BLOCKED_CALLS = {
 }
 
 _WORKER = r"""
+import copy
 import json
 import sys
 
@@ -73,9 +74,26 @@ try:
     results = []
     for case in payload["tests"]:
         try:
-            actual = function(*case.get("args", []), **case.get("kwargs", {}))
-            passed = type(actual) is type(case["expected"]) and actual == case["expected"]
-            results.append({"passed": passed, "actual": actual})
+            args = case.get("args", [])
+            kwargs = case.get("kwargs", {})
+            preserved = {
+                str(index): copy.deepcopy(args[index])
+                for index in case.get("preserve_args", [])
+            }
+            actual = function(*args, **kwargs)
+            mutated_arguments = [
+                int(index)
+                for index, before in preserved.items()
+                if type(args[int(index)]) is not type(before) or args[int(index)] != before
+            ]
+            value_passed = type(actual) is type(case["expected"]) and actual == case["expected"]
+            passed = value_passed and not mutated_arguments
+            results.append({
+                "passed": passed,
+                "actual": actual,
+                "value_passed": value_passed,
+                "mutated_arguments": mutated_arguments,
+            })
         except BaseException as error:
             results.append({
                 "passed": False,
@@ -189,6 +207,11 @@ def evaluate_python(item: DatasetItem, answer: str) -> EvaluationResult:
     failures = [
         {
             "test_index": index,
+            **(
+                {"mutated_arguments": result["mutated_arguments"]}
+                if result.get("mutated_arguments")
+                else {}
+            ),
             **({"error": result["error"]} if "error" in result else {}),
         }
         for index, result in enumerate(results, start=1)

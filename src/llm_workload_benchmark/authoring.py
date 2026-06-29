@@ -204,7 +204,31 @@ def _runtime_item(item: DatasetItem) -> dict[str, Any]:
 
 
 def _validate_gold(item: DatasetItem) -> None:
-    if item.scoring.method in {"llm_judge", "executable_python"}:
+    if item.scoring.method == "executable_python":
+        specification = item.expected["value"]
+        reference_solution = specification.get("reference_solution")
+        if reference_solution is None:
+            return
+        from llm_workload_benchmark.executable import evaluate_python
+
+        reference_result = evaluate_python(item, reference_solution)
+        if not reference_result.passed:
+            raise DatasetError(
+                f"reference solution for {item.id!r} fails its executable tests: "
+                f"{reference_result.details.get('reason')}"
+            )
+        surviving_mutants = [
+            mutant["id"]
+            for mutant in specification.get("mutants", [])
+            if evaluate_python(item, mutant["source"]).passed
+        ]
+        if surviving_mutants:
+            raise DatasetError(
+                f"executable tests for {item.id!r} do not kill mutants: "
+                + ", ".join(surviving_mutants)
+            )
+        return
+    if item.scoring.method == "llm_judge":
         return
     answer = gold_answer_text(item)
     if not score_answer(item, answer).passed:

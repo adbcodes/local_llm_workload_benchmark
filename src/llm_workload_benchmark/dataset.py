@@ -746,7 +746,14 @@ def _validate_scoring_parameters(
 
 
 def _validate_python_specification(value: Any) -> None:
-    if not isinstance(value, dict) or set(value) != {"entry_point", "tests"}:
+    if not isinstance(value, dict) or set(value) - {
+        "entry_point",
+        "tests",
+        "reference_solution",
+        "mutants",
+    }:
+        raise ValueError("executable_python expected value needs entry_point and tests")
+    if not {"entry_point", "tests"} <= set(value):
         raise ValueError("executable_python expected value needs entry_point and tests")
     entry_point = value["entry_point"]
     if not isinstance(entry_point, str) or not re.fullmatch(
@@ -757,18 +764,58 @@ def _validate_python_specification(value: Any) -> None:
     if not isinstance(tests, list) or not tests:
         raise ValueError("executable_python requires at least one test")
     for test in tests:
-        if not isinstance(test, dict) or set(test) - {"args", "kwargs", "expected"}:
-            raise ValueError("each Python test may contain args, kwargs, and expected")
+        if not isinstance(test, dict) or set(test) - {
+            "args",
+            "kwargs",
+            "expected",
+            "preserve_args",
+        }:
+            raise ValueError(
+                "each Python test may contain args, kwargs, expected, and preserve_args"
+            )
         if "expected" not in test:
             raise ValueError("each Python test requires expected")
         if not isinstance(test.get("args", []), list):
             raise ValueError("Python test args must be a list")
         if not isinstance(test.get("kwargs", {}), dict):
             raise ValueError("Python test kwargs must be an object")
+        preserve_args = test.get("preserve_args", [])
+        if (
+            not isinstance(preserve_args, list)
+            or any(
+                isinstance(index, bool) or not isinstance(index, int) or index < 0
+                for index in preserve_args
+            )
+            or len(set(preserve_args)) != len(preserve_args)
+            or any(index >= len(test.get("args", [])) for index in preserve_args)
+        ):
+            raise ValueError("preserve_args must contain unique valid argument indexes")
         try:
             json.dumps(test)
         except (TypeError, ValueError) as error:
             raise ValueError("Python tests must be JSON serializable") from error
+    reference_solution = value.get("reference_solution")
+    if reference_solution is not None and (
+        not isinstance(reference_solution, str) or not reference_solution.strip()
+    ):
+        raise ValueError("reference_solution must be non-empty Python source")
+    mutants = value.get("mutants", [])
+    if not isinstance(mutants, list):
+        raise ValueError("mutants must be a list")
+    mutant_ids: set[str] = set()
+    for mutant in mutants:
+        if (
+            not isinstance(mutant, dict)
+            or set(mutant) != {"id", "source"}
+            or not isinstance(mutant["id"], str)
+            or not re.fullmatch(r"[a-z][a-z0-9_]*", mutant["id"])
+            or not isinstance(mutant["source"], str)
+            or not mutant["source"].strip()
+        ):
+            raise ValueError("each mutant requires a snake_case id and Python source")
+        if mutant["id"] in mutant_ids:
+            raise ValueError("mutant ids must be unique")
+        mutant_ids.add(mutant["id"])
 
 
 def _validate_nonempty_strings(value: Any, name: str) -> None:

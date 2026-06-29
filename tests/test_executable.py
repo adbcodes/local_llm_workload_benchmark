@@ -7,6 +7,7 @@ import pytest
 from llm_workload_benchmark.config import load_config
 from llm_workload_benchmark.dataset import DatasetError, load_suite, score_answer
 from llm_workload_benchmark.executable import evaluate_python
+from llm_workload_benchmark.authoring import _validate_gold
 from llm_workload_benchmark.runner import GenerationOutput, run_benchmark
 
 CODING_SUITE_PATH = Path("data/suites/coding.yaml").resolve()
@@ -103,6 +104,46 @@ def deduplicate_preserving_order(values):
     assert not partial.passed
     assert partial.score == pytest.approx(0.25)
     assert partial.details["tests_passed"] == 1
+
+
+def test_python_evaluator_enforces_declared_input_preservation() -> None:
+    item = _coding_item().model_copy(deep=True)
+    item.expected["value"]["tests"][0]["preserve_args"] = [0]
+
+    result = evaluate_python(
+        item,
+        "def deduplicate_preserving_order(values):\n"
+        "    values[:] = list(dict.fromkeys(values))\n"
+        "    return values",
+    )
+
+    assert not result.passed
+    assert result.score == pytest.approx(0.75)
+    assert result.details["failures"] == [
+        {"test_index": 1, "mutated_arguments": [0]}
+    ]
+
+
+def test_authoring_validation_executes_reference_and_mutant_sources() -> None:
+    item = _coding_item().model_copy(deep=True)
+    item.expected["value"]["reference_solution"] = (
+        "def deduplicate_preserving_order(values):\n"
+        "    return list(dict.fromkeys(values))"
+    )
+    item.expected["value"]["mutants"] = [
+        {
+            "id": "returns_input",
+            "source": "def deduplicate_preserving_order(values):\n    return values",
+        }
+    ]
+
+    _validate_gold(item)
+
+    item.expected["value"]["mutants"][0]["source"] = item.expected["value"][
+        "reference_solution"
+    ]
+    with pytest.raises(DatasetError, match="do not kill mutants: returns_input"):
+        _validate_gold(item)
 
 
 def test_python_evaluator_allows_safe_lambda_expressions() -> None:
