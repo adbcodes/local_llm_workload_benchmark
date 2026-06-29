@@ -1,11 +1,12 @@
 id: code_debug_repair
 title: Code, Debug, and Repair
-description: Original Python implementation, bug-diagnosis, and code-repair tasks checked with restricted execution or deterministic labels.
+description: Generated practical Python implementation, diagnosis, and repair tasks checked with restricted execution or deterministic labels.
 suite: A
 status: complete
 task_types:
-  - data structure and algorithm implementation
-  - practical Python function implementation
+  - composed practical Python function implementation
+  - immutable record and event processing
+  - dependency, scheduling, and reconciliation logic
   - bug diagnosis
   - code repair
   - edge-case handling
@@ -19,7 +20,7 @@ evaluation_policy:
   partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
-  - questions.yaml
+  - generated_questions.yaml
 current_question_count: 48
 target_question_count: 48
 current_difficulty_distribution:

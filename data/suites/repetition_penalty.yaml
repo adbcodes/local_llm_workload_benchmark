@@ -18,8 +18,8 @@ filters:
     - india_focused_tasks_005
     - india_focused_tasks_010
     - india_focused_tasks_020
-    - code_validate_bst_001
-    - code_can_finish_courses_001
+    - code_dependency_batches_001
+    - code_workflow_duration_001
     - repair_grid_paths_001
     - repair_course_order_001
     - tool_use_017

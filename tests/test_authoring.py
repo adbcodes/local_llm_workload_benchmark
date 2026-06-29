@@ -50,7 +50,7 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
         "reason_arithmeticperc_001",
         "schema_invoice_001",
         "constraint_api_rate_limiting_001",
-        "code_deduplicate_001",
+        "code_normalize_event_codes_001",
         "summary_incident_001",
     }
 

@@ -18,9 +18,9 @@ item_ids:
   - reason_calendartime_007
   - reason_deductivelogic_007
   - reason_probabilitycou_007
-  - code_deduplicate_001
-  - code_validate_bst_001
-  - code_can_finish_courses_001
+  - code_normalize_event_codes_001
+  - code_reconcile_windows_001
+  - code_eligible_shortest_route_001
   - diagnose_missing_base_case_001
   - repair_sliding_window_001
   - repair_course_order_001

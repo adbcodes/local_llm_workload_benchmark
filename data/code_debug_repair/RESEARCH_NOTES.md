@@ -1,33 +1,31 @@
 # Code, Debug, and Repair research notes
 
-The benchmark uses original prompts and original test cases. No problem statement
-or solution was copied from a practice platform.
+The active benchmark is generated from locally authored scenario specifications,
+reference implementations, and code-computed expected values. The former classic
+algorithm set remains inactive in `questions.yaml` as a contamination reference;
+the active authoring source is `generated_questions.yaml`.
 
-## Coverage sources
+## Design
 
-The 24 DSA implementation tasks were selected by comparing the topic maps in:
+Implementation questions combine ordinary programming operations inside fresh
+record-processing, reconciliation, scheduling, dependency, and event-processing
+contracts. Changing names alone is not considered a new task. Each active
+implementation changes the representation, operation path, boundary rules, or
+tie-breaking behavior from recognizable practice-platform templates.
 
-- [NeetCode 150](https://neetcode.io/practice/practice/neetcode150)
-- [Striver's A2Z DSA Sheet](https://takeuforward.org/dsa/strivers-a2z-sheet-learn-dsa-a-to-z)
-- [LeetCode Study Plans](https://leetcode.com/studyplan/)
-
-These sources consistently emphasize arrays and hashing, two pointers, sliding
-windows, stacks, binary search, linked structures, trees, heaps, backtracking,
-graphs, dynamic programming, greedy methods, intervals, tries, and bit
-manipulation. The benchmark samples every major family at least once while
-keeping the total practical enough to run across local models.
+`scripts/generate_coding_benchmark.py` computes every executable gold by running
+the stored reference solution. Mutable inputs are marked with `preserve_args`,
+so a correct return value cannot hide an input-mutation violation.
 
 ## Composition
 
 | Task family | Count | Evaluation |
 |---|---:|---|
-| DSA function implementation | 24 | Restricted Python tests |
-| Practical function implementation | 6 | Restricted Python tests |
+| Fresh practical implementation | 30 | Restricted Python tests and postconditions |
 | Bug diagnosis | 10 | Exact diagnostic label |
 | Code repair | 8 | Restricted Python tests |
 | **Total** | **48** | |
 
-The implementation set is a coverage benchmark, not a claim to include every
-named problem on any sheet. Prompts vary signatures, representations, edge
-cases, and output contracts so memorizing one platform's wording is less useful
-than understanding the underlying technique.
+Public and held-out visibility are balanced 24/24. Development scenarios are
+used for calibration; held-out scenarios must not be selected because a
+particular model or quantization happened to fail them.

@@ -17,7 +17,7 @@ def _coding_item():
     return load_suite(CODING_SUITE_PATH).items["code_debug_repair"][0]
 
 
-def test_coding_dataset_has_agreed_task_mix_and_pattern_coverage() -> None:
+def test_coding_dataset_has_agreed_task_mix_and_fresh_implementation_contract() -> None:
     items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
 
     assert len(items) == 48
@@ -34,27 +34,18 @@ def test_coding_dataset_has_agreed_task_mix_and_pattern_coverage() -> None:
     implementations = [
         item for item in items if item.subcategory == "function_implementation"
     ]
-    assert sum("dsa" in item.tags for item in implementations) == 24
-    assert sum("practical_python" in item.tags for item in implementations) == 6
-    required_patterns = {
-        "arrays_hashing",
-        "two_pointers",
-        "sliding_window",
-        "stack",
-        "binary_search",
-        "linked_list",
-        "binary_tree",
-        "binary_search_tree",
-        "heap_priority_queue",
-        "backtracking",
-        "trie",
-        "graph",
-        "dynamic_programming",
-        "greedy",
-        "intervals",
-        "bit_manipulation",
+    assert all("practical_python" in item.tags for item in implementations)
+    assert all("fresh_composed" in item.tags for item in implementations)
+    assert all(item.expected["value"].get("reference_solution") for item in implementations)
+    assert all(
+        any(test.get("preserve_args") for test in item.expected["value"]["tests"])
+        for item in implementations
+    )
+    assert Counter(item.visibility for item in items) == {
+        "public": 24,
+        "held_out": 24,
     }
-    assert required_patterns <= {tag for item in implementations for tag in item.tags}
+    assert Counter(item.split for item in items) == {"dev": 12, "test": 36}
 
 
 def test_bug_diagnosis_items_use_deterministic_labels() -> None:
@@ -81,10 +72,11 @@ def test_python_evaluator_scores_unit_test_pass_rate_and_accepts_fences() -> Non
     result = evaluate_python(
         _coding_item(),
         """```python
-def deduplicate_preserving_order(values):
+def normalize_event_codes(codes):
     result = []
-    for value in values:
-        if value not in result:
+    for code in codes:
+        value = code.strip().upper()
+        if value and value not in result:
             result.append(value)
     return result
 ```""",
@@ -99,7 +91,7 @@ def deduplicate_preserving_order(values):
 
     partial = evaluate_python(
         _coding_item(),
-        "def deduplicate_preserving_order(values):\n    return values",
+        "def normalize_event_codes(codes):\n    return codes",
     )
     assert not partial.passed
     assert partial.score == pytest.approx(0.25)
@@ -108,32 +100,32 @@ def deduplicate_preserving_order(values):
 
 def test_python_evaluator_enforces_declared_input_preservation() -> None:
     item = _coding_item().model_copy(deep=True)
-    item.expected["value"]["tests"][0]["preserve_args"] = [0]
-
     result = evaluate_python(
         item,
-        "def deduplicate_preserving_order(values):\n"
-        "    values[:] = list(dict.fromkeys(values))\n"
-        "    return values",
+        "def normalize_event_codes(codes):\n"
+        "    codes[:] = list(dict.fromkeys(code.strip().upper() for code in codes if code.strip()))\n"
+        "    return codes",
     )
 
     assert not result.passed
-    assert result.score == pytest.approx(0.75)
+    assert result.score == pytest.approx(0.25)
     assert result.details["failures"] == [
-        {"test_index": 1, "mutated_arguments": [0]}
+        {"test_index": 1, "mutated_arguments": [0]},
+        {"test_index": 3, "mutated_arguments": [0]},
+        {"test_index": 4, "mutated_arguments": [0]},
     ]
 
 
 def test_authoring_validation_executes_reference_and_mutant_sources() -> None:
     item = _coding_item().model_copy(deep=True)
     item.expected["value"]["reference_solution"] = (
-        "def deduplicate_preserving_order(values):\n"
-        "    return list(dict.fromkeys(values))"
+        "def normalize_event_codes(codes):\n"
+        "    return list(dict.fromkeys(code.strip().upper() for code in codes if code.strip()))"
     )
     item.expected["value"]["mutants"] = [
         {
             "id": "returns_input",
-            "source": "def deduplicate_preserving_order(values):\n    return values",
+            "source": "def normalize_event_codes(codes):\n    return codes",
         }
     ]
 
@@ -149,8 +141,9 @@ def test_authoring_validation_executes_reference_and_mutant_sources() -> None:
 def test_python_evaluator_allows_safe_lambda_expressions() -> None:
     result = evaluate_python(
         _coding_item(),
-        "def deduplicate_preserving_order(values):\n"
-        "    return list(dict.fromkeys(sorted(values, key=lambda value: values.index(value))))",
+        "def normalize_event_codes(codes):\n"
+        "    ordered = sorted(enumerate(codes), key=lambda pair: pair[0])\n"
+        "    return list(dict.fromkeys(code.strip().upper() for _, code in ordered if code.strip()))",
     )
 
     assert result.passed
@@ -160,7 +153,7 @@ def test_python_evaluator_allows_safe_lambda_expressions() -> None:
 def test_python_evaluator_stops_infinite_loop_at_timeout() -> None:
     result = evaluate_python(
         _coding_item(),
-        "def deduplicate_preserving_order(values):\n    while True:\n        pass",
+        "def normalize_event_codes(codes):\n    while True:\n        pass",
     )
 
     assert not result.passed
@@ -171,10 +164,10 @@ def test_python_evaluator_stops_infinite_loop_at_timeout() -> None:
 @pytest.mark.parametrize(
     ("source", "message"),
     [
-        ("import os\ndef deduplicate_preserving_order(values): return values", "one function"),
+        ("import os\ndef normalize_event_codes(codes): return codes", "one function"),
         ("def wrong_name(values): return values", "expected function"),
-        ("def deduplicate_preserving_order(values):\n    return open('/tmp/x')", "open"),
-        ("def deduplicate_preserving_order(values):\n    return values.__class__", "private"),
+        ("def normalize_event_codes(codes):\n    return open('/tmp/x')", "open"),
+        ("def normalize_event_codes(codes):\n    return codes.__class__", "private"),
     ],
 )
 def test_python_evaluator_rejects_unsafe_or_invalid_shapes(
@@ -211,13 +204,14 @@ models:
     class CodingBackend:
         def generate(self, prompt, generation, *, seed):
             return GenerationOutput(
-                text=(
-                    "def deduplicate_preserving_order(values):\n"
-                    "    result = []\n"
-                    "    for value in values:\n"
-                    "        if value not in result:\n"
-                    "            result.append(value)\n"
-                    "    return result"
+                    text=(
+                        "def normalize_event_codes(codes):\n"
+                        "    result = []\n"
+                        "    for code in codes:\n"
+                        "        value = code.strip().upper()\n"
+                        "        if value and value not in result:\n"
+                        "            result.append(value)\n"
+                        "    return result"
                 ),
                 prompt_tokens=20,
                 output_tokens=30,
@@ -236,7 +230,7 @@ models:
     record = next(
         candidate
         for candidate in records
-        if candidate["item_id"] == "code_deduplicate_001"
+        if candidate["item_id"] == "code_normalize_event_codes_001"
     )
 
     assert record["evaluation"]["type"] == "executable"
