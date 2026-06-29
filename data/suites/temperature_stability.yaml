@@ -25,7 +25,7 @@ filters:
     - code_eligible_shortest_route_001
     - diagnose_access_rule_001
     - repair_quota_adjustments_001
-    - repair_blocked_dependents_001
+    - repair_rolling_totals_001
     - tables_to_decisions_012
     - tables_to_decisions_028
     - inbox_routing_009

@@ -54,6 +54,9 @@ def test_bug_diagnosis_items_use_deterministic_labels() -> None:
 
     assert len(diagnoses) == 10
     assert len({item.expected["value"] for item in diagnoses}) == 10
+    assert {
+        item.id for item in diagnoses if item.difficulty == "hard"
+    } == {"diagnose_dependency_edges_001", "diagnose_route_choice_001"}
     for item in diagnoses:
         assert item.scoring.method == "exact_match"
         assert score_answer(item, item.expected["value"].upper()).passed
@@ -64,6 +67,16 @@ def test_repair_items_use_verified_references_and_three_killed_mutants() -> None
     repairs = [item for item in items if item.subcategory == "code_repair"]
 
     assert len(repairs) == 8
+    assert {item.id for item in repairs} == {
+        "repair_quota_adjustments_001",
+        "repair_latest_webhooks_001",
+        "repair_refund_total_001",
+        "repair_availability_windows_001",
+        "repair_compact_ranges_001",
+        "repair_rolling_totals_001",
+        "repair_lookup_path_001",
+        "repair_lru_cache_001",
+    }
     for item in repairs:
         specification = item.expected["value"]
         assert "generated_mutation" in item.tags
@@ -73,6 +86,18 @@ def test_repair_items_use_verified_references_and_three_killed_mutants() -> None
             not evaluate_python(item, mutant["source"]).passed
             for mutant in specification["mutants"]
         )
+
+
+def test_hard_executable_items_have_five_behavioral_checks() -> None:
+    items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+    hard_executable = [
+        item
+        for item in items
+        if item.difficulty == "hard" and item.scoring.method == "executable_python"
+    ]
+
+    assert len(hard_executable) == 6
+    assert all(len(item.expected["value"]["tests"]) >= 5 for item in hard_executable)
 
 
 def test_coding_fixture_uses_restricted_executable_contract() -> None:

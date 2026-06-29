@@ -21,7 +21,7 @@ item_ids:
   - code_dependency_batches_001
   - code_workflow_duration_001
   - repair_availability_windows_001
-  - repair_eligible_route_001
+  - repair_lru_cache_001
   - tool_use_017
   - tool_use_018
 freeze_rule: Change only by creating a new probe version.

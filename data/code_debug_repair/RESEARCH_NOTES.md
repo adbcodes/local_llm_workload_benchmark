@@ -13,6 +13,16 @@ contracts. Changing names alone is not considered a new task. Each active
 implementation changes the representation, operation path, boundary rules, or
 tie-breaking behavior from recognizable practice-platform templates.
 
+Repair questions likewise use distinct operation paths rather than simplified
+copies of the implementation section. Two deliberate cross-format probes remain:
+latest-record selection and interval merging. They compare implementation with
+repair behavior without making repeated families the bulk of the score.
+
+Diagnosis prompts present a failing check or symptom but do not state the defect
+in prose. Easy cases isolate a familiar Python mistake, medium cases require a
+short state trace, and hard cases add transitive or multi-key reasoning while
+remaining single-function tasks suitable for small local models.
+
 `scripts/generate_coding_benchmark.py` computes every executable gold by running
 the stored reference solution. Mutable inputs are marked with `preserve_args`,
 so a correct return value cannot hide an input-mutation violation.
@@ -22,8 +32,8 @@ so a correct return value cannot hide an input-mutation violation.
 | Task family | Count | Evaluation |
 |---|---:|---|
 | Fresh practical implementation | 30 | Restricted Python tests and postconditions |
-| Failure-trace diagnosis | 10 | Exact diagnostic category |
-| Generated code repair | 8 | Restricted Python tests and mutant killing |
+| Evidence-based diagnosis | 10 | Exact diagnostic category |
+| Distinct code repair | 8 | Restricted Python tests and mutant killing |
 | **Total** | **48** | |
 
 Public and held-out visibility are balanced 24/24. Development scenarios are
