@@ -187,7 +187,7 @@ def test_temporary_markdown_review_matches_dataset(tmp_path: Path) -> None:
 
     review = REVIEW_PATH.read_text(encoding="utf-8")
     assert review == regenerated_path.read_text(encoding="utf-8")
-    assert "559 questions across 22 benchmarks" in review
+    assert "611 questions across 22 benchmarks" in review
     assert "[Applied Reasoning Gauntlet](#applied-reasoning)" in review
     assert "[Following Multiple Rules](#constraint-load-curve)" in review
     assert "[Messy Text to Schema](#messy-text-to-schema)" in review
@@ -196,6 +196,6 @@ def test_temporary_markdown_review_matches_dataset(tmp_path: Path) -> None:
     assert "Messy Text to Schema — 30 questions" in review
     assert "Confidence vs Correctness — 48 questions" in review
     assert "**Conversation shown to the model**" in review
-    assert review.count("<summary><code>") == 559
-    assert review.count("<details>") == 581
+    assert review.count("<summary><code>") == 611
+    assert review.count("<details>") == 633
     assert not Path("docs/TEMP_CODE_DEBUG_REPAIR_REVIEW.html").exists()

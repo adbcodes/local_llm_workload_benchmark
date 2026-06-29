@@ -21,19 +21,18 @@ evaluation_policy:
   partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
-  - external.yaml
   - generated.yaml
-current_question_count: 48
-target_question_count: 48
+current_question_count: 100
+target_question_count: 100
 current_difficulty_distribution:
-  easy: 12
-  medium: 24
-  hard: 12
+  easy: 8
+  medium: 44
+  hard: 48
 difficulty_distribution:
-  easy: 12
-  medium: 24
-  hard: 12
-target_visibility_distribution: {public: 24, held_out: 24}
+  easy: 8
+  medium: 44
+  hard: 48
+target_visibility_distribution: {public: 0, held_out: 100}
 order_rule: easy_to_hard
 scoring_methods:
   - numeric_tolerance

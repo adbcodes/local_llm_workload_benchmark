@@ -15,16 +15,16 @@ requirements:
   tool_use_is_mandatory: true
   quant_sensitive_items: [large_number_arithmetic, rare_proper_nouns, long_code_identifiers, non_ascii_text]
 item_ids:
-  - anchor_math_average_001
-  - anchor_math_ratio_001
-  - anchor_math_substitution_001
-  - anchor_math_primes_001
-  - anchor_bbh_boolean_001
-  - anchor_bbh_order_three_001
-  - reason_percentage_001
-  - reason_ratio_share_generated_001
-  - reason_linear_equation_generated_001
-  - reason_lcm_generated_001
+  - reason_arithmeticperc_002
+  - reason_ratiosrateswor_002
+  - reason_algebrawordpro_002
+  - reason_numberproperti_002
+  - reason_deductivelogic_002
+  - reason_orderingconstr_002
+  - reason_arithmeticperc_001
+  - reason_ratiosrateswor_001
+  - reason_algebrawordpro_001
+  - reason_numberproperti_001
   - code_deduplicate_001
   - code_pair_sum_indices_001
   - code_sorted_squares_001

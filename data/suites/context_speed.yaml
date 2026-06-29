@@ -7,7 +7,7 @@ benchmark_files:
   - ../long_text_retrieval/benchmark.yaml
 filters:
   ids:
-    - reason_percentage_001
+    - reason_arithmeticperc_001
     - long_text_retrieval_001
     - long_text_retrieval_002
     - long_text_retrieval_003

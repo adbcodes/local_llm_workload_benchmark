@@ -14,12 +14,12 @@ benchmark_files:
   - ../shuffled_choices/benchmark.yaml
 filters:
   ids:
-    - anchor_math_average_001
-    - reason_combined_work_generated_001
-    - anchor_bbh_order_five_001
-    - reason_business_days_generated_001
-    - reason_truth_tellers_generated_001
-    - reason_conditional_coins_generated_001
+    - reason_arithmeticperc_001
+    - reason_ratiosrateswor_002
+    - reason_orderingconstr_007
+    - reason_calendartime_007
+    - reason_deductivelogic_007
+    - reason_probabilitycou_007
     - code_deduplicate_001
     - code_validate_bst_001
     - code_can_finish_courses_001

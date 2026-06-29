@@ -25,7 +25,9 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
         data_root / "applied_reasoning" / "generated.yaml"
     )
     source_path.write_text(
-        source_path.read_text(encoding="utf-8").replace("25% of 480", "20% of 600"),
+        source_path.read_text(encoding="utf-8").replace(
+            "What is 17.5% of 640?", "What is 20% of 560?"
+        ),
         encoding="utf-8",
     )
 
@@ -35,7 +37,7 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
     rebuilt = build_authoring_suite(suite_path)
     assert rebuilt.written == (data_root / "applied_reasoning" / "items.jsonl",)
     assert len(rebuilt.unchanged) == 21
-    assert "20% of 600" in rebuilt.written[0].read_text(encoding="utf-8")
+    assert "20% of 560" in rebuilt.written[0].read_text(encoding="utf-8")
 
 
 def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
@@ -45,7 +47,7 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
         item.id for benchmark_items in suite.items.values() for item in benchmark_items
     }
     assert selected_ids == {
-        "reason_percentage_001",
+        "reason_arithmeticperc_001",
         "schema_invoice_001",
         "constraint_api_rate_limiting_001",
         "code_deduplicate_001",
@@ -56,7 +58,7 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
 def test_deterministic_suite_excludes_external_judge_items() -> None:
     suite = load_suite(SOURCE_ROOT / "suites" / "deterministic.yaml")
 
-    assert sum(len(items) for items in suite.items.values()) == 246
+    assert sum(len(items) for items in suite.items.values()) == 298
     assert all(
         item.scoring.method != "llm_judge"
         for items in suite.items.values()
@@ -70,7 +72,7 @@ def test_suite_filters_reject_unknown_item_ids(tmp_path: Path) -> None:
     suite_path = data_root / "suites" / "smoke.yaml"
     suite_path.write_text(
         suite_path.read_text(encoding="utf-8").replace(
-            "reason_percentage_001", "missing_question"
+            "reason_arithmeticperc_001", "missing_question"
         ),
         encoding="utf-8",
     )

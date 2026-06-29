@@ -103,12 +103,12 @@ def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
         "applied_reasoning",
         "messy_text_to_schema",
     }
-    assert sum(len(items) for items in suite.items.values()) == 78
+    assert sum(len(items) for items in suite.items.values()) == 130
     reasoning = suite.items["applied_reasoning"]
-    assert len(reasoning) == 48
-    assert [item.difficulty for item in reasoning].count("easy") == 12
-    assert [item.difficulty for item in reasoning].count("medium") == 24
-    assert [item.difficulty for item in reasoning].count("hard") == 12
+    assert len(reasoning) == 100
+    assert [item.difficulty for item in reasoning].count("easy") == 8
+    assert [item.difficulty for item in reasoning].count("medium") == 44
+    assert [item.difficulty for item in reasoning].count("hard") == 48
     schema_items = suite.items["messy_text_to_schema"]
     assert len(schema_items) == 30
     assert [item.difficulty for item in schema_items].count("easy") == 8
@@ -120,80 +120,75 @@ def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
 def test_numeric_and_exact_answer_verifiers() -> None:
     suite = load_suite(SUITE_PATH)
     items = {item.id: item for item in suite.items["applied_reasoning"]}
-    percentage = items["reason_percentage_001"]
-    calendar = items["reason_calendar_001"]
-    ordering = items["reason_ordering_001"]
-    rational = items["anchor_math_odds_001"]
+    percentage = items["reason_arithmeticperc_001"]
+    calendar = items["reason_calendartime_002"]
+    ordering = items["reason_orderingconstr_012"]
+    rational = items["reason_probabilitycou_007"]
 
     assert calendar.scoring.method == "date_value"
-    percentage_result = score_answer(percentage, "120")
+    percentage_result = score_answer(percentage, "112")
     assert percentage_result.passed
     assert percentage_result.type == "deterministic"
     assert percentage_result.evaluator == "numeric_tolerance"
     assert percentage_result.version == 2
-    assert score_answer(percentage, "120.0").passed
-    assert score_answer(percentage, '"120"').passed
-    assert score_answer(percentage, "The answer is 120.").passed
+    assert score_answer(percentage, "112.0").passed
+    assert score_answer(percentage, '"112"').passed
+    assert score_answer(percentage, "The answer is 112.").passed
     derivation = score_answer(
         percentage,
-        "Start with 80. A 50% increase adds 40.\nFINAL: 120",
+        "17.5 percent of 640 is 112.\nFINAL: 112",
     )
     assert derivation.passed
     assert derivation.details["answer_extraction"] == "final_marker"
     assert derivation.details["final_marker_compliant"] is True
-    assert not score_answer(percentage, "121").passed
-    assert not score_answer(percentage, "It could be 120 or 121.").passed
-    assert not score_answer(percentage, "FINAL: 120 or 121").passed
-    duplicate_final = score_answer(percentage, "FINAL: 120\nFINAL: 121")
+    assert not score_answer(percentage, "113").passed
+    assert not score_answer(percentage, "It could be 112 or 113.").passed
+    assert not score_answer(percentage, "FINAL: 112 or 113").passed
+    duplicate_final = score_answer(percentage, "FINAL: 112\nFINAL: 113")
     assert not duplicate_final.passed
     assert duplicate_final.details["reason"] == "multiple_final_answers"
-    assert score_answer(calendar, "The date is 2026-04-01.").passed
-    assert score_answer(calendar, "The answer is April 1, 2026.").passed
+    assert score_answer(calendar, "The date is 2027-05-19.").passed
+    assert score_answer(calendar, "The answer is May 19, 2027.").passed
     assert score_answer(
         calendar,
-        "Occurrence 1 is 2026-01-07. After four three-week intervals, "
-        "the final date is 2026-04-01.\nFINAL: 2026-04-01",
+        "Occurrence 1 is 2027-02-03. After five three-week intervals, "
+        "the final date is 2027-05-19.\nFINAL: 2027-05-19",
     ).passed
-    assert not score_answer(calendar, "The answer is 2026-04-02.").passed
-    assert score_answer(ordering, "D,A,B,E,C").passed
-    assert score_answer(ordering, "Therefore: D, A, B, E, C.").passed
-    assert not score_answer(ordering, "A,B,D,E,C").passed
-    assert score_answer(rational, "4/7").passed
-    assert score_answer(rational, r"The answer is \frac{4}{7}.").passed
+    assert not score_answer(calendar, "The answer is 2027-05-20.").passed
+    expected_order = str(ordering.expected["value"])
+    assert score_answer(ordering, expected_order).passed
+    assert score_answer(ordering, expected_order.replace(",", " ")).passed
+    assert not score_answer(ordering, expected_order[::-1]).passed
+    rational_gold = str(rational.expected["value"])
+    assert score_answer(rational, rational_gold).passed
+    assert score_answer(rational, f"**{rational_gold}**").passed
     assert score_answer(
         rational,
-        "There are 3 winning and 4 losing outcomes.\nFINAL: 4/7",
+        f"Compute the conditional probability.\nFINAL: {rational_gold}",
     ).passed
-    assert score_answer(rational, "0.5714285714285714").passed
-    assert not score_answer(rational, "3/7").passed
-
-    date_choice = items["anchor_bbh_date_visit_001"]
-    assert score_answer(date_choice, "FINAL: (B)").passed
-    assert not score_answer(date_choice, "(B) 02/16/2009").passed
-    assert score_answer(date_choice, "02/16/2009").passed
-    assert not score_answer(date_choice, "It could be (A) or (B).").passed
-    assert not score_answer(
-        date_choice,
-        "The remaining possibilities are (A) 08/16/2009 and (B) 02/16/2009.",
-    ).passed
+    assert not score_answer(rational, "1/999").passed
+    assert score_answer(ordering, expected_order.lower()).passed
+    assert score_answer(ordering, expected_order.lower().replace(",", " ")).passed
 
 
 def test_reasoning_and_order_gold_answers_are_independently_derived() -> None:
     suite = load_suite(SUITE_PATH)
     items = {item.id: item for item in suite.items["applied_reasoning"]}
-    calendar = items["reason_calendar_001"]
-    ordering = items["reason_ordering_001"]
+    calendar = items["reason_calendartime_002"]
+    ordering = items["reason_orderingconstr_002"]
 
-    assert calendar.expected["value"] == "2026-04-01"
+    assert calendar.expected["value"] == "2027-05-19"
 
     valid_orders: list[str] = []
     for candidate in permutations("ABCDE"):
         positions = {label: candidate.index(label) for label in candidate}
         if (
             positions["B"] == positions["A"] + 1
-            and positions["C"] == positions["E"] + 1
-            and positions["D"] < positions["A"]
+            and positions["D"] == positions["B"] + 1
             and positions["B"] < positions["E"]
+            and abs(positions["C"] - positions["B"]) != 1
+            and positions["E"] == positions["B"] + 2
+            and positions["A"] == positions["C"] + 1
         ):
             valid_orders.append(",".join(candidate))
     assert valid_orders == [ordering.expected["value"]]

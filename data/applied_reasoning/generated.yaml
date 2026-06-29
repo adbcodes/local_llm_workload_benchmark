@@ -1,118 +1,209 @@
 schema_version: 1
 benchmark: applied_reasoning
-generated_by: applied_reasoning_v1
-seed: 20260721
-prompt_suffix: 'You may show concise working. End with exactly one final line in this
-  format: FINAL: <answer>'
+generated_by: applied_reasoning_v2
+seed: 20260731
+prompt_suffix: 'You may show concise working. End with exactly one final line in this format: FINAL: <answer>'
 items:
-- id: reason_percentage_001
+- id: reason_arithmeticperc_001
   subcategory: arithmetic_percentages
   difficulty: easy
   split: dev
-  prompt: What is 25% of 480?
+  visibility: held_out
+  prompt: What is 17.5% of 640?
   response_contract:
     type: number
     format: null
   expected:
-    value: 120
+    value: 112
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
+  - headline_core
+  - sanity
   - percentage
-- id: reason_discount_tax_generated_001
+- id: reason_arithmeticperc_002
   subcategory: arithmetic_percentages
   difficulty: medium
   split: test
-  prompt: An item costs ₹2,000. It is discounted by 10%, then taxed at 18% on the discounted
-    price. What is the final price in rupees?
+  visibility: held_out
+  prompt: A device costs ₹1850. It receives a 12% discount, then a ₹90 shipping charge is added. A 5%
+    tax is applied to the discounted price plus shipping. Do not round intermediate values. What is the
+    amount charged in rupees?
   response_contract:
     type: number
     format: null
   expected:
-    value: 2124
+    value: 1803.9
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - percentage
+  - headline_core
   - sequential_operations
-- id: reason_sequential_percentage_generated_001
+- id: reason_arithmeticperc_003
+  subcategory: arithmetic_percentages
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A device costs ₹2400. It receives a 15% discount, then a ₹120 shipping charge is added. A 12%
+    tax is applied to the discounted price plus shipping. Do not round intermediate values. What is the
+    amount charged in rupees?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 2419.2
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - sequential_operations
+- id: reason_arithmeticperc_004
+  subcategory: arithmetic_percentages
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A device costs ₹3250. It receives a 8% discount, then a ₹75 shipping charge is added. A 9% tax
+    is applied to the discounted price plus shipping. Do not round intermediate values. What is the amount
+    charged in rupees?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 3340.85
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - sequential_operations
+- id: reason_arithmeticperc_005
+  subcategory: arithmetic_percentages
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: One batch has 8 readings with mean 42; another has 12 readings with mean 51. Readings 60 and
+    66 from the second batch are discarded. What is the mean of all remaining readings? Give an exact
+    fraction or decimal.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 137/3
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - weighted_mean
+- id: reason_arithmeticperc_006
+  subcategory: arithmetic_percentages
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: One batch has 9 readings with mean 38; another has 11 readings with mean 47. Readings 55 and
+    58 from the second batch are discarded. What is the mean of all remaining readings? Give an exact
+    fraction or decimal.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 373/9
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - weighted_mean
+- id: reason_arithmeticperc_007
+  subcategory: arithmetic_percentages
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: One batch has 7 readings with mean 64; another has 13 readings with mean 52. Readings 41 and
+    44 from the second batch are discarded. What is the mean of all remaining readings? Give an exact
+    fraction or decimal.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 1039/18
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - weighted_mean
+- id: reason_arithmeticperc_008
   subcategory: arithmetic_percentages
   difficulty: hard
   split: test
-  prompt: An account starts with ₹80,000, gains 10%, then loses 20% of its new value. A fee
-    equal to 5% of the remaining value is deducted. What is the final balance in rupees?
+  visibility: held_out
+  prompt: 20 sensor readings have mean 262/5. After the highest and lowest are removed, the remaining
+    18 have mean 103/2. The highest is 3 times the lowest. What was the highest reading?
   response_contract:
     type: number
     format: null
   expected:
-    value: 66880
-  scoring:
-    method: numeric_tolerance
-    parameters:
-      absolute_tolerance: 0
-      allow_surrounding_text: true
-  provenance:
-    kind: synthetic
-    review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
-  tags:
-  - fresh_generated
-  - percentage
-  - multi_step
-- id: reason_ratio_share_generated_001
-  subcategory: ratios_rates_work
-  difficulty: easy
-  split: dev
-  prompt: Two quantities are in the ratio 2:7 and total 81. What is the smaller quantity?
-  response_contract:
-    type: number
-    format: null
-  expected:
-    value: 18
-  scoring:
-    method: numeric_tolerance
-    parameters:
-      absolute_tolerance: 0
-      allow_surrounding_text: true
-  provenance:
-    kind: synthetic
-    review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
-  tags:
-  - fresh_generated
-  - ratio
-  - proportion
-- id: reason_combined_work_generated_001
-  subcategory: ratios_rates_work
-  difficulty: medium
-  split: test
-  prompt: Worker A completes a job in 10 days and worker B in 15 days. At constant rates,
-    how many days do they need working together?
-  response_contract:
-    type: number
-    format: null
-  expected:
-    value: '6'
+    value: 363/4
   scoring:
     method: rational_value
     parameters:
@@ -121,23 +212,346 @@ items:
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
+  - headline_core
+  - removed_extremes
+  - multi_step
+- id: reason_arithmeticperc_009
+  subcategory: arithmetic_percentages
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 24 sensor readings have mean 191/4. After the highest and lowest are removed, the remaining
+    22 have mean 93/2. The highest is 2 times the lowest. What was the highest reading?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: '82'
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - removed_extremes
+  - multi_step
+- id: reason_arithmeticperc_010
+  subcategory: arithmetic_percentages
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A utility charges ₹6 per unit for the first 180 units, ₹9 for the next 200, and ₹13 above that,
+    plus a fixed ₹35 fee. A 18% rebate applies to the entire bill. For 640 units, what is the final bill
+    in rupees?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 51619/10
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - tiered_bill
+  - multi_step
+- id: reason_arithmeticperc_011
+  subcategory: arithmetic_percentages
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A utility charges ₹5 per unit for the first 150 units, ₹8 for the next 200, and ₹12 above that,
+    plus a fixed ₹40 fee. A 15% rebate applies to the entire bill. For 575 units, what is the final bill
+    in rupees?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 8653/2
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - tiered_bill
+  - multi_step
+- id: reason_arithmeticperc_012
+  subcategory: arithmetic_percentages
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A fund of ₹800 is split between A and B, with 35% initially in A. Then 20% of the total fund
+    is withdrawn entirely from B. How much must be transferred from the remaining B balance to A so that
+    A holds 50% of the money still invested?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: '40'
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - reallocation
+  - multi_step
+- id: reason_arithmeticperc_013
+  subcategory: arithmetic_percentages
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A fund of ₹1250 is split between A and B, with 28% initially in A. Then 16% of the total fund
+    is withdrawn entirely from B. How much must be transferred from the remaining B balance to A so that
+    A holds 40% of the money still invested?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: '70'
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - reallocation
+  - multi_step
+- id: reason_ratiosrateswor_001
+  subcategory: ratios_rates_work
+  difficulty: easy
+  split: dev
+  visibility: held_out
+  prompt: Two quantities are in the ratio 5:8 and total 143. What is the smaller quantity?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 55
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - sanity
+  - ratio
+- id: reason_ratiosrateswor_002
+  subcategory: ratios_rates_work
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Worker A alone needs 12 days for a job and worker B alone needs 18 days. At constant rates,
+    how many days do they need together? Give an exact fraction or decimal.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 36/5
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
   - work_rate
-  - combined_rate
-- id: reason_mixture_generated_001
+- id: reason_ratiosrateswor_003
+  subcategory: ratios_rates_work
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Worker A alone needs 14 days for a job and worker B alone needs 21 days. At constant rates,
+    how many days do they need together? Give an exact fraction or decimal.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 42/5
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - work_rate
+- id: reason_ratiosrateswor_004
+  subcategory: ratios_rates_work
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Worker A alone needs 15 days for a job and worker B alone needs 25 days. At constant rates,
+    how many days do they need together? Give an exact fraction or decimal.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 75/8
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - work_rate
+- id: reason_ratiosrateswor_005
+  subcategory: ratios_rates_work
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A 36-litre mixture is 25% concentrate. How many litres of pure concentrate must be added to
+    make it 40% concentrate?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: '9'
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - mixture
+- id: reason_ratiosrateswor_006
+  subcategory: ratios_rates_work
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A 45-litre mixture is 20% concentrate. How many litres of pure concentrate must be added to
+    make it 35% concentrate?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 135/13
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - mixture
+- id: reason_ratiosrateswor_007
+  subcategory: ratios_rates_work
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A 50-litre mixture is 30% concentrate. How many litres of pure concentrate must be added to
+    make it 44% concentrate?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 25/2
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - mixture
+- id: reason_ratiosrateswor_008
   subcategory: ratios_rates_work
   difficulty: hard
   split: test
-  prompt: A 40-litre mixture is 25% concentrate. How many litres of pure concentrate must
-    be added to make it 40% concentrate?
+  visibility: held_out
+  prompt: A can finish a job in 12 days and B in 18 days. They work together for 3 days, then B leaves.
+    How many additional days does A need?
   response_contract:
     type: number
     format: null
   expected:
-    value: '10'
+    value: '7'
   scoring:
     method: rational_value
     parameters:
@@ -146,18 +560,181 @@ items:
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - mixture
-  - ratio
-  - algebraic_rate
-- id: reason_linear_equation_generated_001
+  - headline_core
+  - worker_leaves
+  - multi_step
+- id: reason_ratiosrateswor_009
+  subcategory: ratios_rates_work
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A can finish a job in 10 days and B in 15 days. They work together for 2 days, then B leaves.
+    How many additional days does A need?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 20/3
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - worker_leaves
+  - multi_step
+- id: reason_ratiosrateswor_010
+  subcategory: ratios_rates_work
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Pipe A fills a tank in 8 hours, B in 12, and a leak empties a full tank in 24. A runs alone
+    for 2 hours; then B and the leak start while A continues. How many more hours are needed?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 9/2
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - pipe_leak
+  - multi_step
+- id: reason_ratiosrateswor_011
+  subcategory: ratios_rates_work
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Pipe A fills a tank in 6 hours, B in 10, and a leak empties a full tank in 30. A runs alone
+    for 1 hours; then B and the leak start while A continues. How many more hours are needed?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 25/7
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - pipe_leak
+  - multi_step
+- id: reason_ratiosrateswor_012
+  subcategory: ratios_rates_work
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A vehicle travels 180 km at 60 km/h, stops for 30 minutes, then travels 120 km at 40 km/h. What
+    is its average speed for the whole journey in km/h?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 600/13
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - average_speed
+  - multi_step
+- id: reason_ratiosrateswor_013
+  subcategory: ratios_rates_work
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A vehicle travels 150 km at 50 km/h, stops for 20 minutes, then travels 100 km at 25 km/h. What
+    is its average speed for the whole journey in km/h?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 375/11
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - average_speed
+  - multi_step
+- id: reason_algebrawordpro_001
   subcategory: algebra_word_problems
   difficulty: easy
   split: dev
-  prompt: 'Solve for x: 4x + 5 = 37.'
+  visibility: held_out
+  prompt: 'Solve for x: 7x - 9 = 82.'
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 13
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - sanity
+  - linear_equation
+- id: reason_algebrawordpro_002
+  subcategory: algebra_word_problems
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A venue sold 18 tickets. Adult tickets cost ₹320, child tickets ₹180, and total sales were ₹4360.
+    How many adult tickets were sold?
   response_contract:
     type: number
     format: null
@@ -166,223 +743,963 @@ items:
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - linear_equation
-- id: reason_ticket_system_generated_001
+  - headline_core
+  - tickets
+- id: reason_algebrawordpro_003
   subcategory: algebra_word_problems
   difficulty: medium
   split: test
-  prompt: A venue sold 14 tickets. Adult tickets cost ₹250 and child tickets cost ₹150. Total
-    sales were ₹2900. How many adult tickets were sold?
+  visibility: held_out
+  prompt: A venue sold 23 tickets. Adult tickets cost ₹250, child tickets ₹150, and total sales were ₹4650.
+    How many adult tickets were sold?
   response_contract:
     type: number
     format: null
   expected:
-    value: 8
+    value: 12
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - simultaneous_equations
-  - word_problem
-- id: reason_rectangle_algebra_generated_001
+  - headline_core
+  - tickets
+- id: reason_algebrawordpro_004
   subcategory: algebra_word_problems
   difficulty: medium
   split: test
-  prompt: A rectangle has perimeter 54. Its length is 5 units more than its width. What is
-    its width?
+  visibility: held_out
+  prompt: A rectangle has perimeter 68. Its length is 8 units more than its width. What is its width?
   response_contract:
     type: number
     format: null
   expected:
-    value: 11
+    value: 13
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - linear_equation
-  - geometry_context
-- id: reason_lcm_generated_001
+  - headline_core
+  - rectangle
+- id: reason_algebrawordpro_005
+  subcategory: algebra_word_problems
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A rectangle has perimeter 94. Its length is 13 units more than its width. What is its width?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 17
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - rectangle
+- id: reason_algebrawordpro_006
+  subcategory: algebra_word_problems
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Two siblings' ages total 44; the older is 8 years older. How old will the younger be in 3 years?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 21
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ages
+- id: reason_algebrawordpro_007
+  subcategory: algebra_word_problems
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A two-digit number has digits summing to 9. The number is 27 greater than the number formed
+    by reversing its digits. What is the original number?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 63
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - digits
+- id: reason_algebrawordpro_008
+  subcategory: algebra_word_problems
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Positive integers x and y satisfy 3x + 5y = 137, with x < 20. What is the maximum possible value
+    of xy?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 304
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - diophantine
+  - optimization
+- id: reason_algebrawordpro_009
+  subcategory: algebra_word_problems
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Positive integers x and y satisfy 3x + 5y = 164, with x < 24. What is the maximum possible value
+    of xy?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 437
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - diophantine
+  - optimization
+- id: reason_algebrawordpro_010
+  subcategory: algebra_word_problems
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Positive integers x and y satisfy 3x + 5y = 191, with x < 28. What is the maximum possible value
+    of xy?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 594
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - diophantine
+  - optimization
+- id: reason_algebrawordpro_011
+  subcategory: algebra_word_problems
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Positive integers x and y satisfy 3x + 5y = 218, with x < 32. What is the maximum possible value
+    of xy?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 775
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - diophantine
+  - optimization
+- id: reason_algebrawordpro_012
+  subcategory: algebra_word_problems
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: An account starts with ₹10000. After one year at an unknown annual rate, ₹2000 is deposited.
+    It grows for one more year at the same rate and ends at ₹14300. What was the annual growth rate? Return
+    the numeric percentage.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 10
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+      answer_unit: '%'
+      unit_aliases:
+      - percent
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - quadratic
+  - percentage
+- id: reason_algebrawordpro_013
+  subcategory: algebra_word_problems
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: An account starts with ₹8000. After one year at an unknown annual rate, ₹1500 is deposited.
+    It grows for one more year at the same rate and ends at ₹11715.2. What was the annual growth rate?
+    Return the numeric percentage.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 12
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+      answer_unit: '%'
+      unit_aliases:
+      - percent
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - quadratic
+  - percentage
+- id: reason_numberproperti_001
   subcategory: number_properties_sequences
   difficulty: easy
   split: dev
-  prompt: What is the least positive integer divisible by both 9 and 12?
+  visibility: held_out
+  prompt: What is the least positive integer divisible by both 18 and 24?
   response_contract:
     type: number
     format: null
   expected:
-    value: 36
+    value: 72
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - divisibility
+  - headline_core
+  - sanity
   - lcm
-- id: reason_divisibility_count_generated_001
+- id: reason_numberproperti_002
   subcategory: number_properties_sequences
   difficulty: medium
   split: test
-  prompt: How many integers from 1 through 200, inclusive, are divisible by 6 but not by 9?
+  visibility: held_out
+  prompt: How many integers from 1 through 500 are divisible by 8 but not by 12?
   response_contract:
     type: number
     format: null
   expected:
-    value: 22
+    value: 42
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - divisibility
-  - inclusion_exclusion
-- id: reason_sequence_generated_001
+  - headline_core
+  - divisible_not
+- id: reason_numberproperti_003
   subcategory: number_properties_sequences
   difficulty: medium
   split: test
-  prompt: 'Find the next number in the sequence: 3, 8, 15, 24, 35.'
+  visibility: held_out
+  prompt: How many integers from 1 through 720 are divisible by 9 but not by 15?
   response_contract:
     type: number
     format: null
   expected:
-    value: 48
+    value: 64
   scoring:
     method: numeric_tolerance
     parameters:
-      absolute_tolerance: 0
+      absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - number_sequence
-  - increasing_differences
-- id: reason_time_duration_generated_001
+  - headline_core
+  - divisible_not
+- id: reason_numberproperti_004
+  subcategory: number_properties_sequences
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: What is the least positive integer n such that n leaves remainder 4 when divided by 7 and remainder
+    2 when divided by 5?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 32
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - crt_two
+- id: reason_numberproperti_005
+  subcategory: number_properties_sequences
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: What is the least positive integer n such that n leaves remainder 5 when divided by 8 and remainder
+    3 when divided by 7?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 45
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - crt_two
+- id: reason_numberproperti_006
+  subcategory: number_properties_sequences
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: How many positive divisors does 756 have?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 24
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - divisor_count
+- id: reason_numberproperti_007
+  subcategory: number_properties_sequences
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: How many positive divisors does 1080 have?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 32
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - divisor_count
+- id: reason_numberproperti_008
+  subcategory: number_properties_sequences
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: What are the last 3 decimal digits of 7^222? Return exactly 3 digits, including leading zeros.
+  response_contract:
+    type: text
+    format: fixed_width_digits
+  expected:
+    value: 049
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - modular_power
+- id: reason_numberproperti_009
+  subcategory: number_properties_sequences
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: What are the last 3 decimal digits of 13^157? Return exactly 3 digits, including leading zeros.
+  response_contract:
+    type: text
+    format: fixed_width_digits
+  expected:
+    value: '733'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - modular_power
+- id: reason_numberproperti_010
+  subcategory: number_properties_sequences
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: How many integers from 1 through 10000 are divisible by exactly one of 6, 10, and 15?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 2333
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - exactly_one
+  - multi_step
+- id: reason_numberproperti_011
+  subcategory: number_properties_sequences
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: How many integers from 1 through 12000 are divisible by exactly one of 8, 12, and 18?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 1666
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - exactly_one
+  - multi_step
+- id: reason_numberproperti_012
+  subcategory: number_properties_sequences
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: What is the least positive integer n such that n mod 5 = 2, n mod 7 = 3, n mod 9 = 4?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 157
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - crt_three
+  - multi_step
+- id: reason_numberproperti_013
+  subcategory: number_properties_sequences
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: What is the least positive integer n such that n mod 7 = 4, n mod 8 = 5, n mod 11 = 6?
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 501
+  scoring:
+    method: numeric_tolerance
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - crt_three
+  - multi_step
+- id: reason_calendartime_001
   subcategory: calendar_time
   difficulty: easy
   split: dev
-  prompt: A session starts at 09:35 and lasts 150 minutes. What time does it end? Return HH:MM
-    in 24-hour time.
+  visibility: held_out
+  prompt: A session starts at 14:35 and lasts 105 minutes. What time does it end? Return HH:MM in 24-hour
+    time.
   response_contract:
     type: text
     format: HH:MM
   expected:
-    value: '12:05'
+    value: '16:20'
   scoring:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: true
+      case_sensitive: false
       allow_surrounding_text: false
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - time
+  - headline_core
+  - sanity
   - duration
-- id: reason_calendar_001
+- id: reason_calendartime_002
   subcategory: calendar_time
   difficulty: medium
   split: test
-  prompt: A meeting occurs every 3 weeks, with the first occurrence on 2026-01-07. Counting
-    that as occurrence 1, what is the date of occurrence 5?
+  visibility: held_out
+  prompt: A meeting repeats every 3 weeks. The first occurrence is 2027-02-03 and counts as occurrence
+    1. What is the date of occurrence 6?
   response_contract:
     type: date
     format: common_unambiguous_date
   expected:
-    value: '2026-04-01'
+    value: '2027-05-19'
   scoring:
     method: date_value
     parameters: {}
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - calendar
+  - headline_core
   - recurrence
-- id: reason_business_days_generated_001
+- id: reason_calendartime_003
+  subcategory: calendar_time
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A meeting repeats every 2 weeks. The first occurrence is 2028-01-11 and counts as occurrence
+    1. What is the date of occurrence 9?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2028-05-02'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - recurrence
+- id: reason_calendartime_004
+  subcategory: calendar_time
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A task starts on 2027-05-03, which counts as business day 1. It requires 10 business days. Weekends
+    do not count, and 2027-05-10 is a holiday. On what date is it completed?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2027-05-17'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - business_days
+- id: reason_calendartime_005
+  subcategory: calendar_time
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A task starts on 2028-02-21, which counts as business day 1. It requires 13 business days. Weekends
+    do not count, and 2028-02-25 is a holiday. On what date is it completed?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2028-03-09'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - business_days
+- id: reason_calendartime_006
+  subcategory: calendar_time
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: What is the date of the second Tuesday of September 2028?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2028-09-12'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - weekday
+- id: reason_calendartime_007
   subcategory: calendar_time
   difficulty: hard
   split: test
-  prompt: A task starts on Monday, 2026-08-03, which counts as business day 1. It requires
-    12 business days. Saturdays and Sundays do not count, and Monday, 2026-08-10 is a holiday.
-    On what date is it completed?
+  visibility: held_out
+  prompt: A flight departs at 2027-03-27 23:40 in UTC+05:30. It lasts 9 hours 50 minutes and arrives in
+    UTC-04:00. What is the local arrival date and time? Return YYYY-MM-DD HH:MM.
+  response_contract:
+    type: text
+    format: YYYY-MM-DD HH:MM
+  expected:
+    value: 2027-03-28 00:00
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - timezone
+  - date_rollover
+- id: reason_calendartime_008
+  subcategory: calendar_time
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A flight departs at 2028-12-31 21:55 in UTC+05:45. It lasts 12 hours 15 minutes and arrives
+    in UTC-05:00. What is the local arrival date and time? Return YYYY-MM-DD HH:MM.
+  response_contract:
+    type: text
+    format: YYYY-MM-DD HH:MM
+  expected:
+    value: 2028-12-31 23:25
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - timezone
+  - date_rollover
+- id: reason_calendartime_009
+  subcategory: calendar_time
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Find the second Tuesday of October 2029. Then, counting only Fridays strictly after that date,
+    find the third such Friday. Return its date.
   response_contract:
     type: date
     format: common_unambiguous_date
   expected:
-    value: '2026-08-19'
+    value: '2029-10-26'
   scoring:
     method: date_value
     parameters: {}
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - calendar
-  - business_days
-  - holiday
-- id: reason_die_probability_generated_001
+  - headline_core
+  - nested_weekday
+  - multi_step
+- id: reason_calendartime_010
+  subcategory: calendar_time
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Find the third Thursday of February 2030. Then, counting only Mondays strictly after that date,
+    find the fourth such Monday. Return its date.
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2030-03-18'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - nested_weekday
+  - multi_step
+- id: reason_calendartime_011
+  subcategory: calendar_time
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A project starts on 2028-12-18, counted as business day 1, and lasts 18 business days. Weekends
+    and the holidays 2028-12-25, 2029-01-01 do not count. What is its completion date?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2029-01-12'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - business_multi
+  - multi_step
+- id: reason_calendartime_012
+  subcategory: calendar_time
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A project starts on 2027-08-23, counted as business day 1, and lasts 16 business days. Weekends
+    and the holidays 2027-08-30, 2027-09-06 do not count. What is its completion date?
+  response_contract:
+    type: date
+    format: common_unambiguous_date
+  expected:
+    value: '2027-09-15'
+  scoring:
+    method: date_value
+    parameters: {}
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - business_multi
+  - multi_step
+- id: reason_probabilitycou_001
   subcategory: probability_counting
   difficulty: easy
   split: dev
-  prompt: A fair 6-sided die numbered 1 through 6 is rolled. What is the probability of rolling
-    a number greater than 4?
+  visibility: held_out
+  prompt: A fair 10-sided die numbered 1 through 10 is rolled. What is the probability of rolling a number
+    greater than 7? Give an exact fraction.
   response_contract:
     type: number
     format: null
   expected:
-    value: 1/3
+    value: 3/10
   scoring:
     method: rational_value
     parameters:
@@ -391,23 +1708,25 @@ items:
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
+  - headline_core
+  - sanity
   - probability
-  - single_event
-- id: reason_without_replacement_generated_001
+- id: reason_probabilitycou_002
   subcategory: probability_counting
   difficulty: medium
   split: test
-  prompt: A bag contains 4 red and 6 blue balls. Two balls are drawn without replacement.
-    What is the probability both are blue?
+  visibility: held_out
+  prompt: A bag has 5 red and 7 blue balls. 3 are drawn without replacement. What is the probability all
+    are blue? Give an exact fraction.
   response_contract:
     type: number
     format: null
   expected:
-    value: 1/3
+    value: 7/44
   scoring:
     method: rational_value
     parameters:
@@ -416,23 +1735,127 @@ items:
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - probability
-  - without_replacement
-- id: reason_conditional_coins_generated_001
+  - headline_core
+  - balls
+- id: reason_probabilitycou_003
+  subcategory: probability_counting
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A bag has 8 red and 4 blue balls. 2 are drawn without replacement. What is the probability all
+    are blue? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 1/11
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - balls
+- id: reason_probabilitycou_004
+  subcategory: probability_counting
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A fair coin is flipped 6 times. What is the probability of exactly 3 heads? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 5/16
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - coins
+- id: reason_probabilitycou_005
+  subcategory: probability_counting
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A fair coin is flipped 7 times. What is the probability of exactly 2 heads? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 21/128
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - coins
+- id: reason_probabilitycou_006
+  subcategory: probability_counting
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: A committee of 3 is selected uniformly from 7 women and 5 men. What is the probability it contains
+    exactly 2 women? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 21/44
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - committee
+- id: reason_probabilitycou_007
   subcategory: probability_counting
   difficulty: hard
   split: test
-  prompt: A fair coin is flipped 5 times. Given that at least one head occurred, what is the
-    probability that exactly 2 heads occurred?
+  visibility: held_out
+  prompt: Urn 1 is chosen with probability 1/3 and contains 2 red and 1 blue balls. Urn 2 is chosen with
+    probability 1/3 and contains 2 red and 3 blue balls. A red ball is drawn. What is the probability
+    Urn 1 was chosen? Give an exact fraction.
   response_contract:
     type: number
     format: null
   expected:
-    value: 10/31
+    value: 5/8
   scoring:
     method: rational_value
     parameters:
@@ -441,44 +1864,156 @@ items:
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - probability
-  - conditional_probability
-- id: reason_syllogism_generated_001
-  subcategory: deductive_logic
-  difficulty: medium
-  split: dev
-  prompt: All analysts are readers. Some readers are writers. Must some analysts be writers?
-    Return only yes, no, or cannot_be_determined.
+  - headline_core
+  - bayes
+  - multi_step
+- id: reason_probabilitycou_008
+  subcategory: probability_counting
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Urn 1 is chosen with probability 2/5 and contains 3 red and 2 blue balls. Urn 2 is chosen with
+    probability 3/5 and contains 3 red and 4 blue balls. A red ball is drawn. What is the probability
+    Urn 1 was chosen? Give an exact fraction.
   response_contract:
-    type: text
-    format: label
+    type: number
+    format: null
   expected:
-    value: cannot_be_determined
+    value: 14/29
   scoring:
-    method: exact_match
+    method: rational_value
     parameters:
-      strip: true
-      case_sensitive: true
-      allow_surrounding_text: false
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - deduction
-  - syllogism
-- id: reason_implication_chain_generated_001
-  subcategory: deductive_logic
-  difficulty: medium
+  - headline_core
+  - bayes
+  - multi_step
+- id: reason_probabilitycou_009
+  subcategory: probability_counting
+  difficulty: hard
   split: test
-  prompt: If deployment occurs, tests pass. If tests pass, approval is logged. Approval was
-    not logged. Did deployment occur? Return only yes or no.
+  visibility: held_out
+  prompt: A five-card hand is selected uniformly from a standard deck. What is the probability it contains
+    exactly 2 ace(s) and exactly 1 king(s)? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 473/54145
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - cards
+  - multi_step
+- id: reason_probabilitycou_010
+  subcategory: probability_counting
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: A five-card hand is selected uniformly from a standard deck. What is the probability it contains
+    exactly 1 ace(s) and exactly 2 king(s)? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 473/54145
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - cards
+  - multi_step
+- id: reason_probabilitycou_011
+  subcategory: probability_counting
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Two fair 8-sided dice are rolled. Given that at least one die is 4 or greater, what is the probability
+    their sum is 10? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 7/55
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - conditional_dice
+  - multi_step
+- id: reason_probabilitycou_012
+  subcategory: probability_counting
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: Two fair 10-sided dice are rolled. Given that at least one die is 5 or greater, what is the
+    probability their sum is 13? Give an exact fraction.
+  response_contract:
+    type: number
+    format: null
+  expected:
+    value: 2/21
+  scoring:
+    method: rational_value
+    parameters:
+      absolute_tolerance: 1.0e-09
+      allow_surrounding_text: true
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - conditional_dice
+  - multi_step
+- id: reason_deductivelogic_001
+  subcategory: deductive_logic
+  difficulty: easy
+  split: dev
+  visibility: held_out
+  prompt: If a build is deployed, its signed release record exists. The signed release record does not
+    exist. Was the build deployed? Return yes or no.
   response_contract:
     type: text
     format: label
@@ -488,126 +2023,692 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: true
+      case_sensitive: false
       allow_surrounding_text: false
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
+  - headline_core
+  - sanity
   - deduction
-  - modus_tollens
-- id: reason_truth_tellers_generated_001
+- id: reason_deductivelogic_002
+  subcategory: deductive_logic
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: All poets are readers. Some readers are cyclists. Must some poets be cyclists? Return yes, no,
+    or cannot_be_determined.
+  response_contract:
+    type: text
+    format: label
+  expected:
+    value: cannot_be_determined
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - syllogism
+- id: reason_deductivelogic_003
+  subcategory: deductive_logic
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: No copper objects are transparent. Every prism here is transparent. Can any prism here be copper?
+    Return yes, no, or cannot_be_determined.
+  response_contract:
+    type: text
+    format: label
+  expected:
+    value: 'no'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - syllogism
+- id: reason_deductivelogic_004
+  subcategory: deductive_logic
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Every red token is square. Every square token is heavy. Token K is red. Must K be heavy? Return
+    yes, no, or cannot_be_determined.
+  response_contract:
+    type: text
+    format: label
+  expected:
+    value: 'yes'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - syllogism
+- id: reason_deductivelogic_005
+  subcategory: deductive_logic
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: Some editors are musicians. No musicians are pilots. Must some editors not be pilots? Return
+    yes, no, or cannot_be_determined.
+  response_contract:
+    type: text
+    format: label
+  expected:
+    value: 'yes'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - syllogism
+- id: reason_deductivelogic_006
+  subcategory: deductive_logic
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: All archived files are encrypted. File R is not encrypted. Can File R be archived? Return yes,
+    no, or cannot_be_determined.
+  response_contract:
+    type: text
+    format: label
+  expected:
+    value: 'no'
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: false
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - syllogism
+- id: reason_deductivelogic_007
   subcategory: deductive_logic
   difficulty: hard
   split: test
-  prompt: Each of A, B, and C is either always truthful or always lying. A says, 'B and C
-    are the same type.' B says, 'A is lying.' C says, 'B is truthful.' Which people are truthful?
-    Return their labels separated by commas.
+  visibility: held_out
+  prompt: 'Boolean flags A through F satisfy: A is equivalent to not B; C is equivalent to A; D is equivalent
+    to B and C; E is equivalent to not D; F is equivalent to C and E; exactly two flags are true. Which
+    flags are true? Return their labels separated by commas.'
   response_contract:
     type: text
     format: comma_separated_labels
   expected:
-    value: A
+    value: B,E
   scoring:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: true
+      case_sensitive: false
       allow_surrounding_text: true
       answer_format: comma_separated_labels
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - deduction
-  - truth_tellers
-- id: reason_assignment_generated_001
-  subcategory: ordering_constraint_puzzles
-  difficulty: medium
-  split: dev
-  prompt: Ana, Ben, and Chen are assigned API, UI, and DB, one each. Ana is not assigned UI.
-    Ben is assigned API. Chen is not assigned DB. Return Ana's assignment, Ben's assignment,
-    and Chen's assignment in that order, separated by commas.
-  response_contract:
-    type: text
-    format: comma_separated_labels
-  expected:
-    value: DB,API,UI
-  scoring:
-    method: exact_match
-    parameters:
-      strip: true
-      case_sensitive: true
-      allow_surrounding_text: true
-      answer_format: comma_separated_labels
-  provenance:
-    kind: synthetic
-    review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
-  tags:
-  - fresh_generated
-  - constraints
-  - assignment
-- id: reason_four_order_generated_001
-  subcategory: ordering_constraint_puzzles
-  difficulty: medium
-  split: test
-  prompt: Four tasks A, B, C, and D occupy positions 1 through 4. C is first. B is immediately
-    after A. D is after B. Return the unique order as comma-separated labels.
-  response_contract:
-    type: text
-    format: comma_separated_labels
-  expected:
-    value: C,A,B,D
-  scoring:
-    method: exact_match
-    parameters:
-      strip: true
-      case_sensitive: true
-      allow_surrounding_text: true
-      answer_format: comma_separated_labels
-  provenance:
-    kind: synthetic
-    review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
-  tags:
-  - fresh_generated
-  - constraints
-  - ordering
-- id: reason_ordering_001
-  subcategory: ordering_constraint_puzzles
+  - headline_core
+  - boolean_logic
+  - unique_solution
+- id: reason_deductivelogic_008
+  subcategory: deductive_logic
   difficulty: hard
   split: test
-  prompt: Five workshops A, B, C, D, and E occupy positions 1 through 5. B is immediately
-    after A. C is immediately after E. D is before A. B is before E. Return the unique order
+  visibility: held_out
+  prompt: 'Boolean flags A through F satisfy: B is equivalent to not C; D is equivalent to B; A is equivalent
+    to C and D; F is equivalent to not A; E is equivalent to D and F; exactly two flags are true. Which
+    flags are true? Return their labels separated by commas.'
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: C,F
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - boolean_logic
+  - unique_solution
+- id: reason_deductivelogic_009
+  subcategory: deductive_logic
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Boolean flags A through F satisfy: F is equivalent to not A; B is equivalent to F; C is equivalent
+    to A and B; D is equivalent to not C; E is equivalent to B and D; exactly two flags are true. Which
+    flags are true? Return their labels separated by commas.'
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: A,D
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - boolean_logic
+  - unique_solution
+- id: reason_deductivelogic_010
+  subcategory: deductive_logic
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Boolean flags A through F satisfy: A is equivalent to B and C; B is equivalent to not D; C
+    is equivalent to E; E implies D; F is equivalent to not A; exactly four flags are true. Which flags
+    are true? Return their labels separated by commas.'
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: C,D,E,F
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - boolean_logic
+  - unique_solution
+- id: reason_deductivelogic_011
+  subcategory: deductive_logic
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Boolean flags A through F satisfy: B is equivalent to C and D; C is equivalent to not A; D
+    is equivalent to F; F implies A; E is equivalent to not B; exactly four flags are true. Which flags
+    are true? Return their labels separated by commas.'
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: A,D,E,F
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - boolean_logic
+  - unique_solution
+- id: reason_deductivelogic_012
+  subcategory: deductive_logic
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: 'Boolean flags A through F satisfy: F is equivalent to A and B; A is equivalent to not C; B
+    is equivalent to D; D implies C; E is equivalent to not F; exactly four flags are true. Which flags
+    are true? Return their labels separated by commas.'
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: B,C,D,E
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - boolean_logic
+  - unique_solution
+- id: reason_orderingconstr_001
+  subcategory: ordering_constraint_puzzles
+  difficulty: easy
+  split: dev
+  visibility: held_out
+  prompt: Mira finishes before Noor, and Noor finishes before Omar. Return the unique order of M, N, O
     as comma-separated labels.
   response_contract:
     type: text
     format: comma_separated_labels
   expected:
-    value: D,A,B,E,C
+    value: M,N,O
   scoring:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: true
+      case_sensitive: false
       allow_surrounding_text: true
       answer_format: comma_separated_labels
   provenance:
     kind: synthetic
     review_status: human_checked
-    generator: applied_reasoning_v1
-    seed: 20260721
+    generator: applied_reasoning
+    seed: 20260731
   tags:
   - fresh_generated
-  - constraints
+  - headline_core
+  - sanity
   - ordering
-  - multi_step
+- id: reason_orderingconstr_002
+  subcategory: ordering_constraint_puzzles
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E occupy positions 1 through 5. A is immediately before B. B is immediately
+    before D. B is before E. C is not adjacent to B. B is exactly two positions before E. B is not adjacent
+    to E. C is immediately before A. Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: C,A,B,D,E
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_003
+  subcategory: ordering_constraint_puzzles
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E occupy positions 1 through 5. D is exactly two positions before C. A
+    is immediately before C. D is immediately before A. B is not adjacent to A. C is immediately before
+    E. B is exactly two positions before A. Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: B,D,A,C,E
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_004
+  subcategory: ordering_constraint_puzzles
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E occupy positions 1 through 5. A is not adjacent to B. E is exactly two
+    positions before C. E is first. E is not adjacent to C. E is immediately before A. C is immediately
+    before B. Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: E,A,C,B,D
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_005
+  subcategory: ordering_constraint_puzzles
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E occupy positions 1 through 5. A is not adjacent to E. A is immediately
+    before C. E is not adjacent to B. D is immediately before B. B is last. Return the unique order as
+    comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: A,C,E,D,B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_006
+  subcategory: ordering_constraint_puzzles
+  difficulty: medium
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E occupy positions 1 through 5. D is not adjacent to E. C is last. E is
+    before C. B is before A. B is immediately before E. E is immediately before A. A is immediately before
+    C. Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: D,B,E,A,C
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_007
+  subcategory: ordering_constraint_puzzles
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E, F occupy positions 1 through 6. A is exactly two positions before B.
+    D is immediately before B. F is exactly two positions before D. C is immediately before F. A is before
+    B. F is immediately before A. B is immediately before E. Return the unique order as comma-separated
+    labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: C,F,A,D,B,E
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_008
+  subcategory: ordering_constraint_puzzles
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E, F occupy positions 1 through 6. A is immediately before F. B is first.
+    D is not adjacent to F. A is before C. D is exactly two positions before F. B is not adjacent to A.
+    C is immediately before E. Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: B,D,A,F,C,E
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_009
+  subcategory: ordering_constraint_puzzles
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E, F occupy positions 1 through 6. B is not adjacent to A. E is before
+    C. C is immediately before A. C is before D. E is not adjacent to C. B is exactly two positions before
+    A. C is exactly two positions before D. E is first. F is last. Return the unique order as comma-separated
+    labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: E,B,C,A,D,F
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_010
+  subcategory: ordering_constraint_puzzles
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E, F occupy positions 1 through 6. D is before B. D is exactly two positions
+    before B. A is not adjacent to F. C is immediately before F. F is before E. D is immediately before
+    E. C is not adjacent to D. A is exactly two positions before F. Return the unique order as comma-separated
+    labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: A,C,F,D,E,B
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_011
+  subcategory: ordering_constraint_puzzles
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E, F occupy positions 1 through 6. D is before B. B is before C. F is
+    not adjacent to E. C is immediately before E. F is immediately before C. A is immediately before B.
+    Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: D,A,B,F,C,E
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
+- id: reason_orderingconstr_012
+  subcategory: ordering_constraint_puzzles
+  difficulty: hard
+  split: test
+  visibility: held_out
+  prompt: The tasks A, B, C, D, E, F, G occupy positions 1 through 7. C is before A. F is last. B is not
+    adjacent to F. G is exactly two positions before D. E is immediately before A. G is not adjacent to
+    D. E is before G. Return the unique order as comma-separated labels.
+  response_contract:
+    type: text
+    format: comma_separated_labels
+  expected:
+    value: C,E,A,G,B,D,F
+  scoring:
+    method: exact_match
+    parameters:
+      strip: true
+      case_sensitive: false
+      allow_surrounding_text: true
+      answer_format: comma_separated_labels
+  provenance:
+    kind: synthetic
+    review_status: human_checked
+    generator: applied_reasoning
+    seed: 20260731
+  tags:
+  - fresh_generated
+  - headline_core
+  - ordering
+  - unique_solution
