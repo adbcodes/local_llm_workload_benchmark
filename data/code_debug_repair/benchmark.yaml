@@ -1,6 +1,6 @@
 id: code_debug_repair
 title: Code, Debug, and Repair
-description: Generated practical Python implementation, diagnosis, and repair tasks checked with restricted execution or deterministic labels.
+description: Small-context Python implementation, diagnosis, repair, and regression-test tasks grounded in realistic configuration, records, incident, scheduling, policy, and reconciliation work.
 suite: A
 status: complete
 task_types:
@@ -10,7 +10,8 @@ task_types:
   - bug diagnosis
   - code repair
   - edge-case handling
-  - output prediction and stack-trace understanding
+  - failing-test and stack-trace diagnosis
+  - regression-test selection
 metrics: [pass_rate, tests_passed, timeout_rate]
 score_formula: mean_score
 evaluation_policy:
@@ -21,17 +22,17 @@ evaluation_policy:
 items_path: items.jsonl
 authoring_paths:
   - generated_questions.yaml
-current_question_count: 48
-target_question_count: 48
+current_question_count: 80
+target_question_count: 80
 current_difficulty_distribution:
-  easy: 16
-  medium: 24
-  hard: 8
+  easy: 22
+  medium: 44
+  hard: 14
 difficulty_distribution:
-  easy: 16
-  medium: 24
-  hard: 8
-target_visibility_distribution: {public: 24, held_out: 24}
+  easy: 22
+  medium: 44
+  hard: 14
+target_visibility_distribution: {public: 40, held_out: 40}
 order_rule: easy_to_hard
 scoring_methods:
   - executable_python

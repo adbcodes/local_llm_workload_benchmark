@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -17,19 +19,27 @@ def _coding_item():
     return load_suite(CODING_SUITE_PATH).items["code_debug_repair"][0]
 
 
+def test_coding_generator_is_in_sync() -> None:
+    subprocess.run(
+        [sys.executable, "scripts/generate_coding_benchmark.py", "--check"],
+        check=True,
+    )
+
+
 def test_coding_dataset_has_agreed_task_mix_and_fresh_implementation_contract() -> None:
     items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
 
-    assert len(items) == 48
+    assert len(items) == 80
     assert Counter(item.subcategory for item in items) == {
-        "function_implementation": 30,
-        "bug_diagnosis": 10,
-        "code_repair": 8,
+        "function_implementation": 40,
+        "bug_diagnosis": 16,
+        "code_repair": 16,
+        "regression_test_selection": 8,
     }
     assert Counter(item.difficulty for item in items) == {
-        "easy": 16,
-        "medium": 24,
-        "hard": 8,
+        "easy": 22,
+        "medium": 44,
+        "hard": 14,
     }
     implementations = [
         item for item in items if item.subcategory == "function_implementation"
@@ -42,23 +52,27 @@ def test_coding_dataset_has_agreed_task_mix_and_fresh_implementation_contract() 
         for item in implementations
     )
     assert Counter(item.visibility for item in items) == {
-        "public": 24,
-        "held_out": 24,
+        "public": 40,
+        "held_out": 40,
     }
-    assert Counter(item.split for item in items) == {"dev": 12, "test": 36}
+    assert Counter(item.split for item in items) == {"dev": 20, "test": 60}
 
 
 def test_bug_diagnosis_items_use_deterministic_labels() -> None:
     items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
     diagnoses = [item for item in items if item.subcategory == "bug_diagnosis"]
 
-    assert len(diagnoses) == 10
-    assert len({item.expected["value"] for item in diagnoses}) == 10
+    assert len(diagnoses) == 16
     assert {
         item.id for item in diagnoses if item.difficulty == "hard"
-    } == {"diagnose_dependency_edges_001", "diagnose_route_choice_001"}
+    } == {
+        "diagnose_dependency_edges_001",
+        "diagnose_route_choice_001",
+        "diagnose_tenant_cache_001",
+    }
     for item in diagnoses:
         assert item.scoring.method == "exact_match"
+        assert item.expected["value"] in item.prompt
         assert score_answer(item, item.expected["value"].upper()).passed
 
 
@@ -66,20 +80,21 @@ def test_repair_items_use_verified_references_and_three_killed_mutants() -> None
     items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
     repairs = [item for item in items if item.subcategory == "code_repair"]
 
-    assert len(repairs) == 8
-    assert {item.id for item in repairs} == {
+    assert len(repairs) == 16
+    assert {
         "repair_quota_adjustments_001",
         "repair_latest_webhooks_001",
         "repair_refund_total_001",
         "repair_availability_windows_001",
-        "repair_compact_ranges_001",
         "repair_rolling_totals_001",
         "repair_lookup_path_001",
         "repair_lru_cache_001",
-    }
+    } <= {item.id for item in repairs}
     for item in repairs:
         specification = item.expected["value"]
         assert "generated_mutation" in item.tags
+        assert "failing_test_context" in item.tags
+        assert "Failing regression:" in item.prompt
         assert evaluate_python(item, specification["reference_solution"]).passed
         assert len(specification["mutants"]) >= 3
         assert all(
@@ -96,8 +111,72 @@ def test_hard_executable_items_have_five_behavioral_checks() -> None:
         if item.difficulty == "hard" and item.scoring.method == "executable_python"
     ]
 
-    assert len(hard_executable) == 6
+    assert len(hard_executable) == 9
     assert all(len(item.expected["value"]["tests"]) >= 5 for item in hard_executable)
+
+
+def test_all_executable_golds_pass_and_reject_single_example_hardcoding() -> None:
+    items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+    executable = [
+        item for item in items if item.scoring.method == "executable_python"
+    ]
+
+    assert len(executable) == 56
+    for item in executable:
+        specification = item.expected["value"]
+        assert evaluate_python(item, specification["reference_solution"]).passed
+        first_expected = specification["tests"][0]["expected"]
+        hardcoded = (
+            f"def {specification['entry_point']}(*args, **kwargs):\n"
+            f"    return {first_expected!r}"
+        )
+        assert not evaluate_python(item, hardcoded).passed, item.id
+
+
+def test_retired_repetitions_are_absent_and_cycle_regression_is_real() -> None:
+    items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+    by_id = {item.id: item for item in items}
+
+    assert "test_latest_duplicate_001" not in by_id
+    assert "test_touching_windows_001" not in by_id
+    assert "diagnose_ranked_feed_001" not in by_id
+    item = by_id["test_partial_dependency_cycle_001"]
+    source = item.prompt.split("Review this function:\n\n", 1)[1].split(
+        "\n\nContract:", 1
+    )[0]
+    namespace: dict[str, object] = {}
+    exec(source, namespace, namespace)
+    order = namespace["order"]
+
+    assert order(["a", "b"], []) == ["a", "b"]
+    assert order(["a", "b"], [["b", "a"]]) == ["a", "b"]
+    assert order(["a"], []) == ["a"]
+    assert order(["a", "b", "c"], [["a", "b"], ["b", "a"]]) == ["c"]
+    assert item.expected["value"] == "partial_cycle"
+
+
+def test_corrected_gold_edges_are_present_in_executable_contracts() -> None:
+    items = load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+    by_id = {item.id: item for item in items}
+
+    deployment_tests = by_id["code_deployment_impact_001"].expected["value"]["tests"]
+    assert {
+        "args": [
+            ["a", "b", "c"],
+            [["c", "a"], ["c", "b"]],
+            ["a"],
+            ["b"],
+        ],
+        "expected": [["a"]],
+        "preserve_args": [0, 1, 2, 3],
+    } in deployment_tests
+
+    refund_tests = by_id["repair_refund_total_001"].expected["value"]["tests"]
+    assert {
+        "args": [[["r", 5], ["r", -2]], []],
+        "expected": 0,
+        "preserve_args": [0, 1],
+    } in refund_tests
 
 
 def test_coding_fixture_uses_restricted_executable_contract() -> None:
