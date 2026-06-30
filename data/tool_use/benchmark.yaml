@@ -1,44 +1,54 @@
 id: tool_use
-title: Tool Use
-description: Choose tools, pass correct arguments, chain results, and avoid unnecessary calls.
+title: Tool Calls
+description: Choose one relevant tool with exact arguments, or answer directly when no tool is needed.
 suite: B
-status: started
-execution_mode: tool_scenario
+status: complete
+execution_mode: single_turn
 task_types:
-- no-tool-needed traps
-- two-call chains
-- using one call result in the next
-- error recovery
+- direct tool selection
+- tool disambiguation
+- typed arguments
 - argument conversion
-- unnecessary-call avoidance
+- multiple arguments
+- nested arguments
+- optional arguments and defaults
+- no-tool direct answers
+- unavailable-tool restraint
+- confirmation-gated side effects
+- empty, error, and ambiguous tool results
+- untrusted tool-result instructions
+- changed intent during a tool sequence
+- second tool required after a tool response
+- second tool not required after a tool response
+- third tool required or not required after two responses
+- fourth tool required or not required after three responses
 metrics:
 - tool_selection_accuracy
 - argument_accuracy
-- call_order_accuracy
-- unnecessary_call_rate
-- final_state_accuracy
+- direct_answer_accuracy
+- format_compliance_rate
 score_formula: mean_score
 evaluation_policy:
-  primary_outcome: integration
-  primary_metric: integration_success_rate
-  protocol_requirement: diagnostic
-  partial_credit_metric: mean_integration_score
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: required
+  partial_credit_metric: mean_semantic_score
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 20
-target_question_count: 20
+current_question_count: 48
+target_question_count: 48
 current_difficulty_distribution:
-  easy: 5
-  medium: 10
-  hard: 5
+  easy: 8
+  medium: 16
+  hard: 24
 difficulty_distribution:
-  easy: 5
-  medium: 10
-  hard: 5
+  easy: 8
+  medium: 16
+  hard: 24
 target_visibility_distribution:
-  public: 10
-  held_out: 10
+  public: 24
+  held_out: 24
 order_rule: easy_to_hard
 scoring_methods:
-- tool_trace
+- tool_call
