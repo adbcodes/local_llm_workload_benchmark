@@ -12,19 +12,18 @@ protocol friction.
 
 ## Item decisions
 
-All 30 original scenarios were retained and repaired. Their domains and operation paths
-were already distinct enough to avoid template substitution; the shared defect
-was an underspecified prompt contract and incomplete review metadata.
-Eighteen additional scenarios were then authored at the medium/hard boundary to
-improve quantization sensitivity without increasing the easy sanity tier.
+The 48-item set retains the useful clean anchors and stronger noisy/nested
+scenarios from the earlier review. Six weaker scenarios were replaced with
+small operational artifacts: CLI output, an access-request email, deployment
+logs with an operator comment, a support-ticket history, similar CMDB records
+requiring an exact identifier match, and a revised purchase-order email/table
+containing an untrusted instruction.
 
 | Items | Decision | Phase 4 repair |
 | --- | --- | --- |
-| 8 easy clean records | repair | Added typed schemas and explicit scalar/date rules; kept as local-model sanity anchors. |
-| 15 original medium noisy records | repair | Declared missing values, normalized dates/numbers, mixed layouts, distractors, state selection, lists, and revisions explicitly. |
-| 7 original hard nested records | repair | Declared nested array/object shapes and source order; retained OCR, multi-record, revision, unit-conversion, and derived-total interactions. |
-| 10 new medium scenarios | generate | Added corrections, mixed layouts, timelines, filtering, OCR, missing values, and numeric distractors. |
-| 8 new approachable hard scenarios | generate | Combined two or three extraction complications across contracts, freight, rosters, usage, quality, travel, quotes, and energy records. |
+| 8 easy records | retain/replace | Kept six clean sanity anchors and replaced two generic records with realistic CLI and access-request artifacts. |
+| 25 medium records | retain/replace | Replaced three weak clean-form tasks with a deployment log, support history, and exact-identifier reconciliation case. |
+| 15 hard records | retain/replace | Replaced one compact synthetic QC row with an email thread and table combining revision selection, nesting, a missing value, arithmetic, and an untrusted instruction. |
 
 No item is a public benchmark control, and no public-source content is used.
 The deterministic generator assigns 24 public development items and 24
@@ -38,8 +37,11 @@ halves contain multiple difficulty tiers.
 - Lakh conversion and percentage-to-decimal normalization are stated where
   required.
 - Purchase-order and manifest totals are checked against their component rows.
-- Every retained item is marked `human_checked` and records generator version
-  and seed.
+- Project completion percentage, contract milestone years, and the ViewMax
+  revision are now explicit in their source text instead of being inferred.
+- Nullable tyre pressure is declared as `number or null`, fixing the prior
+  generated-schema type mismatch.
+- Every item records the deterministic generator version and seed.
 
 ## Difficulty policy
 

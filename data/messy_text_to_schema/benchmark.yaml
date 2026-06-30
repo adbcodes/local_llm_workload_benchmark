@@ -1,6 +1,6 @@
 id: messy_text_to_schema
 title: Messy Text to Schema
-description: Structured extraction from clean, incomplete, noisy, and nested text.
+description: Structured extraction from realistic clean, incomplete, noisy, conflicting, and nested operational text.
 suite: B
 status: complete
 task_types:
@@ -9,9 +9,12 @@ task_types:
   - distracting and conflicting values
   - OCR-like noise
   - mixed and multiline formats
+  - logs, email threads, and support histories
+  - exact identifier selection across similar records
   - lists and nested objects
   - multiple records and revisions
   - unit conversion and derived values
+  - untrusted instructions inside source records
 metrics: [exact_match_rate, leaf_accuracy, integration_friction_rate]
 score_formula: mean_score
 evaluation_policy:
