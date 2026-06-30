@@ -161,7 +161,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
         "hard",
     }
     assert sum(record["dataset_origin"] == "licensed_anchor" for record in records) == 0
-    assert sum(record["dataset_origin"] == "fresh_generated" for record in records) == 100
+    assert sum(record["dataset_origin"] == "fresh_generated" for record in records) == 48
     assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 48
 
     summary = json.loads((run_directory / "summary.json").read_text())
@@ -176,7 +176,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert summary["peak_process_memory_after_model_load_bytes"] == 4_000_000_000
     assert summary["total_prompt_tokens"] == 20 * item_count
     assert "licensed_anchor" not in summary["by_origin"]
-    assert summary["by_origin"]["fresh_generated"]["attempted"] == 100
+    assert summary["by_origin"]["fresh_generated"]["attempted"] == 48
     assert len(summary["dataset"]["sha256"]) == 64
 
 

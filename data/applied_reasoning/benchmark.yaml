@@ -1,17 +1,16 @@
 id: applied_reasoning
-title: Applied Reasoning Gauntlet
-description: Practical numerical, calendar, logical, and constraint reasoning.
+title: Applied Reasoning Diagnostic
+description: Operational reasoning controls for local-model quantization comparisons.
 suite: A
 status: complete
 task_types:
-  - arithmetic and percentages
-  - ratios, rates, and work problems
-  - algebraic word problems
-  - number properties and sequences
-  - calendar and time calculations
-  - probability and counting
-  - deductive logic
-  - ordering and constraint puzzles
+  - billing reconciliation and capacity calculations
+  - rates, scheduling, and resource constraints
+  - retry and backoff schedules
+  - business-day and timezone calculations
+  - operational probability and reliability
+  - access-policy logic
+  - dependency ordering
 metrics: [accuracy, mean_score]
 score_formula: mean_score
 evaluation_policy:
@@ -22,17 +21,17 @@ evaluation_policy:
 items_path: items.jsonl
 authoring_paths:
   - generated.yaml
-current_question_count: 100
-target_question_count: 100
+current_question_count: 48
+target_question_count: 48
 current_difficulty_distribution:
   easy: 8
-  medium: 44
-  hard: 48
+  medium: 24
+  hard: 16
 difficulty_distribution:
   easy: 8
-  medium: 44
-  hard: 48
-target_visibility_distribution: {public: 0, held_out: 100}
+  medium: 24
+  hard: 16
+target_visibility_distribution: {public: 0, held_out: 48}
 order_rule: easy_to_hard
 scoring_methods:
   - numeric_tolerance

@@ -103,12 +103,12 @@ def test_active_pilot_suite_loads_with_difficulty_progression() -> None:
         "applied_reasoning",
         "messy_text_to_schema",
     }
-    assert sum(len(items) for items in suite.items.values()) == 148
+    assert sum(len(items) for items in suite.items.values()) == 96
     reasoning = suite.items["applied_reasoning"]
-    assert len(reasoning) == 100
+    assert len(reasoning) == 48
     assert [item.difficulty for item in reasoning].count("easy") == 8
-    assert [item.difficulty for item in reasoning].count("medium") == 44
-    assert [item.difficulty for item in reasoning].count("hard") == 48
+    assert [item.difficulty for item in reasoning].count("medium") == 24
+    assert [item.difficulty for item in reasoning].count("hard") == 16
     schema_items = suite.items["messy_text_to_schema"]
     assert len(schema_items) == 48
     assert [item.difficulty for item in schema_items].count("easy") == 8
@@ -122,7 +122,7 @@ def test_numeric_and_exact_answer_verifiers() -> None:
     items = {item.id: item for item in suite.items["applied_reasoning"]}
     percentage = items["reason_arithmeticperc_001"]
     calendar = items["reason_calendartime_002"]
-    ordering = items["reason_orderingconstr_012"]
+    ordering = items["reason_orderingconstr_007"]
     rational = items["reason_probabilitycou_007"]
 
     assert calendar.scoring.method == "date_value"

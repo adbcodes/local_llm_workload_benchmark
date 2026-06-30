@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import argparse
-import math
-import random
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from fractions import Fraction
-from itertools import combinations, permutations, product
 from pathlib import Path
 from typing import Any, Callable
 
@@ -15,6 +12,7 @@ import yaml
 
 
 GENERATOR = "applied_reasoning"
+GENERATOR_VERSION = "applied_reasoning_v3"
 DEFAULT_SEED = 20260731
 FINAL_ANSWER_INSTRUCTION = (
     "You may show concise working. End with exactly one final line in this format: "
@@ -30,8 +28,15 @@ SUBCATEGORIES = (
     "deductive_logic",
     "ordering_constraint_puzzles",
 )
-CORE_COUNTS = {
-    name: (13 if index < 4 else 12) for index, name in enumerate(SUBCATEGORIES)
+CORE_COUNTS = {name: 6 for name in SUBCATEGORIES}
+ITEM_NUMBERS = {
+    name: (1, 2, 3, 4, 5, 7) if name in {
+        "calendar_time",
+        "probability_counting",
+        "deductive_logic",
+        "ordering_constraint_puzzles",
+    } else (1, 2, 3, 4, 5, 6)
+    for name in SUBCATEGORIES
 }
 
 
@@ -61,7 +66,7 @@ def _item(
     sequence: int,
     seed: int,
 ) -> dict[str, Any]:
-    if scenario.scoring == "numeric_tolerance":
+    if scenario.scoring in {"numeric_tolerance", "rational_value"}:
         parameters: dict[str, Any] = {
             "absolute_tolerance": 1e-9,
             "allow_surrounding_text": True,
@@ -69,11 +74,6 @@ def _item(
         if scenario.answer_unit:
             parameters["answer_unit"] = scenario.answer_unit
             parameters["unit_aliases"] = list(scenario.unit_aliases)
-    elif scenario.scoring == "rational_value":
-        parameters = {
-            "absolute_tolerance": 1e-9,
-            "allow_surrounding_text": True,
-        }
     elif scenario.scoring == "date_value":
         parameters = {}
     else:
@@ -84,13 +84,13 @@ def _item(
         }
         if scenario.answer_format:
             parameters["answer_format"] = scenario.answer_format
+
     slug = subcategory.replace("_", "")[:14]
-    item_id = f"reason_{slug}_{sequence:03d}"
     return {
-        "id": item_id,
+        "id": f"reason_{slug}_{sequence:03d}",
         "subcategory": subcategory,
         "difficulty": scenario.difficulty,
-        "split": "test" if scenario.difficulty != "easy" else "dev",
+        "split": "dev" if scenario.difficulty == "easy" else "test",
         "visibility": "held_out",
         "prompt": scenario.prompt,
         "response_contract": {
@@ -105,373 +105,655 @@ def _item(
             "generator": GENERATOR,
             "seed": seed,
         },
-        "tags": [
-            "fresh_generated",
-            "headline_core",
-            *scenario.tags,
-        ],
+        "tags": ["fresh_generated", "diagnostic_control", *scenario.tags],
     }
 
 
-def _arithmetic(rng: random.Random) -> list[Scenario]:
-    rows: list[Scenario] = []
-    rows.append(Scenario("direct_percent", "easy", "What is 17.5% of 640?", 112, tags=("sanity", "percentage")))
-    price_cases = [(1850, 12, 90, 5), (2400, 15, 120, 12), (3250, 8, 75, 9)]
-    for i, (price, discount, fee, tax) in enumerate(price_cases):
-        value = Fraction((price * (100 - discount) + fee * 100) * (100 + tax), 10_000)
-        rows.append(Scenario(f"mixed_price_{i}", "medium", f"A device costs ₹{price}. It receives a {discount}% discount, then a ₹{fee} shipping charge is added. A {tax}% tax is applied to the discounted price plus shipping. Do not round intermediate values. What is the amount charged in rupees?", float(value) if value.denominator != 1 else value.numerator, tags=("sequential_operations",)))
-    mean_cases = [(8, 42, 12, 51, (60, 66)), (9, 38, 11, 47, (55, 58)), (7, 64, 13, 52, (41, 44))]
-    for i, (n1, m1, n2, m2, removed) in enumerate(mean_cases):
-        value = Fraction(n1 * m1 + n2 * m2 - sum(removed), n1 + n2 - 2)
-        rows.append(Scenario(f"corrected_mean_{i}", "medium", f"One batch has {n1} readings with mean {m1}; another has {n2} readings with mean {m2}. Readings {removed[0]} and {removed[1]} from the second batch are discarded. What is the mean of all remaining readings? Give an exact fraction or decimal.", _fraction_text(value), scoring="rational_value", tags=("weighted_mean",)))
-    hard_specs = [
-        ("removed_extremes", (20, Fraction(262, 5), 18, Fraction(103, 2), 3)),
-        ("removed_extremes", (24, Fraction(191, 4), 22, Fraction(93, 2), 2)),
-        ("tiered_bill", (640, 180, 6, 9, 13, 35, 18)),
-        ("tiered_bill", (575, 150, 5, 8, 12, 40, 15)),
-        ("reallocation", (800, 35, 20, 50)),
-        ("reallocation", (1250, 28, 16, 40)),
-        ("reverse_change", (18, 12, 2464)),
-        ("reverse_change", (25, 8, 2916)),
-        ("tiered_bill", (710, 220, 4, 7, 11, 55, 12)),
-        ("reallocation", (960, 45, 25, 60)),
+def _arithmetic() -> list[Scenario]:
+    invoice_due = Fraction(18 * 450 * 90, 100) + 32 * 120 - 600
+    usable_memory = Fraction(12 * 64 * 875, 1000)
+    usage_charge = 2_000 * Fraction(8, 100) + 3_000 * Fraction(6, 100)
+    usage_charge += 1_500 * Fraction(4, 100)
+    credited_total = usage_charge * Fraction(925, 1000) + 35
+    taxed_bill = credited_total * Fraction(118, 100)
+    usable_storage = Fraction(24 * 8 * 10, 12) * Fraction(85, 100)
+
+    return [
+        Scenario(
+            "direct_percent",
+            "easy",
+            "A community kitchen has a 640 kg monthly rice allocation and donates "
+            "17.5% to a nearby shelter. How many kilograms are donated?",
+            112,
+            tags=("sanity", "percentage", "practical_context"),
+        ),
+        Scenario(
+            "discount_fee_tax",
+            "medium",
+            "A device costs ₹1850. It receives a 12% discount, then a ₹90 shipping "
+            "charge is added. A 5% tax is applied to the discounted price plus "
+            "shipping. Do not round intermediate values. What is the amount charged "
+            "in rupees?",
+            1803.9,
+            tags=("billing_reconciliation", "sequential_operations"),
+        ),
+        Scenario(
+            "seat_invoice",
+            "medium",
+            "A monthly SaaS invoice has 18 editor seats at ₹450 each and 32 viewer "
+            "seats at ₹120 each. The contract discounts editor seats by 10% but does "
+            "not discount viewer seats. A ₹600 credit memo is then applied. There is "
+            "no tax. What amount is due in rupees?",
+            invoice_due.numerator,
+            tags=("billing_reconciliation", "selective_discount", "credit_memo"),
+        ),
+        Scenario(
+            "memory_headroom",
+            "medium",
+            "A cluster has 12 workers with 64 GB of memory each. Operations reserves "
+            "12.5% of total memory, and existing workloads use 510 GB. Each new "
+            "replica needs 27 GB. What is the maximum number of whole replicas that "
+            "can be added without exceeding usable memory?",
+            int((usable_memory - 510) // 27),
+            tags=("capacity", "reserved_headroom", "integer_limit"),
+        ),
+        Scenario(
+            "tiered_cloud_bill",
+            "hard",
+            "A cloud account used 6.5 TB in a month, using decimal units "
+            "(1 TB = 1000 GB). The first 2000 GB cost $0.08/GB, the next 3000 GB "
+            "cost $0.06/GB, and remaining usage costs $0.04/GB. A 7.5% service "
+            "credit applies only to usage charges. Then a $35 monitoring fee is "
+            "added, and 18% tax applies to the credited usage plus the fee. What is "
+            "the final bill in dollars? Do not round intermediate values.",
+            _fraction_text(taxed_bill),
+            scoring="rational_value",
+            tags=("billing_reconciliation", "tiered_pricing", "scope_rules"),
+        ),
+        Scenario(
+            "erasure_coded_capacity",
+            "hard",
+            "A storage pool has 24 drives of 8 TB each. A 10+2 erasure-coding layout "
+            "uses 10 of every 12 raw terabytes for logical data. Operations then "
+            "reserves 15% of that logical capacity. Existing data occupies 116 TB, "
+            "and each new tenant needs 3.4 TB. What is the maximum number of whole "
+            "new tenants the pool can accept?",
+            int((usable_storage - 116) // Fraction(34, 10)),
+            tags=("capacity", "storage_overhead", "reserved_headroom"),
+        ),
     ]
-    for i, (kind, values) in enumerate(hard_specs):
-        if kind == "removed_extremes":
-            count, mean_all, inner_count, mean_inner, ratio = values
-            removed_sum = count * mean_all - inner_count * mean_inner
-            high = removed_sum * ratio / (ratio + 1)
-            prompt = f"{count} sensor readings have mean {_fraction_text(mean_all)}. After the highest and lowest are removed, the remaining {inner_count} have mean {_fraction_text(mean_inner)}. The highest is {ratio} times the lowest. What was the highest reading?"
-            expected: Any = _fraction_text(high)
-            scoring = "rational_value"
-        elif kind == "tiered_bill":
-            used, first, r1, r2, r3, fixed, rebate = values
-            second = 200
-            variable = min(used, first) * r1 + min(max(used-first, 0), second) * r2 + max(used-first-second, 0) * r3
-            total = Fraction((variable + fixed) * (100 - rebate), 100)
-            prompt = f"A utility charges ₹{r1} per unit for the first {first} units, ₹{r2} for the next {second}, and ₹{r3} above that, plus a fixed ₹{fixed} fee. A {rebate}% rebate applies to the entire bill. For {used} units, what is the final bill in rupees?"
-            expected, scoring = _fraction_text(total), "rational_value"
-        elif kind == "reallocation":
-            total, initial_a, moved_pct, final_a = values
-            initial = Fraction(total * initial_a, 100)
-            moved = Fraction(total * moved_pct, 100)
-            remaining_total = total - moved
-            target = Fraction(remaining_total * final_a, 100)
-            transfer = target - initial
-            prompt = f"A fund of ₹{total} is split between A and B, with {initial_a}% initially in A. Then {moved_pct}% of the total fund is withdrawn entirely from B. How much must be transferred from the remaining B balance to A so that A holds {final_a}% of the money still invested?"
-            expected, scoring = _fraction_text(transfer), "rational_value"
-        else:
-            rise, fall, final = values
-            start = Fraction(final * 10_000, (100 + rise) * (100 - fall))
-            prompt = f"A value rises by {rise}% and then falls by {fall}% of its new value, ending at {final}. What was the starting value? Give an exact fraction or decimal."
-            expected, scoring = _fraction_text(start), "rational_value"
-        rows.append(Scenario(f"{kind}_{i}", "hard", prompt, expected, scoring=scoring, tags=(kind, "multi_step")))
-    return rows
 
 
-def _ratios(rng: random.Random) -> list[Scenario]:
-    rows = [Scenario("ratio_share", "easy", "Two quantities are in the ratio 5:8 and total 143. What is the smaller quantity?", 55, tags=("sanity", "ratio"))]
-    work = [(12, 18), (14, 21), (15, 25)]
-    for i, (a, b) in enumerate(work):
-        value = Fraction(a*b, a+b)
-        rows.append(Scenario(f"combined_work_{i}", "medium", f"Worker A alone needs {a} days for a job and worker B alone needs {b} days. At constant rates, how many days do they need together? Give an exact fraction or decimal.", _fraction_text(value), scoring="rational_value", tags=("work_rate",)))
-    mixtures = [(36, 25, 40), (45, 20, 35), (50, 30, 44)]
-    for i, (volume, start, target) in enumerate(mixtures):
-        add = Fraction(volume * (target-start), 100-target)
-        rows.append(Scenario(f"mixture_{i}", "medium", f"A {volume}-litre mixture is {start}% concentrate. How many litres of pure concentrate must be added to make it {target}% concentrate?", _fraction_text(add), scoring="rational_value", tags=("mixture",)))
-    hard = [
-        ("worker_leaves", (12, 18, 3)), ("worker_leaves", (10, 15, 2)),
-        ("pipe_leak", (8, 12, 24, 2)), ("pipe_leak", (6, 10, 30, 1)),
-        ("average_speed", (180, 60, 120, 40, 30)), ("average_speed", (150, 50, 100, 25, 20)),
-        ("replace_mixture", (60, 30, 15, 50)), ("replace_mixture", (80, 25, 20, 40)),
-        ("gears", (18, 30, 45, 50)), ("gears", (24, 36, 54, 40)),
+def _ratios() -> list[Scenario]:
+    combined_rate = Fraction(1, 12) + Fraction(1, 18)
+    completed_in_two_hours = 120 * (
+        Fraction(1, 18) + Fraction(1, 24) + Fraction(1, 30)
+    )
+    remaining_time = (30 - completed_in_two_hours) / (
+        Fraction(1, 24) + Fraction(1, 30)
+    )
+    stream_b_rate = Fraction(100 * 50, 80 + 50)
+    concurrent_seconds = Fraction(120_000, 1) / stream_b_rate
+    stream_a_transferred = concurrent_seconds * Fraction(100 * 80, 80 + 50)
+    final_seconds = Fraction(480_000, 1) - stream_a_transferred
+    final_seconds /= 80
+
+    return [
+        Scenario(
+            "ratio_share",
+            "easy",
+            "Two food banks split 143 supply boxes in the ratio 5:8. How many boxes "
+            "does the bank receiving the smaller share get?",
+            55,
+            tags=("sanity", "ratio", "practical_context"),
+        ),
+        Scenario(
+            "combined_work",
+            "medium",
+            "Worker A alone needs 12 days for a job and worker B alone needs 18 days. "
+            "At constant rates, how many days do they need together? Give an exact "
+            "fraction or decimal.",
+            _fraction_text(1 / combined_rate),
+            scoring="rational_value",
+            tags=("work_rate", "parallel_work"),
+        ),
+        Scenario(
+            "migration_capacity",
+            "medium",
+            "A blue service pool can handle 900 requests per minute and a green pool "
+            "can handle 600. During a migration, 20% of blue capacity is reserved, "
+            "while green is intentionally limited to 75% of its capacity. What is "
+            "the combined live capacity in requests per minute?",
+            1170,
+            tags=("capacity", "percentage_limits", "migration"),
+        ),
+        Scenario(
+            "variable_copy_rate",
+            "medium",
+            "A 1.8 TB dataset is copied using decimal units (1 TB = 1,000,000 MB). "
+            "The link sustains 75 MB/s for the first 2 hours and 120 MB/s afterward. "
+            "Ignore protocol overhead. How many minutes does the entire copy take?",
+            295,
+            tags=("data_migration", "rate_change", "unit_conversion"),
+        ),
+        Scenario(
+            "incident_queue",
+            "hard",
+            "Three responders close tickets at constant rates of one every 18, 24, "
+            "and 30 minutes. They work together for 120 minutes on a 30-ticket queue, "
+            "then the fastest responder is reassigned. How many additional minutes "
+            "do the other two need? Give an exact fraction or decimal.",
+            _fraction_text(remaining_time),
+            scoring="rational_value",
+            tags=("resource_constraints", "work_rate", "staffing_change"),
+        ),
+        Scenario(
+            "shared_link",
+            "hard",
+            "Two backups start together on a link capped at 100 MB/s. Their nominal "
+            "rates are 80 MB/s for backup A and 50 MB/s for backup B. While both run, "
+            "the 100 MB/s is divided in the ratio 80:50. After one finishes, the "
+            "other returns to its nominal rate. A contains 480 GB and B contains "
+            "120 GB, using 1 GB = 1000 MB. How many minutes pass until both finish?",
+            _fraction_text((concurrent_seconds + final_seconds) / 60),
+            scoring="rational_value",
+            tags=("resource_constraints", "shared_capacity", "rate_change"),
+        ),
     ]
-    for i, (kind, v) in enumerate(hard):
-        if kind == "worker_leaves":
-            a, b, together_days = v
-            completed = Fraction(together_days, a) + Fraction(together_days, b)
-            value = Fraction(a) * (1-completed)
-            prompt = f"A can finish a job in {a} days and B in {b} days. They work together for {together_days} days, then B leaves. How many additional days does A need?"
-        elif kind == "pipe_leak":
-            fill_a, fill_b, drain, alone = v
-            remaining = 1 - Fraction(alone, fill_a)
-            net = Fraction(1, fill_a) + Fraction(1, fill_b) - Fraction(1, drain)
-            value = remaining / net
-            prompt = f"Pipe A fills a tank in {fill_a} hours, B in {fill_b}, and a leak empties a full tank in {drain}. A runs alone for {alone} hours; then B and the leak start while A continues. How many more hours are needed?"
-        elif kind == "average_speed":
-            d1, s1, d2, s2, stop = v
-            value = Fraction(d1+d2, 1) / (Fraction(d1, s1)+Fraction(d2, s2)+Fraction(stop, 60))
-            prompt = f"A vehicle travels {d1} km at {s1} km/h, stops for {stop} minutes, then travels {d2} km at {s2} km/h. What is its average speed for the whole journey in km/h?"
-        elif kind == "replace_mixture":
-            volume, initial, removed, replacement = v
-            final_amount = Fraction(volume*initial,100) * Fraction(volume-removed, volume) + Fraction(removed*replacement,100)
-            value = final_amount / volume * 100
-            prompt = f"A {volume}-litre solution is {initial}% salt. {removed} litres are removed and replaced with a {replacement}% salt solution. What percentage salt is in the final mixture? Return the numeric percentage."
-        else:
-            teeth_a, teeth_b, teeth_c, turns_a = v
-            value = Fraction(turns_a*teeth_a, teeth_c)
-            prompt = f"Gear A ({teeth_a} teeth) drives gear B ({teeth_b} teeth), which drives gear C ({teeth_c} teeth). If A turns {turns_a} times, how many turns does C make? Ignore direction."
-        rows.append(Scenario(f"{kind}_{i}", "hard", prompt, _fraction_text(value), scoring="rational_value", tags=(kind, "multi_step")))
-    return rows
 
 
-def _algebra(rng: random.Random) -> list[Scenario]:
-    rows = [Scenario("linear", "easy", "Solve for x: 7x - 9 = 82.", 13, tags=("sanity", "linear_equation"))]
-    medium_specs = [
-        ("tickets", (18, 320, 180, 4360)), ("tickets", (23, 250, 150, 4650)),
-        ("rectangle", (68, 8)), ("rectangle", (94, 13)),
-        ("ages", (44, 8, 3)), ("digits", (9, 27)),
+def _algebra() -> list[Scenario]:
+    final_invoice = Fraction(37_500 + 350 * 48, 1)
+    final_invoice *= Fraction(92, 100) * Fraction(118, 100)
+
+    return [
+        Scenario(
+            "linear",
+            "easy",
+            "Seven identical storage crates plus a ₹9 handling refund produce a net "
+            "charge of ₹82. What was the charge per crate in rupees?",
+            13,
+            tags=("sanity", "linear_equation", "practical_context"),
+        ),
+        Scenario(
+            "ticket_mix",
+            "medium",
+            "A venue sold 18 tickets. Adult tickets cost ₹320, child tickets ₹180, "
+            "and total sales were ₹4360. How many adult tickets were sold?",
+            8,
+            tags=("reconciliation", "two_rate_mix"),
+        ),
+        Scenario(
+            "missing_seat_count",
+            "medium",
+            "An invoice contains 14 standard seats at ₹280 each, an unknown number "
+            "of analyst seats at ₹460 each, and a ₹350 credit. The pre-tax amount "
+            "after the credit is ₹6790. How many analyst seats were billed?",
+            7,
+            tags=("billing_reconciliation", "missing_quantity"),
+        ),
+        Scenario(
+            "processor_fee",
+            "medium",
+            "A software order contains 35 identical licenses plus a ₹6000 setup fee. "
+            "The payment processor withholds 2% of the gross charge and deposits "
+            "₹47040. What was the price of each license in rupees?",
+            1200,
+            tags=("billing_reconciliation", "reverse_percentage"),
+        ),
+        Scenario(
+            "plan_break_even",
+            "hard",
+            "A reserved compute plan costs ₹15840 up front plus ₹22 per instance-hour. "
+            "On-demand compute costs ₹58 per instance-hour. An enterprise discount "
+            "of 12% applies to hourly charges under either plan but not to the "
+            "up-front fee. At how many instance-hours are the total costs equal?",
+            500,
+            tags=("billing_reconciliation", "break_even", "discount_scope"),
+        ),
+        Scenario(
+            "quarterly_overage",
+            "hard",
+            "A quarterly service invoice has three base charges of ₹12500 and an "
+            "unknown number of overage units at ₹48 each. An 8% discount applies to "
+            "the entire pre-tax subtotal, then 18% tax is added. The final invoice is "
+            f"₹{float(final_invoice):.2f}. How many overage units were billed?",
+            350,
+            tags=("billing_reconciliation", "reverse_multi_step", "unknown_usage"),
+        ),
     ]
-    for i, (kind, v) in enumerate(medium_specs):
-        if kind == "tickets":
-            total, adult, child, revenue = v
-            answer = (revenue-child*total)//(adult-child)
-            prompt = f"A venue sold {total} tickets. Adult tickets cost ₹{adult}, child tickets ₹{child}, and total sales were ₹{revenue}. How many adult tickets were sold?"
-        elif kind == "rectangle":
-            perimeter, diff = v
-            answer = (perimeter//2-diff)//2
-            prompt = f"A rectangle has perimeter {perimeter}. Its length is {diff} units more than its width. What is its width?"
-        elif kind == "ages":
-            total, diff, years = v
-            younger = (total-diff)//2
-            answer = younger+years
-            prompt = f"Two siblings' ages total {total}; the older is {diff} years older. How old will the younger be in {years} years?"
-        else:
-            digit_sum, difference = v
-            tens = (digit_sum + difference//9)//2
-            answer = 10*tens + (digit_sum-tens)
-            prompt = f"A two-digit number has digits summing to {digit_sum}. The number is {difference} greater than the number formed by reversing its digits. What is the original number?"
-        rows.append(Scenario(f"{kind}_{i}", "medium", prompt, answer, tags=(kind,)))
-    hard_specs = [
-        (137, 20), (164, 24), (191, 28), (218, 32),
+
+
+def _number_properties() -> list[Scenario]:
+    batch_total = sum(Fraction(1200, 1) * Fraction(5, 4) ** index for index in range(4))
+
+    return [
+        Scenario(
+            "maintenance_lcm",
+            "easy",
+            "One maintenance check repeats every 18 days and another every 24 days. "
+            "If both happen today, after how many days will they next happen together?",
+            72,
+            tags=("sanity", "maintenance_windows", "lcm"),
+        ),
+        Scenario(
+            "exclusive_shard_route",
+            "medium",
+            "Batch IDs run from 1 through 500. IDs divisible by 8 route to shard A, "
+            "except IDs also divisible by 12 route to reconciliation instead. How "
+            "many IDs route to shard A?",
+            42,
+            tags=("filtering", "inclusion_exclusion", "routing"),
+        ),
+        Scenario(
+            "capped_backoff",
+            "medium",
+            "A client retries after delays of 2 seconds, doubling each time but capped "
+            "at 10 seconds. A request fails five times and succeeds on the sixth "
+            "attempt. How many total seconds are spent waiting between attempts?",
+            34,
+            tags=("retry_backoff", "cap", "sequence"),
+        ),
+        Scenario(
+            "growing_batches",
+            "medium",
+            "A backfill processes 1200 records in its first batch. Each later batch "
+            "contains exactly 25% more records than the preceding batch. How many "
+            "records are processed across the first four batches? Give an exact "
+            "fraction or decimal.",
+            _fraction_text(batch_total),
+            scoring="rational_value",
+            tags=("capacity", "growth_sequence", "backfill"),
+        ),
+        Scenario(
+            "timeouts_and_backoff",
+            "hard",
+            "An API call times out after 12 seconds. Attempts 1 through 4 time out; "
+            "the fifth succeeds after 3 seconds. Before attempts 2 through 5, the "
+            "client waits 1, 2, 4, and 8 seconds respectively. From the start of "
+            "attempt 1, how many seconds elapse until success?",
+            66,
+            tags=("retry_backoff", "timeouts", "elapsed_time"),
+        ),
+        Scenario(
+            "offset_periodic_jobs",
+            "hard",
+            "A backup starts at midnight and then every 18 minutes. A metrics job "
+            "starts 6 minutes after midnight and then every 24 minutes. How many "
+            "minutes after midnight is their first simultaneous start?",
+            54,
+            tags=("maintenance_windows", "offset_recurrence", "congruence"),
+        ),
     ]
-    for i, (constant, max_x) in enumerate(hard_specs):
-        feasible = [(x, y) for x in range(1, max_x) for y in range(1, constant) if 3*x+5*y == constant]
-        x, y = max(feasible, key=lambda pair: pair[0]*pair[1])
-        rows.append(Scenario(f"integer_optimization_{i}", "hard", f"Positive integers x and y satisfy 3x + 5y = {constant}, with x < {max_x}. What is the maximum possible value of xy?", x*y, tags=("diophantine", "optimization")))
-    growth = [(10000, 2000, 10), (8000, 1500, 12), (12000, 2500, 8)]
-    for i, (start, deposit, rate) in enumerate(growth):
-        end = Fraction(start*(100+rate)**2, 10000)+Fraction(deposit*(100+rate),100)
-        rows.append(Scenario(f"unknown_growth_{i}", "hard", f"An account starts with ₹{start}. After one year at an unknown annual rate, ₹{deposit} is deposited. It grows for one more year at the same rate and ends at ₹{float(end):g}. What was the annual growth rate? Return the numeric percentage.", rate, answer_unit="%", unit_aliases=("percent",), tags=("quadratic", "percentage")))
-    systems = [(7, 11, 5), (9, 14, 4), (12, 17, 6)]
-    for i, (x, y, z) in enumerate(systems):
-        s1, s2, s3 = x+y+z, 2*x-y+z, x+3*y-z
-        rows.append(Scenario(f"three_variable_{i}", "hard", f"Numbers x, y, z satisfy x+y+z={s1}, 2x-y+z={s2}, and x+3y-z={s3}. What is x+2y+3z?", x+2*y+3*z, tags=("linear_system",)))
-    return rows
 
 
-def _number_properties(rng: random.Random) -> list[Scenario]:
-    rows = [Scenario("lcm", "easy", "What is the least positive integer divisible by both 18 and 24?", 72, tags=("sanity", "lcm"))]
-    medium = [
-        ("divisible_not", (500, 8, 12)), ("divisible_not", (720, 9, 15)),
-        ("crt_two", (4, 7, 2, 5)), ("crt_two", (5, 8, 3, 7)),
-        ("divisor_count", (756,)), ("divisor_count", (1080,)),
+def _business_day(start: date, count: int, holidays: set[date]) -> date:
+    current = start
+    seen = 0
+    while seen < count:
+        if current.weekday() < 5 and current not in holidays:
+            seen += 1
+            if seen == count:
+                return current
+        current += timedelta(days=1)
+    raise AssertionError("unreachable")
+
+
+def _offset(minutes: int) -> str:
+    sign = "+" if minutes >= 0 else "-"
+    minutes = abs(minutes)
+    return f"{sign}{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def _calendar() -> list[Scenario]:
+    meeting_start = date(2027, 2, 3)
+    business_finish = _business_day(
+        date(2027, 5, 3), 10, {date(2027, 5, 10)}
+    )
+    year_end_finish = _business_day(
+        date(2028, 12, 18), 18, {date(2028, 12, 25), date(2029, 1, 1)}
+    )
+    fixed_start = datetime(
+        2028, 10, 14, 22, 40, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    )
+    flight_start = datetime(
+        2027, 3, 27, 23, 40, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    )
+    flight_arrival = (flight_start + timedelta(hours=9, minutes=50)).astimezone(
+        timezone(timedelta(hours=-4))
+    )
+
+    return [
+        Scenario(
+            "duration",
+            "easy",
+            "A session starts at 14:35 and lasts 105 minutes. What time does it end? "
+            "Return HH:MM in 24-hour time.",
+            "16:20",
+            scoring="exact_match",
+            response_type="text",
+            response_format="HH:MM",
+            tags=("sanity", "duration"),
+        ),
+        Scenario(
+            "recurring_meeting",
+            "medium",
+            "A meeting repeats every 3 weeks. The first occurrence is 2027-02-03 "
+            "and counts as occurrence 1. What is the date of occurrence 6?",
+            (meeting_start + timedelta(weeks=15)).isoformat(),
+            scoring="date_value",
+            response_type="date",
+            response_format="common_unambiguous_date",
+            tags=("calendar", "recurrence"),
+        ),
+        Scenario(
+            "business_days",
+            "medium",
+            "A rollout starts on 2027-05-03, which counts as business day 1. It "
+            "requires 10 business days. Weekends do not count, and 2027-05-10 is a "
+            "holiday. On what date is it completed?",
+            business_finish.isoformat(),
+            scoring="date_value",
+            response_type="date",
+            response_format="common_unambiguous_date",
+            tags=("business_days", "holiday"),
+        ),
+        Scenario(
+            "fixed_offset_window",
+            "medium",
+            "A maintenance window starts at 2028-10-14 22:40 in UTC+05:30 and lasts "
+            "2 hours 35 minutes. What is the end date and time in UTC? Return "
+            "YYYY-MM-DD HH:MM.",
+            (fixed_start + timedelta(hours=2, minutes=35))
+            .astimezone(timezone.utc)
+            .strftime("%Y-%m-%d %H:%M"),
+            scoring="exact_match",
+            response_type="text",
+            response_format="YYYY-MM-DD HH:MM",
+            tags=("maintenance_windows", "timezone", "date_rollover"),
+        ),
+        Scenario(
+            "year_end_business_days",
+            "hard",
+            "A migration starts on 2028-12-18, counted as business day 1, and lasts "
+            "18 business days. Weekends and the holidays 2028-12-25 and 2029-01-01 "
+            "do not count. What is its completion date?",
+            year_end_finish.isoformat(),
+            scoring="date_value",
+            response_type="date",
+            response_format="common_unambiguous_date",
+            tags=("business_days", "multiple_holidays", "year_rollover"),
+        ),
+        Scenario(
+            "flight_timezone",
+            "hard",
+            f"A flight departs at 2027-03-27 23:40 in UTC{_offset(330)}. It lasts "
+            f"9 hours 50 minutes and arrives in UTC{_offset(-240)}. What is the "
+            "local arrival date and time? Return YYYY-MM-DD HH:MM.",
+            flight_arrival.strftime("%Y-%m-%d %H:%M"),
+            scoring="exact_match",
+            response_type="text",
+            response_format="YYYY-MM-DD HH:MM",
+            tags=("timezone", "date_rollover"),
+        ),
     ]
-    for i, (kind, v) in enumerate(medium):
-        if kind == "divisible_not":
-            limit, a, b = v
-            answer = limit//a-limit//math.lcm(a,b)
-            prompt = f"How many integers from 1 through {limit} are divisible by {a} but not by {b}?"
-        elif kind == "crt_two":
-            r1, m1, r2, m2 = v
-            answer = next(n for n in range(1, m1*m2+1) if n%m1==r1%m1 and n%m2==r2%m2)
-            prompt = f"What is the least positive integer n such that n leaves remainder {r1} when divided by {m1} and remainder {r2} when divided by {m2}?"
-        else:
-            (n,) = v
-            answer = sum(n%d==0 for d in range(1,n+1))
-            prompt = f"How many positive divisors does {n} have?"
-        rows.append(Scenario(f"{kind}_{i}", "medium", prompt, answer, tags=(kind,)))
-    hard = [
-        ("modular_power", (7, 222, 1000, 3)), ("modular_power", (13, 157, 1000, 3)),
-        ("exactly_one", (10000, (6,10,15))), ("exactly_one", (12000, (8,12,18))),
-        ("crt_three", ((2,5),(3,7),(4,9))), ("crt_three", ((4,7),(5,8),(6,11))),
-        ("coprime_count", (840, 5000)), ("coprime_count", (1260, 6000)),
-        ("recurrence", (3,5,4,9)), ("recurrence", (2,7,5,8)),
+
+
+def _probability() -> list[Scenario]:
+    audit_at_least_one = Fraction(1, 1) - Fraction(455, 1140)
+    replica_failure = 3 * Fraction(1, 20) ** 2 * Fraction(19, 20)
+    replica_failure += Fraction(1, 20) ** 3
+    exactly_one_risky_given_any = Fraction(3 * 10, 56 - 10)
+
+    return [
+        Scenario(
+            "ticket_escalation",
+            "easy",
+            "A quality team randomly reviews one of 10 numbered tickets. Tickets 8, "
+            "9, and 10 require escalation. What is the probability the selected "
+            "ticket requires escalation? Give an exact fraction.",
+            "3/10",
+            scoring="rational_value",
+            tags=("sanity", "probability", "practical_context"),
+        ),
+        Scenario(
+            "paged_incident_source",
+            "medium",
+            "Of all incidents, 60% come from the API service and 40% from batch jobs. "
+            "The paging rule triggers for 5% of API incidents and 12% of batch "
+            "incidents. Given that a randomly selected incident triggered a page, "
+            "what is the probability it came from a batch job? Give an exact fraction.",
+            "8/13",
+            scoring="rational_value",
+            tags=("conditional_probability", "incident_operations"),
+        ),
+        Scenario(
+            "audit_sample",
+            "medium",
+            "A release batch contains 20 changes, 5 of which are high risk. Three "
+            "changes are sampled uniformly without replacement. What is the "
+            "probability that at least one sampled change is high risk? Give an "
+            "exact fraction.",
+            _fraction_text(audit_at_least_one),
+            scoring="rational_value",
+            tags=("sampling_without_replacement", "complement"),
+        ),
+        Scenario(
+            "replica_failure",
+            "medium",
+            "Three replicas fail independently during a maintenance window, each "
+            "with probability 1/20. The service is unavailable if at least two "
+            "replicas fail. What is the probability of unavailability? Give an "
+            "exact fraction.",
+            _fraction_text(replica_failure),
+            scoring="rational_value",
+            tags=("reliability", "independent_failures", "threshold"),
+        ),
+        Scenario(
+            "conditional_risk_count",
+            "hard",
+            "Eight deployments include three high-risk and five standard changes. "
+            "Three deployments are selected uniformly without replacement. Given "
+            "that the selection contains at least one high-risk deployment, what is "
+            "the probability it contains exactly one high-risk deployment? Give an "
+            "exact fraction.",
+            _fraction_text(exactly_one_risky_given_any),
+            scoring="rational_value",
+            tags=("conditional_probability", "sampling_without_replacement"),
+        ),
+        Scenario(
+            "detector_posterior",
+            "hard",
+            "An alert is equally likely to come from detector A or detector B. "
+            "Detector A marks 2 of every 3 alerts as actionable; detector B marks 2 "
+            "of every 5 as actionable. A randomly selected alert is marked "
+            "actionable. What is the probability it came from detector A? Give an "
+            "exact fraction.",
+            "5/8",
+            scoring="rational_value",
+            tags=("conditional_probability", "bayes", "valid_priors"),
+        ),
     ]
-    for i, (kind, v) in enumerate(hard):
-        if kind == "modular_power":
-            base, exponent, modulus, width = v
-            answer = str(pow(base, exponent, modulus)).zfill(width)
-            prompt = f"What are the last {width} decimal digits of {base}^{exponent}? Return exactly {width} digits, including leading zeros."
-            rows.append(Scenario(f"{kind}_{i}", "hard", prompt, answer, scoring="exact_match", response_type="text", response_format="fixed_width_digits", tags=(kind,)))
-            continue
-        if kind == "exactly_one":
-            limit, divisors = v
-            answer = sum(sum(n%d==0 for d in divisors)==1 for n in range(1,limit+1))
-            prompt = f"How many integers from 1 through {limit} are divisible by exactly one of {divisors[0]}, {divisors[1]}, and {divisors[2]}?"
-        elif kind == "crt_three":
-            constraints = v
-            modulus = math.prod(m for _,m in constraints)
-            answer = next(n for n in range(1,modulus+1) if all(n%m==r for r,m in constraints))
-            prompt = "What is the least positive integer n such that " + ", ".join(f"n mod {m} = {r}" for r,m in constraints) + "?"
-        elif kind == "coprime_count":
-            base, limit = v
-            answer = sum(math.gcd(n,base)==1 for n in range(1,limit+1))
-            prompt = f"How many integers from 1 through {limit} are coprime to {base}?"
-        else:
-            a1, a2, p, index = v
-            seq = [a1,a2]
-            while len(seq)<index:
-                seq.append(seq[-1]+seq[-2]+p)
-            answer = seq[index-1]
-            prompt = f"A sequence has a1={a1}, a2={a2}, and a(n)=a(n-1)+a(n-2)+{p} for n≥3. What is a{index}?"
-        rows.append(Scenario(f"{kind}_{i}", "hard", prompt, answer, tags=(kind, "multi_step")))
-    return rows
 
 
-def _calendar(rng: random.Random) -> list[Scenario]:
-    rows = [Scenario("duration", "easy", "A session starts at 14:35 and lasts 105 minutes. What time does it end? Return HH:MM in 24-hour time.", "16:20", scoring="exact_match", response_type="text", response_format="HH:MM", tags=("sanity", "duration"))]
-    recurrences = [(date(2027,2,3),3,6),(date(2028,1,11),2,9)]
-    for i,(start,weeks,k) in enumerate(recurrences):
-        answer=start+timedelta(weeks=weeks*(k-1))
-        rows.append(Scenario(f"recurrence_{i}","medium",f"A meeting repeats every {weeks} weeks. The first occurrence is {start.isoformat()} and counts as occurrence 1. What is the date of occurrence {k}?",answer.isoformat(),scoring="date_value",response_type="date",response_format="common_unambiguous_date",tags=("recurrence",)))
-    business=[(date(2027,5,3),10,{date(2027,5,10)}),(date(2028,2,21),13,{date(2028,2,25)})]
-    for i,(start,count,holidays) in enumerate(business):
-        answer=_business_day(start,count,holidays)
-        rows.append(Scenario(f"business_{i}","medium",f"A task starts on {start.isoformat()}, which counts as business day 1. It requires {count} business days. Weekends do not count, and {next(iter(holidays)).isoformat()} is a holiday. On what date is it completed?",answer.isoformat(),scoring="date_value",response_type="date",response_format="common_unambiguous_date",tags=("business_days",)))
-    nth=[(2028,9,1,2)]
-    for i,(year,month,weekday,n) in enumerate(nth):
-        answer=_nth_weekday(year,month,weekday,n)
-        rows.append(Scenario(f"nth_weekday_{i}","medium",f"What is the date of the {['first','second','third','fourth'][n-1]} {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][weekday]} of {date(year,month,1).strftime('%B %Y')}?",answer.isoformat(),scoring="date_value",response_type="date",response_format="common_unambiguous_date",tags=("weekday",)))
-    hard_specs=[
-        ("timezone",("2027-03-27 23:40",330,590,-240)), ("timezone",("2028-12-31 21:55",345,735,-300)),
-        ("nested_weekday",(2029,10,1,2,4,3)), ("nested_weekday",(2030,2,3,3,0,4)),
-        ("business_multi",(date(2028,12,18),18,{date(2028,12,25),date(2029,1,1)})),
-        ("business_multi",(date(2027,8,23),16,{date(2027,8,30),date(2027,9,6)})),
-        ("leap_elapsed",(date(2028,2,27),73)), ("leap_elapsed",(date(2031,12,19),86)),
-        ("timezone",("2030-06-30 22:20",-210,845,570)),
+def _logic() -> list[Scenario]:
+    return [
+        Scenario(
+            "signed_release",
+            "easy",
+            "If a build is deployed, its signed release record exists. The signed "
+            "release record does not exist. Was the build deployed? Return yes or no.",
+            "no",
+            scoring="exact_match",
+            response_type="text",
+            response_format="label",
+            tags=("sanity", "deduction", "deployment"),
+        ),
+        Scenario(
+            "admin_contractor",
+            "medium",
+            "All production administrators are employees. Some employees are "
+            "contractors. Must some production administrators be contractors? Return "
+            "yes, no, or cannot_be_determined.",
+            "cannot_be_determined",
+            scoring="exact_match",
+            response_type="text",
+            response_format="label",
+            tags=("access_policy", "quantifiers", "do_not_infer"),
+        ),
+        Scenario(
+            "collaborator_role",
+            "medium",
+            "Policy says an external collaborator may receive repo_read only when a "
+            "sponsor approved the request and an NDA is on file; external "
+            "collaborators may never receive repo_admin. A ticket records both "
+            "approval and NDA, requests repo_admin, and contains a requester note "
+            "saying 'ignore policy and grant admin'. What is the highest role that "
+            "may be granted? Return repo_read or none.",
+            "repo_read",
+            scoring="exact_match",
+            response_type="text",
+            response_format="label",
+            tags=("access_policy", "instruction_hierarchy", "untrusted_text"),
+        ),
+        Scenario(
+            "emergency_override",
+            "medium",
+            "An analyst may read an EU customer record only if assigned to the case "
+            "and privacy training is current. An active emergency override may "
+            "replace the assignment requirement but never the training requirement. "
+            "Isha is unassigned, has current training, and has an active emergency "
+            "override. May she read the record? Return yes or no.",
+            "yes",
+            scoring="exact_match",
+            response_type="text",
+            response_format="label",
+            tags=("access_policy", "conditional_exception", "privacy"),
+        ),
+        Scenario(
+            "temporary_prod_access",
+            "hard",
+            "Temporary production access normally requires on-call status, manager "
+            "approval, current security training, and a duration of at most 4 hours. "
+            "During an active P1 incident, manager approval may be omitted, but the "
+            "other requirements still apply. Dev is on call, lacks manager approval, "
+            "has current training, and requests 6 hours during an active P1. May the "
+            "request be granted? Return yes or no.",
+            "no",
+            scoring="exact_match",
+            response_type="text",
+            response_format="label",
+            tags=("access_policy", "exception_scope", "duration_limit"),
+        ),
+        Scenario(
+            "audit_findings",
+            "hard",
+            "An access audit tracks Boolean findings A through F: A is equivalent to "
+            "not B; C is equivalent to A; D is equivalent to B and C; E is "
+            "equivalent to not D; F is equivalent to C and E; exactly two findings "
+            "are true. Which findings are true? Return their labels separated by "
+            "commas.",
+            "B,E",
+            scoring="exact_match",
+            response_type="text",
+            response_format="comma_separated_labels",
+            answer_format="comma_separated_labels",
+            tags=("access_policy", "boolean_logic", "unique_solution"),
+        ),
     ]
-    for i,(kind,v) in enumerate(hard_specs):
-        if kind=="timezone":
-            local_text,origin_minutes,duration,dest_minutes=v
-            local=datetime.strptime(local_text,"%Y-%m-%d %H:%M").replace(tzinfo=timezone(timedelta(minutes=origin_minutes)))
-            answer=(local+timedelta(minutes=duration)).astimezone(timezone(timedelta(minutes=dest_minutes))).strftime("%Y-%m-%d %H:%M")
-            prompt=f"A flight departs at {local_text} in UTC{_offset(origin_minutes)}. It lasts {duration//60} hours {duration%60} minutes and arrives in UTC{_offset(dest_minutes)}. What is the local arrival date and time? Return YYYY-MM-DD HH:MM."
-            rows.append(Scenario(f"{kind}_{i}","hard",prompt,answer,scoring="exact_match",response_type="text",response_format="YYYY-MM-DD HH:MM",tags=(kind,"date_rollover")))
-            continue
-        if kind=="nested_weekday":
-            year,month,w1,n1,w2,n2=v
-            first=_nth_weekday(year,month,w1,n1)
-            answer=_next_nth_weekday(first,w2,n2)
-            names=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-            prompt=f"Find the {['first','second','third','fourth'][n1-1]} {names[w1]} of {date(year,month,1).strftime('%B %Y')}. Then, counting only {names[w2]}s strictly after that date, find the {['first','second','third','fourth'][n2-1]} such {names[w2]}. Return its date."
-        elif kind=="business_multi":
-            start,count,holidays=v
-            answer=_business_day(start,count,holidays)
-            prompt=f"A project starts on {start.isoformat()}, counted as business day 1, and lasts {count} business days. Weekends and the holidays {', '.join(sorted(day.isoformat() for day in holidays))} do not count. What is its completion date?"
-        else:
-            start,days=v
-            answer=start+timedelta(days=days)
-            prompt=f"Starting from {start.isoformat()} at 00:00, what calendar date is exactly {days} days later?"
-        rows.append(Scenario(f"{kind}_{i}","hard",prompt,answer.isoformat(),scoring="date_value",response_type="date",response_format="common_unambiguous_date",tags=(kind,"multi_step")))
-    return rows
 
 
-def _probability(rng: random.Random) -> list[Scenario]:
-    rows=[Scenario("die","easy","A fair 10-sided die numbered 1 through 10 is rolled. What is the probability of rolling a number greater than 7? Give an exact fraction.", "3/10", scoring="rational_value", tags=("sanity","probability"))]
-    specs=[("balls",(5,7,3)),("balls",(8,4,2)),("coins",(6,3)),("coins",(7,2)),("committee",(7,5,3))]
-    for i,(kind,v) in enumerate(specs):
-        if kind=="balls":
-            red,blue,draw=v
-            value=Fraction(math.comb(blue,draw),math.comb(red+blue,draw))
-            prompt=f"A bag has {red} red and {blue} blue balls. {draw} are drawn without replacement. What is the probability all are blue? Give an exact fraction."
-        elif kind=="coins":
-            flips,heads=v
-            value=Fraction(math.comb(flips,heads),2**flips)
-            prompt=f"A fair coin is flipped {flips} times. What is the probability of exactly {heads} heads? Give an exact fraction."
-        elif kind=="committee":
-            women,men,size=v
-            value=Fraction(math.comb(women,2)*math.comb(men,size-2),math.comb(women+men,size))
-            prompt=f"A committee of {size} is selected uniformly from {women} women and {men} men. What is the probability it contains exactly 2 women? Give an exact fraction."
-        else:
-            sides,target=v
-            favorable=sum(a+b==target for a in range(1,sides+1) for b in range(1,sides+1))
-            value=Fraction(favorable,sides*sides)
-            prompt=f"Two fair {sides}-sided dice numbered 1 through {sides} are rolled. What is the probability their sum is {target}? Give an exact fraction."
-        rows.append(Scenario(f"{kind}_{i}","medium",prompt,_fraction_text(value),scoring="rational_value",tags=(kind,)))
-    hard=[
-        ("bayes",(1,3,2,1,2,3,1,3)),("bayes",(2,5,3,2,3,4,3,5)),
-        ("cards",(2,1)),("cards",(1,2)),
-        ("conditional_dice",(8,10,1)),("conditional_dice",(10,13,2)),
-        ("derangement",(6,)),("derangement",(7,)),
-        ("paths",(7,6,2,3)),
+def _ordering() -> list[Scenario]:
+    return [
+        Scenario(
+            "release_chain",
+            "easy",
+            "Release step M must finish before N, and N must finish before O. Return "
+            "the unique order of M, N, O as comma-separated labels.",
+            "M,N,O",
+            scoring="exact_match",
+            response_type="text",
+            response_format="comma_separated_labels",
+            answer_format="comma_separated_labels",
+            tags=("sanity", "dependency_ordering"),
+        ),
+        Scenario(
+            "five_step_migration",
+            "medium",
+            "Migration steps A, B, C, D, and E occupy positions 1 through 5. A is "
+            "immediately before B. B is immediately before D. B is before E. C is "
+            "not adjacent to B. B is exactly two positions before E. B is not "
+            "adjacent to E. C is immediately before A. Return the unique order as "
+            "comma-separated labels.",
+            "C,A,B,D,E",
+            scoring="exact_match",
+            response_type="text",
+            response_format="comma_separated_labels",
+            answer_format="comma_separated_labels",
+            tags=("dependency_ordering", "unique_solution"),
+        ),
+        Scenario(
+            "ready_queue",
+            "medium",
+            "Jobs A and B have no prerequisites. Job C requires A; D requires both A "
+            "and B; E requires both C and D. A single worker repeatedly runs the "
+            "alphabetically earliest ready job. Return the execution order as "
+            "comma-separated labels.",
+            "A,B,C,D,E",
+            scoring="exact_match",
+            response_type="text",
+            response_format="comma_separated_labels",
+            answer_format="comma_separated_labels",
+            tags=("dependency_ordering", "tie_breaking", "scheduler"),
+        ),
+        Scenario(
+            "shortest_ready_job",
+            "medium",
+            "A single build runner has jobs P (2 hours), Q (1 hour), and R (2 hours). "
+            "Q depends on P; R has no dependency. Whenever the runner is free, it "
+            "chooses the shortest ready job, breaking equal durations "
+            "alphabetically. Return the job order as comma-separated labels.",
+            "P,Q,R",
+            scoring="exact_match",
+            response_type="text",
+            response_format="comma_separated_labels",
+            answer_format="comma_separated_labels",
+            tags=("scheduling", "resource_constraints", "tie_breaking"),
+        ),
+        Scenario(
+            "duration_priority_dag",
+            "hard",
+            "A single deployment runner has steps A=4 min, B=2, C=3, D=1, E=2, "
+            "and F=1. C depends on A; D depends on B; E depends on both C and D; F "
+            "depends on D. The runner always selects the shortest ready step, "
+            "breaking ties alphabetically. Return the execution order as "
+            "comma-separated labels.",
+            "B,D,F,A,C,E",
+            scoring="exact_match",
+            response_type="text",
+            response_format="comma_separated_labels",
+            answer_format="comma_separated_labels",
+            tags=("dependency_ordering", "scheduling", "resource_constraints"),
+        ),
+        Scenario(
+            "six_step_migration",
+            "hard",
+            "Migration steps A, B, C, D, E, and F occupy positions 1 through 6. A "
+            "is exactly two positions before B. D is immediately before B. F is "
+            "exactly two positions before D. C is immediately before F. A is before "
+            "B. F is immediately before A. B is immediately before E. Return the "
+            "unique order as comma-separated labels.",
+            "C,F,A,D,B,E",
+            scoring="exact_match",
+            response_type="text",
+            response_format="comma_separated_labels",
+            answer_format="comma_separated_labels",
+            tags=("dependency_ordering", "unique_solution", "multi_constraint"),
+        ),
     ]
-    for i,(kind,v) in enumerate(hard):
-        if kind=="bayes":
-            p1n,p1d,r1,b1,r2,b2,p2n,p2d=v
-            prior1=Fraction(p1n,p1d); prior2=Fraction(p2n,p2d)
-            value=prior1*Fraction(r1,r1+b1)/(prior1*Fraction(r1,r1+b1)+prior2*Fraction(r2,r2+b2))
-            prompt=f"Urn 1 is chosen with probability {prior1} and contains {r1} red and {b1} blue balls. Urn 2 is chosen with probability {prior2} and contains {r2} red and {b2} blue balls. A red ball is drawn. What is the probability Urn 1 was chosen? Give an exact fraction."
-        elif kind=="cards":
-            aces,kings=v
-            other=5-aces-kings
-            value=Fraction(math.comb(4,aces)*math.comb(4,kings)*math.comb(44,other),math.comb(52,5))
-            prompt=f"A five-card hand is selected uniformly from a standard deck. What is the probability it contains exactly {aces} ace(s) and exactly {kings} king(s)? Give an exact fraction."
-        elif kind=="conditional_dice":
-            sides,total,minimum=v
-            universe=[(a,b) for a in range(1,sides+1) for b in range(1,sides+1) if max(a,b)>=minimum+3]
-            fav=sum(a+b==total for a,b in universe)
-            value=Fraction(fav,len(universe))
-            prompt=f"Two fair {sides}-sided dice are rolled. Given that at least one die is {minimum+3} or greater, what is the probability their sum is {total}? Give an exact fraction."
-        elif kind=="derangement":
-            (n,)=v
-            derangements=round(math.factorial(n)/math.e)
-            value=Fraction(derangements,math.factorial(n))
-            prompt=f"{n} addressed letters are placed uniformly into {n} addressed envelopes, one per envelope. What is the probability that no letter enters its correct envelope? Give an exact fraction."
-        else:
-            east,north,block_e,block_n=v
-            total=math.comb(east+north,east)
-            through=math.comb(block_e+block_n,block_e)*math.comb(east+north-block_e-block_n,east-block_e)
-            value=Fraction(total-through,total)
-            prompt=f"A shortest grid path uses {east} east and {north} north moves in any order. Chosen uniformly among shortest paths, what is the probability it avoids the point reached after exactly {block_e} east and {block_n} north moves? Give an exact fraction."
-        rows.append(Scenario(f"{kind}_{i}","hard",prompt,_fraction_text(value),scoring="rational_value",tags=(kind,"multi_step")))
-    return rows
 
 
-def _logic(rng: random.Random) -> list[Scenario]:
-    rows=[Scenario("modus_tollens","easy","If a build is deployed, its signed release record exists. The signed release record does not exist. Was the build deployed? Return yes or no.","no",scoring="exact_match",response_type="text",response_format="label",tags=("sanity","deduction"))]
-    medium=[
-        ("All poets are readers. Some readers are cyclists. Must some poets be cyclists?","cannot_be_determined"),
-        ("No copper objects are transparent. Every prism here is transparent. Can any prism here be copper?","no"),
-        ("Every red token is square. Every square token is heavy. Token K is red. Must K be heavy?","yes"),
-        ("Some editors are musicians. No musicians are pilots. Must some editors not be pilots?","yes"),
-        ("All archived files are encrypted. File R is not encrypted. Can File R be archived?","no"),
-    ]
-    for i,(prompt,answer) in enumerate(medium):
-        rows.append(Scenario(f"syllogism_{i}","medium",prompt+" Return yes, no, or cannot_be_determined.",answer,scoring="exact_match",response_type="text",response_format="label",tags=("syllogism",)))
-    bases=[
-        "A is equivalent to not B; C is equivalent to A; D is equivalent to B and C; E is equivalent to not D; F is equivalent to C and E",
-        "A is equivalent to B and C; B is equivalent to not D; C is equivalent to E; E implies D; F is equivalent to not A",
-        "A implies B; B is equivalent to not C; D is equivalent to A and C; E is equivalent to not D; F implies A",
-    ]
-    systems=[]
-    mappings=("ABCDEF","BCDAFE","FABCDE")
-    for base in bases:
-        for mapping in mappings:
-            translated=base.translate(str.maketrans("ABCDEF",mapping))
-            systems.append(_add_unique_cardinality(translated,6))
-    for i,(description,solutions) in enumerate(systems):
-        answer=",".join(solutions[0])
-        rows.append(Scenario(f"boolean_{i}","hard",f"Boolean flags A through F satisfy: {description} Which flags are true? Return their labels separated by commas.",answer,scoring="exact_match",response_type="text",response_format="comma_separated_labels",answer_format="comma_separated_labels",tags=("boolean_logic","unique_solution")))
-    return rows
-
-
-def _ordering(rng: random.Random) -> list[Scenario]:
-    rows=[Scenario("three_order","easy","Mira finishes before Noor, and Noor finishes before Omar. Return the unique order of M, N, O as comma-separated labels.","M,N,O",scoring="exact_match",response_type="text",response_format="comma_separated_labels",answer_format="comma_separated_labels",tags=("sanity","ordering"))]
-    targets=["CABDE","BDACE","EACBD","ACEDB","DBEAC","CFADBE","BDAFCE","EBCADF","ACFDEB","DABFCE","CEAGBDF","BFDACGE","GACFBDE","DBHACEGF"]
-    for i,target in enumerate(targets):
-        clues=_clues_for_unique_order(target)
-        solved=_orders_matching(target,clues)
-        if solved != [target]:
-            raise AssertionError((target,clues,len(solved)))
-        difficulty="medium" if i<5 else "hard"
-        labels=", ".join(sorted(target))
-        prompt=f"The tasks {labels} occupy positions 1 through {len(target)}. " + " ".join(clues) + " Return the unique order as comma-separated labels."
-        rows.append(Scenario(f"order_{i}",difficulty,prompt,",".join(target),scoring="exact_match",response_type="text",response_format="comma_separated_labels",answer_format="comma_separated_labels",tags=("ordering","unique_solution")))
-    return rows
-
-
-FAMILY_BUILDERS: dict[str, Callable[[random.Random], list[Scenario]]] = {
+FAMILY_BUILDERS: dict[str, Callable[[], list[Scenario]]] = {
     "arithmetic_percentages": _arithmetic,
     "ratios_rates_work": _ratios,
     "algebra_word_problems": _algebra,
@@ -484,205 +766,158 @@ FAMILY_BUILDERS: dict[str, Callable[[random.Random], list[Scenario]]] = {
 
 
 def generate_items(seed: int = DEFAULT_SEED) -> list[dict[str, Any]]:
-    rng=random.Random(seed)
-    core: list[dict[str, Any]]=[]
+    core: list[dict[str, Any]] = []
     for subcategory in SUBCATEGORIES:
-        scenarios=FAMILY_BUILDERS[subcategory](rng)
-        core_count=CORE_COUNTS[subcategory]
-        if len(scenarios)<core_count:
-            raise AssertionError(f"{subcategory}: expected at least {core_count} scenarios, got {len(scenarios)}")
-        core.extend(_item(s,subcategory=subcategory,sequence=i+1,seed=seed) for i,s in enumerate(scenarios[:core_count]))
+        scenarios = FAMILY_BUILDERS[subcategory]()
+        if len(scenarios) != CORE_COUNTS[subcategory]:
+            raise AssertionError(
+                f"{subcategory}: expected {CORE_COUNTS[subcategory]} scenarios, "
+                f"got {len(scenarios)}"
+            )
+        core.extend(
+            _item(
+                scenario,
+                subcategory=subcategory,
+                sequence=sequence,
+                seed=seed,
+            )
+            for sequence, scenario in zip(ITEM_NUMBERS[subcategory], scenarios)
+        )
     _validate_items(core)
     return core
 
 
 def _validate_items(core: list[dict[str, Any]]) -> None:
-    if len(core)!=100:
+    if len(core) != 48:
         raise AssertionError(len(core))
-    if len({item["id"] for item in core})!=100:
+    if len({item["id"] for item in core}) != 48:
         raise AssertionError("duplicate item ids")
-    prompt_gold={(item["prompt"],str(item["expected"]["value"])) for item in core}
-    if len(prompt_gold)!=len(core):
+    prompt_gold = {
+        (item["prompt"], str(item["expected"]["value"])) for item in core
+    }
+    if len(prompt_gold) != len(core):
         raise AssertionError("duplicate generated questions")
-    if Counter(item["difficulty"] for item in core)!={"easy":8,"medium":44,"hard":48}:
+    if Counter(item["difficulty"] for item in core) != {
+        "easy": 8,
+        "medium": 24,
+        "hard": 16,
+    }:
         raise AssertionError(Counter(item["difficulty"] for item in core))
-    if Counter(item["subcategory"] for item in core)!=Counter(CORE_COUNTS):
+    if Counter(item["subcategory"] for item in core) != Counter(CORE_COUNTS):
         raise AssertionError(Counter(item["subcategory"] for item in core))
     if any(item["expected"]["value"] is None for item in core):
         raise AssertionError("missing gold")
 
-
-def _business_day(start: date,count: int,holidays: set[date]) -> date:
-    current=start; seen=0
-    while seen<count:
-        if current.weekday()<5 and current not in holidays:
-            seen+=1
-            if seen==count:
-                return current
-        current+=timedelta(days=1)
-    raise AssertionError
-
-
-def _nth_weekday(year: int,month: int,weekday: int,n: int) -> date:
-    first=date(year,month,1)
-    return first+timedelta(days=(weekday-first.weekday())%7+7*(n-1))
-
-
-def _next_nth_weekday(start: date,weekday: int,n: int) -> date:
-    offset=(weekday-start.weekday())%7
-    if offset==0: offset=7
-    return start+timedelta(days=offset+7*(n-1))
+    operational_tags = {
+        tag
+        for item in core
+        for tag in item["tags"]
+    }
+    required = {
+        "billing_reconciliation",
+        "capacity",
+        "maintenance_windows",
+        "retry_backoff",
+        "business_days",
+        "timezone",
+        "access_policy",
+        "dependency_ordering",
+        "scheduling",
+        "resource_constraints",
+    }
+    if not required <= operational_tags:
+        raise AssertionError(f"missing operational tags: {required - operational_tags}")
 
 
-def _offset(minutes: int) -> str:
-    sign="+" if minutes>=0 else "-"; minutes=abs(minutes)
-    return f"{sign}{minutes//60:02d}:{minutes%60:02d}"
+def _document(
+    items: list[dict[str, Any]],
+    seed: int,
+    benchmark: str = "applied_reasoning",
+) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "benchmark": benchmark,
+        "generated_by": GENERATOR_VERSION,
+        "seed": seed,
+        "prompt_suffix": FINAL_ANSWER_INSTRUCTION,
+        "items": items,
+    }
 
 
-def _solve_boolean_description(description: str,count: int) -> list[list[str]]:
-    labels=[chr(65+i) for i in range(count)]
-    clauses=[part.strip().rstrip(".") for part in description.split(";")]
-    count_word=next(part.split()[1] for part in clauses if part.startswith("exactly "))
-    cardinality={"one":1,"two":2,"three":3,"four":4}[count_word]
-    logical=[part for part in clauses if not part.startswith("exactly ")]
-    solutions=[]
-    for values in product((False,True),repeat=count):
-        env=dict(zip(labels,values))
-        def atom(text: str) -> bool:
-            text=text.strip()
-            return not env[text[4:].strip()] if text.startswith("not ") else env[text]
-        valid=True
-        for clause in logical:
-            if " is equivalent to " in clause:
-                left,right=clause.split(" is equivalent to ")
-                if " and " in right:
-                    right_value=all(atom(x) for x in right.split(" and "))
-                else: right_value=atom(right)
-                valid &= env[left]==right_value
-            elif " implies " in clause:
-                left,right=clause.split(" implies ")
-                valid &= (not env[left]) or atom(right)
-        valid &= sum(values)==cardinality
-        if valid: solutions.append([label for label,value in env.items() if value])
-    return solutions
-
-
-def _add_unique_cardinality(base: str,count: int) -> tuple[str,list[list[str]]]:
-    words={1:"one",2:"two",3:"three",4:"four",5:"five"}
-    for cardinality in range(1,count):
-        description=f"{base}; exactly {words[cardinality]} flags are true."
-        solutions=_solve_boolean_description(description,count)
-        if len(solutions)==1:
-            return description,solutions
-    raise AssertionError(f"no unique cardinality for {base}")
-
-
-def _clues_for_unique_order(target: str) -> list[str]:
-    labels=list(target)
-    candidates=[]
-    candidates.extend(
-        f"{labels[index]} is immediately before {labels[index+1]}."
-        for index in range(len(labels)-1)
+def write_dataset(output: Path, seed: int = DEFAULT_SEED) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        yaml.safe_dump(
+            _document(generate_items(seed), seed),
+            sort_keys=False,
+            allow_unicode=True,
+            width=100,
+        ),
+        encoding="utf-8",
     )
-    candidates.extend(
-        f"{labels[index]} is exactly two positions before {labels[index+2]}."
-        for index in range(len(labels)-2)
-    )
-    candidates.extend(
-        f"{labels[index]} is before {labels[index+2]}."
-        for index in range(len(labels)-2)
-    )
-    candidates.extend(
-        f"{labels[index]} is not adjacent to {labels[index+2]}."
-        for index in range(len(labels)-2)
-    )
-    candidates.extend((f"{labels[0]} is first.",f"{labels[-1]} is last."))
-    random.Random(target).shuffle(candidates)
-    clues=[]
-    for clue in candidates:
-        clues.append(clue)
-        if len(_orders_matching(target,clues))==1:
-            break
-    if len(_orders_matching(target,clues))!=1:
-        raise AssertionError(f"could not establish unique order for {target}")
-    return clues
 
 
-def _orders_matching(target: str,clues: list[str]) -> list[str]:
-    answers=[]
-    for perm in permutations(target):
-        order="".join(perm); ok=True
-        for clue in clues:
-            words=clue.rstrip(".").split(); left=words[0]; right=words[-1]
-            if words[1:3]==["is","first"]: ok &= order[0]==left
-            elif words[1:3]==["is","last"]: ok &= order[-1]==left
-            elif "immediately before" in clue: ok &= order.index(right)==order.index(left)+1
-            elif "exactly two positions before" in clue: ok &= order.index(right)==order.index(left)+2
-            elif "not adjacent" in clue: ok &= abs(order.index(left)-order.index(right))!=1
-            elif "is before" in clue: ok &= order.index(left)<order.index(right)
-        if ok: answers.append(order)
-    return answers
-
-
-def _document(items: list[dict[str, Any]],seed: int,benchmark: str="applied_reasoning") -> dict[str,Any]:
-    return {"schema_version":1,"benchmark":benchmark,"generated_by":f"{GENERATOR}_v2","seed":seed,"prompt_suffix":FINAL_ANSWER_INSTRUCTION,"items":items}
-
-
-def write_dataset(output: Path,seed: int=DEFAULT_SEED) -> None:
-    output.parent.mkdir(parents=True,exist_ok=True)
-    output.write_text(yaml.safe_dump(_document(generate_items(seed),seed),sort_keys=False,allow_unicode=True,width=100),encoding="utf-8")
-
-
-def write_review(path: Path,core: list[dict[str,Any]]) -> None:
-    lines=[
+def write_review(path: Path, core: list[dict[str, Any]]) -> None:
+    lines = [
         "# Applied Reasoning Final Question Review (Temporary)",
         "",
-        "This temporary document lists the 100 fresh questions used by the runnable Applied Reasoning benchmark. Difficulty labels are provisional until empirical calibration.",
+        "This temporary document lists the 48 fresh questions used by the runnable "
+        "Applied Reasoning benchmark. Difficulty labels are provisional until "
+        "empirical calibration.",
         "",
         "## Distribution",
         "",
         "| Bank | Sanity/easy | Medium | Hard | Total |",
         "|---|---:|---:|---:|---:|",
-        "| Headline core | 8 | 44 | 48 | 100 |",
+        "| Diagnostic core | 8 | 24 | 16 | 48 |",
         "",
     ]
-    for title,items in (("100-question headline core",core),):
-        lines.extend((f"## {title}",""))
-        for subcategory in SUBCATEGORIES:
-            lines.extend((f"### {subcategory}",""))
-            for item in (entry for entry in items if entry["subcategory"]==subcategory):
-                value=item["expected"]["value"]
-                tags=[tag for tag in item["tags"] if tag not in {"fresh_generated","headline_core"}]
-                reason=(
-                    "Sanity check: verifies basic task, prompt, and scorer operation without influencing the hard-reasoning claim."
-                    if item["difficulty"]=="easy"
-                    else "Boundary task: adds a distinct, code-verified reasoning path that should separate weaker and stronger configurations."
-                    if item["difficulty"]=="medium"
-                    else "Challenge task: combines constraints or operations and is intended to create quantization-sensitive headroom."
+    for subcategory in SUBCATEGORIES:
+        lines.extend((f"## {subcategory}", ""))
+        for item in (
+            entry for entry in core if entry["subcategory"] == subcategory
+        ):
+            value = item["expected"]["value"]
+            tags = [
+                tag
+                for tag in item["tags"]
+                if tag not in {"fresh_generated", "diagnostic_control"}
+            ]
+            reason = (
+                "Sanity check for basic prompt and scorer operation."
+                if item["difficulty"] == "easy"
+                else "Operational multi-step check with a deterministic result."
+            )
+            lines.extend(
+                (
+                    f"### `{item['id']}` — {item['difficulty']}",
+                    "",
+                    f"**Question:** {item['prompt']}",
+                    "",
+                    f"**Gold:** `{value}`",
+                    "",
+                    f"**Mechanisms:** {', '.join(tags)}.",
+                    "",
+                    f"**Why included:** {reason}",
+                    "",
                 )
-                lines.extend((
-                    f"#### `{item['id']}` — {item['difficulty']}","",
-                    f"**Question:** {item['prompt']}","",
-                    f"**Gold:** `{value}`", "",
-                    f"**Mechanisms:** {', '.join(tags) or 'general reasoning'}.","",
-                    f"**Why included:** {reason}","",
-                ))
-    path.parent.mkdir(parents=True,exist_ok=True)
-    path.write_text("\n".join(lines).rstrip()+"\n",encoding="utf-8")
+            )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 
 def main() -> None:
-    parser=argparse.ArgumentParser(
-        description="Generate an Applied Reasoning draft for manual curation"
+    parser = argparse.ArgumentParser(
+        description="Generate the curated Applied Reasoning diagnostic dataset"
     )
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--seed",type=int,default=DEFAULT_SEED)
-    parser.add_argument("--review-output",type=Path)
-    args=parser.parse_args()
-    write_dataset(args.output,args.seed)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument("--review-output", type=Path)
+    args = parser.parse_args()
+    write_dataset(args.output, args.seed)
     if args.review_output is not None:
-        write_review(args.review_output,generate_items(args.seed))
+        write_review(args.review_output, generate_items(args.seed))
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()

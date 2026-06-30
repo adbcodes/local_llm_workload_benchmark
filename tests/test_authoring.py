@@ -26,7 +26,8 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
     )
     source_path.write_text(
         source_path.read_text(encoding="utf-8").replace(
-            "What is 17.5% of 640?", "What is 20% of 560?"
+            "A community kitchen has a 640 kg monthly rice allocation",
+            "A relief kitchen has a 640 kg monthly rice allocation",
         ),
         encoding="utf-8",
     )
@@ -37,7 +38,7 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
     rebuilt = build_authoring_suite(suite_path)
     assert rebuilt.written == (data_root / "applied_reasoning" / "items.jsonl",)
     assert len(rebuilt.unchanged) == 15
-    assert "20% of 560" in rebuilt.written[0].read_text(encoding="utf-8")
+    assert "A relief kitchen" in rebuilt.written[0].read_text(encoding="utf-8")
 
 
 def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
