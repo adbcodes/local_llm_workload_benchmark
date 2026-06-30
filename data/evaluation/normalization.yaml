@@ -94,6 +94,16 @@ accepted_answer_contracts:
       - parse_answer_under_its_declared_contract
       - casefold_confidence_keyword
       - parse_bounded_numeric_confidence
+  tool_call:
+    accepted_forms:
+      - one raw JSON tool call with tool_call and arguments
+      - one raw JSON no-tool answer with null tool_call, empty arguments, and answer
+    normalization:
+      - parse_json
+      - compare_tool_name_exactly
+      - compare_argument_names_types_values_and_nested_keys_exactly
+      - apply_item_specific_direct_answer_patterns_when_declared
+    rejection_rule: Markdown fences, surrounding prose, missing keys, and extra keys are protocol failures.
   tool_trace:
     accepted_forms:
       - declared tool-call JSON envelope

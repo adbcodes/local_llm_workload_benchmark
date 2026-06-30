@@ -224,6 +224,145 @@ def test_tool_grading_separates_parseability_and_execution_components() -> None:
     assert malformed.details["parse_status"] == "ambiguous"
 
 
+def test_single_turn_tool_call_scores_tools_arguments_no_tool_and_format() -> None:
+    weather = _item(
+        "tool_call",
+        {
+            "tool_call": "get_weather",
+            "arguments": {"location": "Pune", "unit": "celsius"},
+        },
+        contract_type="json",
+    )
+    correct = score_answer(
+        weather,
+        '{"tool_call":"get_weather","arguments":{"location":"Pune","unit":"celsius"}}',
+    )
+    assert correct.passed
+    assert correct.details["tool_choice_accuracy"] == 1.0
+    assert correct.details["argument_accuracy"] == 1.0
+
+    wrong_arguments = score_answer(
+        weather,
+        '{"tool_call":"get_weather","arguments":{"location":"Pune","unit":"fahrenheit"}}',
+    )
+    assert not wrong_arguments.passed
+    assert wrong_arguments.details["tool_choice_accuracy"] == 1.0
+    assert wrong_arguments.details["argument_accuracy"] == 0.5
+
+    fenced = score_answer(
+        weather,
+        '```json\n{"tool_call":"get_weather","arguments":{"location":"Pune","unit":"celsius"}}\n```',
+    )
+    assert not fenced.passed
+    assert fenced.details["argument_accuracy"] == 1.0
+    assert fenced.details["format_compliant"] is False
+
+    arithmetic = _item(
+        "tool_call",
+        {"tool_call": None, "arguments": {}, "answer": "154"},
+        contract_type="json",
+    )
+    assert score_answer(
+        arithmetic,
+        '{"tool_call":null,"arguments":{},"answer":"154"}',
+    ).passed
+    unnecessary = score_answer(
+        arithmetic,
+        '{"tool_call":"web_search","arguments":{"query":"89+65"}}',
+    )
+    assert not unnecessary.passed
+    assert unnecessary.details["tool_choice_accuracy"] == 0.0
+
+
+def test_tool_call_rejects_wrong_types_and_extra_nested_arguments() -> None:
+    nested = _item(
+        "tool_call",
+        {
+            "tool_call": "search_users",
+            "arguments": {
+                "filters": {"status": "active", "team": "Data"},
+                "fields": ["email"],
+            },
+        },
+        contract_type="json",
+    )
+
+    extra_nested_key = score_answer(
+        nested,
+        json.dumps(
+            {
+                "tool_call": "search_users",
+                "arguments": {
+                    "filters": {
+                        "status": "active",
+                        "team": "Data",
+                        "role": "admin",
+                    },
+                    "fields": ["email"],
+                },
+            }
+        ),
+    )
+    assert not extra_nested_key.passed
+    assert extra_nested_key.details["argument_accuracy"] == 0.5
+
+    timer = _item(
+        "tool_call",
+        {"tool_call": "schedule_timer", "arguments": {"seconds": 300, "label": "tea"}},
+        contract_type="json",
+    )
+    wrong_numeric_type = score_answer(
+        timer,
+        '{"tool_call":"schedule_timer","arguments":{"seconds":"300","label":"tea"}}',
+    )
+    assert not wrong_numeric_type.passed
+    assert wrong_numeric_type.details["argument_accuracy"] == 0.5
+
+
+def test_tool_call_accepts_item_specific_equivalent_direct_answers() -> None:
+    item = _item(
+        "tool_call",
+        {
+            "tool_call": None,
+            "arguments": {},
+            "answer": "No event created because rain is expected.",
+        },
+        contract_type="json",
+        parameters={
+            "direct_answer_patterns": [
+                r"(?i)rain",
+                r"(?i)(?:no event (?:was )?created|did not create (?:the )?event|skip(?:ped)? (?:creating )?(?:the )?event)",
+            ]
+        },
+    )
+
+    equivalent = score_answer(
+        item,
+        json.dumps(
+            {
+                "tool_call": None,
+                "arguments": {},
+                "answer": "I skipped the event because the forecast reports rain.",
+            }
+        ),
+    )
+    assert equivalent.passed
+    assert equivalent.details["direct_answer_pattern_matches"] == [True, True]
+
+    contradictory = score_answer(
+        item,
+        json.dumps(
+            {
+                "tool_call": None,
+                "arguments": {},
+                "answer": "The event was created despite the rain.",
+            }
+        ),
+    )
+    assert not contradictory.passed
+    assert contradictory.details["direct_answer_pattern_matches"] == [True, False]
+
+
 def _write_single_item_run(
     tmp_path: Path,
     item: dict,
@@ -307,6 +446,98 @@ def test_runner_supports_message_history_and_suite_confidence_intervals(tmp_path
     record = json.loads((run / "results.jsonl").read_text())
     assert record["suite"] == "E"
     assert record["integration_outcome"] == "scored_cleanly"
+
+
+def test_runner_sends_tool_definitions_as_a_single_turn_system_message(
+    tmp_path: Path,
+) -> None:
+    item = _item(
+        "tool_call",
+        {
+            "tool_call": "get_weather",
+            "arguments": {"location": "Pune", "unit": "celsius"},
+        },
+        contract_type="json",
+    ).model_dump(mode="json")
+    item["conversation"] = [
+        {
+            "role": "system",
+            "content": (
+                "Tools: get_weather(location, unit), web_search(query). "
+                "Return one raw JSON tool call."
+            ),
+        },
+        {"role": "user", "content": "What is the weather in Pune? Use Celsius."},
+    ]
+    config_path, _ = _write_single_item_run(tmp_path, item)
+
+    class ToolCallBackend:
+        calls = 0
+
+        def generate_messages(self, messages, generation, *, seed):
+            self.calls += 1
+            assert messages[0]["role"] == "system"
+            assert "get_weather" in messages[0]["content"]
+            assert messages[-1] == {
+                "role": "user",
+                "content": "What is the weather in Pune? Use Celsius.",
+            }
+            return GenerationOutput(
+                text=(
+                    '{"tool_call":"get_weather","arguments":'
+                    '{"location":"Pune","unit":"celsius"}}'
+                ),
+                output_tokens=12,
+            )
+
+    backend = ToolCallBackend()
+    run = run_benchmark(
+        load_config(config_path),
+        config_path,
+        backend_factory=lambda model, path, seed: backend,
+    )
+    record = json.loads((run / "results.jsonl").read_text())
+    assert backend.calls == 1
+    assert record["evaluation"]["passed"] is True
+    assert record["evaluation"]["details"]["argument_accuracy"] == 1.0
+
+
+def test_runner_scores_the_next_action_after_a_prefilled_tool_response(
+    tmp_path: Path,
+) -> None:
+    source = next(
+        item
+        for item in load_suite(Path("data/suites/all.yaml")).items["tool_use"]
+        if item.subcategory == "second_tool_required"
+        and item.expected["value"]["tool_call"] == "get_weather_coordinates"
+    )
+    item = source.model_dump(mode="json")
+    item["difficulty"] = "easy"
+    config_path, _ = _write_single_item_run(tmp_path, item)
+
+    class SecondToolBackend:
+        def generate_messages(self, messages, generation, *, seed):
+            assert [message["role"] for message in messages] == [
+                "system",
+                "user",
+                "assistant",
+                "user",
+            ]
+            assert '"tool_call":"geocode"' in messages[2]["content"]
+            assert '"latitude":28.6129' in messages[3]["content"]
+            return GenerationOutput(
+                text=json.dumps(source.expected["value"], separators=(",", ":")),
+                output_tokens=20,
+            )
+
+    run = run_benchmark(
+        load_config(config_path),
+        config_path,
+        backend_factory=lambda model, path, seed: SecondToolBackend(),
+    )
+    record = json.loads((run / "results.jsonl").read_text())
+    assert record["evaluation"]["passed"] is True
+    assert record["evaluation"]["details"]["tool_choice_accuracy"] == 1.0
 
 
 def test_json_fence_is_integration_friction_not_a_wrong_scorable_answer(tmp_path: Path) -> None:

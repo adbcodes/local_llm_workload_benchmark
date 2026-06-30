@@ -48,6 +48,16 @@ methods:
     expected_value: {entry_point: function_name, tests: []}
     accepted_answer_contracts: [code]
     reports: [tests_passed, tests_total, timeout, error]
+  tool_call:
+    use_for: single-turn tool selection, exact arguments, and direct no-tool answers
+    expected_value:
+      tool_required: {tool_call: tool_name, arguments: {argument: value}}
+      no_tool: {tool_call: null, arguments: {}, answer: direct_answer}
+    parameters:
+      direct_answer_patterns: optional item-specific regex requirements for semantically equivalent no-tool explanations
+    argument_rule: Argument names, JSON types, values, nested object keys, and list order must match exactly.
+    accepted_answer_contracts: [tool_call]
+    reports: [parseable, tool_choice_accuracy, argument_accuracy, direct_answer_accuracy, format_compliant]
   tool_trace:
     use_for: tool selection, arguments, order, and final fake-environment state
     expected_value:

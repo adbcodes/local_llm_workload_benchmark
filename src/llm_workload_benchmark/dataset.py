@@ -31,6 +31,7 @@ ScoringMethod = Literal[
     "llm_judge",
     "set_match",
     "behavior_rules",
+    "tool_call",
     "tool_trace",
     "confidence_value",
 ]
@@ -251,6 +252,46 @@ class DatasetItem(BaseModel):
                 raise ValueError(
                     "behavior_rules requires a structured decision contract"
                 ) from error
+        elif method == "tool_call":
+            if contract_type != "json" or not isinstance(value, dict):
+                raise ValueError("tool_call requires a json contract and object value")
+            tool_name = value.get("tool_call")
+            arguments = value.get("arguments")
+            if tool_name is None:
+                if (
+                    set(value) != {"tool_call", "arguments", "answer"}
+                    or arguments != {}
+                    or not isinstance(value.get("answer"), str)
+                    or not value["answer"].strip()
+                ):
+                    raise ValueError(
+                        "no-tool expected value requires null tool_call, empty arguments, "
+                        "and a non-empty answer"
+                    )
+            elif (
+                set(value) != {"tool_call", "arguments"}
+                or not isinstance(tool_name, str)
+                or not tool_name
+                or not isinstance(arguments, dict)
+            ):
+                raise ValueError(
+                    "tool-call expected value requires tool_call and arguments"
+                )
+            direct_answer_patterns = self.scoring.parameters.get(
+                "direct_answer_patterns", []
+            )
+            if direct_answer_patterns and tool_name is not None:
+                raise ValueError(
+                    "tool_call direct_answer_patterns are valid only for no-tool items"
+                )
+            if isinstance(direct_answer_patterns, list) and direct_answer_patterns and not all(
+                isinstance(pattern, str)
+                and re.search(pattern, value["answer"]) is not None
+                for pattern in direct_answer_patterns
+            ):
+                raise ValueError(
+                    "no-tool reference answer must satisfy every direct_answer_pattern"
+                )
         elif method == "tool_trace":
             if contract_type != "json" or not isinstance(value, dict):
                 raise ValueError("tool_trace requires a json contract and object value")
@@ -470,6 +511,7 @@ def _validate_scoring_parameters(
         },
         "set_match": {"separator", "case_sensitive"},
         "behavior_rules": {"case_sensitive"},
+        "tool_call": {"direct_answer_patterns"},
         "tool_trace": {"allow_diagnostic_normalization"},
         "confidence_value": {
             "answer_type",
@@ -522,6 +564,22 @@ def _validate_scoring_parameters(
             raise ValueError("set_match separator must be a non-empty string")
         return
     if method == "behavior_rules":
+        return
+    if method == "tool_call":
+        patterns = parameters.get("direct_answer_patterns", [])
+        if not isinstance(patterns, list) or any(
+            not isinstance(pattern, str) or not pattern for pattern in patterns
+        ):
+            raise ValueError(
+                "tool_call direct_answer_patterns must be a list of non-empty strings"
+            )
+        for pattern in patterns:
+            try:
+                re.compile(pattern)
+            except re.error as error:
+                raise ValueError(
+                    f"invalid tool_call direct-answer pattern: {pattern!r}"
+                ) from error
         return
     if method == "tool_trace":
         diagnostic = parameters.get("allow_diagnostic_normalization", False)
@@ -1087,6 +1145,8 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
         score = _score_set(item, answer)
     elif method == "behavior_rules":
         score = _score_behavior(item, answer)
+    elif method == "tool_call":
+        score = _score_tool_call(item, answer)
     elif method == "tool_trace":
         score = _score_tool_trace(item, answer)
     elif method == "confidence_value":
@@ -1846,6 +1906,144 @@ def _score_tool_trace(item: DatasetItem, answer: str) -> ScoreResult:
             "integration_success": integration_success,
         },
     )
+
+
+def _score_tool_call(item: DatasetItem, answer: str) -> ScoreResult:
+    stripped = answer.strip()
+    try:
+        actual = json.loads(stripped)
+        diagnostic_wrapper = None
+        raw_json = True
+    except json.JSONDecodeError:
+        actual, diagnostic_wrapper = _extract_diagnostic_json(answer)
+        raw_json = False
+
+    if not isinstance(actual, dict):
+        return ScoreResult(
+            passed=False,
+            score=0,
+            details={
+                "reason": "invalid_tool_call",
+                "parseable": False,
+                "protocol_compliant": False,
+                "diagnostic_wrapper": diagnostic_wrapper,
+                "tool_choice_accuracy": 0.0,
+                "argument_accuracy": 0.0,
+                "direct_answer_accuracy": None,
+                "format_compliant": False,
+            },
+        )
+
+    expected = item.expected["value"]
+    expected_tool = expected["tool_call"]
+    actual_tool = actual.get("tool_call")
+    tool_choice_accuracy = float(actual_tool == expected_tool)
+    expected_arguments = expected["arguments"]
+    actual_arguments = actual.get("arguments")
+    argument_names_ok = (
+        isinstance(actual_arguments, dict)
+        and set(actual_arguments) == set(expected_arguments)
+    )
+    argument_scores = [
+        float(
+            isinstance(actual_arguments, dict)
+            and name in actual_arguments
+            and _tool_argument_value_matches(actual_arguments[name], expected_value)
+        )
+        for name, expected_value in expected_arguments.items()
+    ]
+    argument_accuracy = (
+        sum(argument_scores) / len(argument_scores)
+        if argument_scores
+        else float(actual_arguments == {})
+    )
+
+    no_tool_expected = expected_tool is None
+    expected_keys = (
+        {"tool_call", "arguments", "answer"}
+        if no_tool_expected
+        else {"tool_call", "arguments"}
+    )
+    format_compliant = raw_json and set(actual) == expected_keys
+    direct_answer_accuracy: float | None = None
+    direct_answer_pattern_matches: list[bool] | None = None
+    score_parts = [tool_choice_accuracy, argument_accuracy, float(format_compliant)]
+    if no_tool_expected:
+        direct_answer_patterns = item.scoring.parameters.get("direct_answer_patterns")
+        if isinstance(direct_answer_patterns, list) and direct_answer_patterns:
+            actual_answer = actual.get("answer")
+            direct_answer_pattern_matches = [
+                isinstance(pattern, str)
+                and isinstance(actual_answer, str)
+                and re.search(pattern, actual_answer) is not None
+                for pattern in direct_answer_patterns
+            ]
+            direct_answer_accuracy = float(all(direct_answer_pattern_matches))
+        else:
+            direct_answer_accuracy = float(
+                _contract_value_matches(actual.get("answer"), expected["answer"])
+            )
+        score_parts.append(direct_answer_accuracy)
+
+    passed = (
+        tool_choice_accuracy == 1.0
+        and argument_names_ok
+        and argument_accuracy == 1.0
+        and format_compliant
+        and direct_answer_accuracy in {None, 1.0}
+    )
+    return ScoreResult(
+        passed=passed,
+        score=sum(score_parts) / len(score_parts),
+        details={
+            "parseable": True,
+            "protocol_compliant": format_compliant,
+            "diagnostic_wrapper": diagnostic_wrapper,
+            "tool_choice_accuracy": tool_choice_accuracy,
+            "argument_accuracy": argument_accuracy,
+            "direct_answer_accuracy": direct_answer_accuracy,
+            "direct_answer_pattern_matches": direct_answer_pattern_matches,
+            "argument_names_ok": argument_names_ok,
+            "format_compliant": format_compliant,
+            "no_tool_expected": no_tool_expected,
+            "expected_tool": expected_tool,
+            "actual_tool": actual_tool,
+            "expected_argument_names": sorted(expected_arguments),
+            "actual_argument_names": (
+                sorted(actual_arguments) if isinstance(actual_arguments, dict) else []
+            ),
+        },
+    )
+
+
+def _tool_argument_value_matches(actual: Any, expected: Any) -> bool:
+    """Require exact JSON argument types, values, nesting, and object keys."""
+
+    if isinstance(expected, bool) or expected is None:
+        return type(actual) is type(expected) and actual == expected
+    if isinstance(expected, (int, float)) and not isinstance(expected, bool):
+        return (
+            isinstance(actual, (int, float))
+            and not isinstance(actual, bool)
+            and float(actual) == float(expected)
+        )
+    if isinstance(expected, str):
+        return isinstance(actual, str) and actual == expected
+    if isinstance(expected, dict):
+        return (
+            isinstance(actual, dict)
+            and set(actual) == set(expected)
+            and all(
+                _tool_argument_value_matches(actual[key], expected[key])
+                for key in expected
+            )
+        )
+    if isinstance(expected, list):
+        return isinstance(actual, list) and len(actual) == len(expected) and all(
+            _tool_argument_value_matches(left, right)
+            for left, right in zip(actual, expected)
+        )
+    return type(actual) is type(expected) and actual == expected
 
 
 def _contract_value_matches(actual: Any, expected: Any) -> bool:

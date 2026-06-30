@@ -87,7 +87,8 @@ def finalize_evaluation(
         or details.get("parseable") is False
         or details.get("answer_parse_status")
         in {"missing", "ambiguous", "unparseable", "truncated"}
-        or details.get("reason") in {"invalid_json", "invalid_tool_trace"}
+        or details.get("reason")
+        in {"invalid_json", "invalid_tool_call", "invalid_tool_trace"}
     )
     execution_failed = evaluation.type == "executable" and details.get("reason") in {
         "timeout",
