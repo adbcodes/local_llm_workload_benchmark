@@ -40,7 +40,7 @@ benchmarks:
   - {id: grounded_compression, suite: D, status: started, kind: question_set, definition_path: grounded_compression/benchmark.yaml}
   - {id: personal_model_preference, suite: D, status: started, kind: evaluation_track, definition_path: personal_model_preference/plan.yaml}
   - {id: india_focused_tasks, suite: D, status: started, kind: question_set, definition_path: optional/india_focused_tasks/benchmark.yaml, active: false}
-  - {id: long_text_retrieval, suite: E, status: started, kind: question_set, definition_path: long_text_retrieval/benchmark.yaml}
+  - {id: long_text_retrieval, suite: E, status: complete, kind: question_set, definition_path: long_text_retrieval/benchmark.yaml}
   - {id: conversation_memory, suite: E, status: started, kind: question_set, definition_path: optional/conversation_memory/benchmark.yaml, active: false}
   - {id: clean_vs_noisy, suite: E, status: started, kind: question_set, definition_path: clean_vs_noisy/benchmark.yaml}
   - {id: false_missing_information, suite: E, status: started, kind: question_set, definition_path: false_missing_information/benchmark.yaml}

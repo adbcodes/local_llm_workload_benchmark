@@ -1,8 +1,8 @@
 id: long_text_retrieval
 title: Long-Text Retrieval
-description: Retrieve exact facts from the start, middle, and end of 2K, 4K, and 8K contexts.
+description: Retrieve, reconcile, combine, or abstain over realistic document collections at matched start, middle, and end positions.
 suite: E
-status: started
+status: complete
 execution_mode: paired_variants
 task_types:
 - fact at start
@@ -11,6 +11,13 @@ task_types:
 - 2K context
 - 4K context
 - 8K context
+- direct retrieval
+- authoritative conflict resolution
+- multi-section combination
+- rule application
+- latest valid revision
+- absent information
+- untrusted document text
 metrics:
 - accuracy
 - retained_score
@@ -25,19 +32,19 @@ evaluation_policy:
 items_path: items.jsonl
 authoring_paths:
 - questions.yaml
-current_question_count: 27
-target_question_count: 27
+current_question_count: 48
+target_question_count: 48
 current_difficulty_distribution:
-  easy: 9
-  medium: 9
-  hard: 9
+  easy: 12
+  medium: 18
+  hard: 18
 difficulty_distribution:
-  easy: 9
-  medium: 9
-  hard: 9
+  easy: 12
+  medium: 18
+  hard: 18
 target_visibility_distribution:
-  public: 14
-  held_out: 13
+  public: 24
+  held_out: 24
 order_rule: easy_to_hard
 scoring_methods:
 - exact_match
