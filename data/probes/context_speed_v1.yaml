@@ -1,6 +1,6 @@
 schema_version: 1
 id: context_speed_v1
-status: frozen
+status: superseded
 metric: runtime_only
 context_points:
   - {tokens_already_in_context: 0, source: short_tasks}

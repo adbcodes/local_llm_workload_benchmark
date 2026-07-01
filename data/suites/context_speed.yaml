@@ -1,6 +1,6 @@
 schema_version: 1
-name: final-figure-context-speed
-version: 1
+name: final-figure-context-speed-v2
+version: 2
 status: frozen
 benchmark_files:
   - ../applied_reasoning/benchmark.yaml
@@ -17,9 +17,6 @@ filters:
     - long_text_retrieval_007
     - long_text_retrieval_008
     - long_text_retrieval_009
-    - long_text_retrieval_010
-    - long_text_retrieval_011
-    - long_text_retrieval_012
     - long_text_retrieval_013
     - long_text_retrieval_014
     - long_text_retrieval_015
@@ -29,9 +26,12 @@ filters:
     - long_text_retrieval_019
     - long_text_retrieval_020
     - long_text_retrieval_021
-    - long_text_retrieval_022
-    - long_text_retrieval_023
-    - long_text_retrieval_024
-    - long_text_retrieval_025
-    - long_text_retrieval_026
-    - long_text_retrieval_027
+    - long_text_retrieval_031
+    - long_text_retrieval_032
+    - long_text_retrieval_033
+    - long_text_retrieval_034
+    - long_text_retrieval_035
+    - long_text_retrieval_036
+    - long_text_retrieval_037
+    - long_text_retrieval_038
+    - long_text_retrieval_039

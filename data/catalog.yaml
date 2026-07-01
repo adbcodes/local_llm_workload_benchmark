@@ -61,3 +61,7 @@ probe_sets:
   - probes/temperature_stability_v1.yaml
   - probes/constrained_decoding_v1.yaml
   - probes/repetition_penalty_v1.yaml
+  - probes/temperature_stability_v2.yaml
+  - probes/constrained_decoding_v2.yaml
+  - probes/repetition_penalty_v2.yaml
+  - probes/context_speed_v2.yaml

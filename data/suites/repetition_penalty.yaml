@@ -1,6 +1,6 @@
 schema_version: 1
-name: final-repetition-penalty
-version: 1
+name: final-repetition-penalty-v2
+version: 2
 status: frozen
 benchmark_files:
   - ../grounded_compression/benchmark.yaml

@@ -16,11 +16,11 @@ def test_final_profiles_have_expected_configuration_counts() -> None:
     repetition = load_config(ROOT / "configs" / "final_repetition_matrix.yaml")
     context = load_config(ROOT / "configs" / "final_context_matrix.yaml")
 
-    assert len(default.models) == 12
-    assert len(temperature.models) == 12
-    assert len(constrained.models) == 12
-    assert len(repetition.models) == 12
-    assert len(context.models) == 12
+    assert len(default.models) == 20
+    assert len(temperature.models) == 20
+    assert len(constrained.models) == 20
+    assert len(repetition.models) == 20
+    assert len(context.models) == 20
     assert temperature.benchmark.repetitions == 3
     assert constrained.benchmark.repetitions == 1
     assert repetition.benchmark.repetitions == 1
@@ -32,9 +32,26 @@ def test_final_profiles_have_expected_configuration_counts() -> None:
     assert {model.generation.max_output_tokens for model in default.models} == {4096}
     assert {(model.architecture, model.quantization) for model in default.models} == {
         (architecture, quantization)
-        for architecture in ("qwen2.5-3b", "gemma-3-4b", "qwen3-8b")
+        for architecture in (
+            "qwen2.5-3b",
+            "phi-4-mini-3.8b",
+            "gemma-3-4b",
+            "qwen3-8b",
+            "llama-3.1-8b",
+        )
         for quantization in ("Q8_0", "Q6_K", "Q4_K_M", "Q3_K_M")
     }
+    assert default.benchmark.workload_path == Path("data/suites/final_six.yaml")
+    final_six = load_suite(ROOT / "data" / "suites" / "final_six.yaml")
+    assert set(final_six.items) == {
+        "applied_reasoning",
+        "code_debug_repair",
+        "messy_text_to_schema",
+        "long_text_retrieval",
+        "constraint_load_curve",
+        "tool_use",
+    }
+    assert sum(map(len, final_six.items.values())) == 320
 
 
 def test_final_setting_suites_are_frozen_sized_and_targeted() -> None:
@@ -50,6 +67,11 @@ def test_final_setting_suites_are_frozen_sized_and_targeted() -> None:
     assert sum(map(len, constrained.items.values())) == 15
     assert sum(map(len, repetition.items.values())) == 15
     assert sum(map(len, context.items.values())) == 28
+
+    context_items = [item for items in context.items.values() for item in items]
+    assert sum("2k_context" in item.tags for item in context_items) == 9
+    assert sum("4k_context" in item.tags for item in context_items) == 9
+    assert sum("8k_context" in item.tags for item in context_items) == 9
 
     temperature_items = [item for items in temperature.items.values() for item in items]
     assert {item.difficulty for item in temperature_items} == {"easy", "medium", "hard"}
@@ -70,15 +92,15 @@ def test_final_setting_suites_are_frozen_sized_and_targeted() -> None:
 
     repetition_items = [item for items in repetition.items.values() for item in items]
     assert {item.scoring.method for item in repetition_items} >= {
-        "llm_judge", "executable_python", "tool_trace"
+        "llm_judge", "executable_python", "tool_call"
     }
 
 
 def test_probe_metadata_matches_executable_suite_ids() -> None:
     pairs = [
-        ("temperature_stability_v1.yaml", "temperature_stability.yaml"),
-        ("constrained_decoding_v1.yaml", "constrained_decoding.yaml"),
-        ("repetition_penalty_v1.yaml", "repetition_penalty.yaml"),
+        ("temperature_stability_v2.yaml", "temperature_stability.yaml"),
+        ("constrained_decoding_v2.yaml", "constrained_decoding.yaml"),
+        ("repetition_penalty_v2.yaml", "repetition_penalty.yaml"),
     ]
     for probe_name, suite_name in pairs:
         probe = yaml.safe_load((ROOT / "data" / "probes" / probe_name).read_text())
@@ -91,7 +113,7 @@ def test_probe_metadata_matches_executable_suite_ids() -> None:
 
 def test_final_profiles_keep_the_approved_generation_budget() -> None:
     profiles = [
-        ("final_default_matrix.yaml", "all.yaml"),
+        ("final_default_matrix.yaml", "final_six.yaml"),
         ("final_temperature_matrix.yaml", "temperature_stability.yaml"),
         ("final_constrained_matrix.yaml", "constrained_decoding.yaml"),
         ("final_repetition_matrix.yaml", "repetition_penalty.yaml"),
@@ -106,4 +128,4 @@ def test_final_profiles_keep_the_approved_generation_budget() -> None:
             * config.benchmark.repetitions
             * sum(map(len, suite.items.values()))
         )
-    assert attempts == 7_368
+    assert attempts == 9_360

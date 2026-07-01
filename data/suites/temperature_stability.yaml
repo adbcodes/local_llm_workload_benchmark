@@ -1,6 +1,6 @@
 schema_version: 1
-name: final-temperature-stability
-version: 1
+name: final-temperature-stability-v2
+version: 2
 status: frozen
 benchmark_files:
   - ../applied_reasoning/benchmark.yaml

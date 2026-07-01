@@ -1,8 +1,8 @@
 schema_version: 1
-id: repetition_penalty_v1
-status: superseded
+id: repetition_penalty_v2
+status: frozen
 target_question_count: 15
-purpose: Measure repeat-penalty effects on longer summaries, code, and tool traces.
+purpose: Measure repeat-penalty effects on longer summaries, code, and next-tool-call decisions after dataset regeneration.
 selection:
   grounded_compression: 6
   india_focused_hinglish: 3

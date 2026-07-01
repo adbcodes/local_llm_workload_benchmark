@@ -65,3 +65,21 @@ models:
       max_output_tokens: 4096
       temperature: 0.0
       top_p: 1.0
+
+  - id: phi-4-mini-q4
+    backend: llama_cpp
+    model_path: models/Phi-4-mini-instruct-Q4_K_M.gguf
+    quantization: Q4_K_M
+    enabled: true
+    context_window: 16384
+    gpu_layers: -1
+    generation: {max_output_tokens: 4096, temperature: 0.0, top_p: 1.0}
+
+  - id: llama-3.1-8b-q4
+    backend: llama_cpp
+    model_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+    quantization: Q4_K_M
+    enabled: true
+    context_window: 16384
+    gpu_layers: -1
+    generation: {max_output_tokens: 4096, temperature: 0.0, top_p: 1.0}

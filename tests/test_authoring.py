@@ -52,14 +52,15 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
         "schema_invoice_001",
         "constraint_api_rate_limiting_001",
         "code_normalize_event_codes_001",
-        "summary_incident_001",
+        "long_text_retrieval_001",
+        "tool_use_001",
     }
 
 
 def test_deterministic_suite_excludes_external_judge_items() -> None:
     suite = load_suite(SOURCE_ROOT / "suites" / "deterministic.yaml")
 
-    assert sum(len(items) for items in suite.items.values()) == 272
+    assert sum(len(items) for items in suite.items.values()) == 320
     assert all(
         item.scoring.method != "llm_judge"
         for items in suite.items.values()

@@ -1,8 +1,8 @@
 schema_version: 1
-id: constrained_decoding_v1
-status: superseded
+id: constrained_decoding_v2
+status: frozen
 target_question_count: 15
-purpose: Compare plain generation with JSON-constrained decoding on varied JSON tasks.
+purpose: Compare plain generation with JSON-constrained decoding on the regenerated final schema dataset and varied JSON tasks.
 selection:
   messy_text_to_schema: 9
   raw_output_discipline: 4

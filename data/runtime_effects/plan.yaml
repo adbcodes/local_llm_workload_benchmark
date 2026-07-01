@@ -20,10 +20,10 @@ saved_artifacts:
   - artifacts/plots/*.svg
   - models/*/telemetry.jsonl
 probe_sets:
-  temperature: ../probes/temperature_stability_v1.yaml
-  constrained_decoding: ../probes/constrained_decoding_v1.yaml
-  repetition_penalty: ../probes/repetition_penalty_v1.yaml
-  context: ../probes/context_speed_v1.yaml
+  temperature: ../probes/temperature_stability_v2.yaml
+  constrained_decoding: ../probes/constrained_decoding_v2.yaml
+  repetition_penalty: ../probes/repetition_penalty_v2.yaml
+  context: ../probes/context_speed_v2.yaml
 experiments:
   - id: quantization_survival
     variants: [Q8, Q6, Q4, Q3]

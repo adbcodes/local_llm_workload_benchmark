@@ -1,0 +1,56 @@
+schema_version: 1
+updated: 2026-07-31
+purpose: Pinned source and integrity metadata for model families added to the final matrix.
+families:
+  phi4-mini:
+    architecture: phi-4-mini-3.8b
+    upstream_model: https://huggingface.co/microsoft/Phi-4-mini-instruct
+    gguf_repository: https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF
+    gguf_revision: 78eb92a46fc37e6b524df991ed9aca9bc6aa7b80
+    files:
+      - quantization: Q8_0
+        remote_filename: Phi-4-mini-instruct.Q8_0.gguf
+        local_path: models/Phi-4-mini-instruct-Q8_0.gguf
+        bytes: 4084611040
+        sha256: 26188c6050d525376a88b04514c236c5e28a36730f1e936f2a00314212b7ba42
+      - quantization: Q6_K
+        remote_filename: Phi-4-mini-instruct-Q6_K.gguf
+        local_path: models/Phi-4-mini-instruct-Q6_K.gguf
+        bytes: 3155622880
+        sha256: 72b8446a3db55617950bef48d296659050867cca41bd7a7be4622010c9589400
+      - quantization: Q4_K_M
+        remote_filename: Phi-4-mini-instruct-Q4_K_M.gguf
+        local_path: models/Phi-4-mini-instruct-Q4_K_M.gguf
+        bytes: 2491874272
+        sha256: 88c00229914083cd112853aab84ed51b87bdf6b9ce42f532d8c85c7c63b1730a
+      - quantization: Q3_K_M
+        remote_filename: Phi-4-mini-instruct-Q3_K_M.gguf
+        local_path: models/Phi-4-mini-instruct-Q3_K_M.gguf
+        bytes: 2117532640
+        sha256: 8eb40b196ca664365bb0012eac556e9700345fcf68b41cfc35e8bf4a47687653
+  llama3.1:
+    architecture: llama-3.1-8b
+    upstream_model: https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct
+    gguf_repository: https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
+    gguf_revision: bf5b95e96dac0462e2a09145ec66cae9a3f12067
+    files:
+      - quantization: Q8_0
+        remote_filename: Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
+        local_path: models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
+        bytes: 8540775840
+        sha256: 9da71c45c90a821809821244d4971e5e5dfad7eb091f0b8ff0546392393b6283
+      - quantization: Q6_K
+        remote_filename: Meta-Llama-3.1-8B-Instruct-Q6_K.gguf
+        local_path: models/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf
+        bytes: 6596011424
+        sha256: 33981adf6bae52c503fb5c24f72539010632f7ed290a56c1315a8cd50adca587
+      - quantization: Q4_K_M
+        remote_filename: Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+        local_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+        bytes: 4920739232
+        sha256: 7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c
+      - quantization: Q3_K_M
+        remote_filename: Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf
+        local_path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf
+        bytes: 4018922912
+        sha256: 6be122b5c8f2a33974953e58e0ffd2be505661acc6f4caf733e4bca130e89fea

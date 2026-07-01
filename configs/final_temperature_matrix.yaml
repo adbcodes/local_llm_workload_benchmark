@@ -6,7 +6,7 @@ benchmark:
   output_root: runs
   repetitions: 3
   seed: 42
-  probe_version: temperature_stability_v1
+  probe_version: temperature_stability_v2
 models:
   - &qwen25
     id: qwen2.5-3b-q8-temp07
@@ -49,3 +49,11 @@ models:
   - {<<: *qwen3, id: qwen3-8b-q6-temp07, model_path: models/Qwen3-8B-Q6_K.gguf, quantization: Q6_K}
   - {<<: *qwen3, id: qwen3-8b-q4-temp07, model_path: models/Qwen3-8B-Q4_K_M.gguf, quantization: Q4_K_M}
   - {<<: *qwen3, id: qwen3-8b-q3-temp07, model_path: models/Qwen3-8B-Q3_K_M.gguf, quantization: Q3_K_M}
+  - &phi4 {<<: *qwen25, id: phi-4-mini-q8-temp07, model_path: models/Phi-4-mini-instruct-Q8_0.gguf, quantization: Q8_0, architecture: phi-4-mini-3.8b, family: phi4-mini}
+  - {<<: *phi4, id: phi-4-mini-q6-temp07, model_path: models/Phi-4-mini-instruct-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *phi4, id: phi-4-mini-q4-temp07, model_path: models/Phi-4-mini-instruct-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *phi4, id: phi-4-mini-q3-temp07, model_path: models/Phi-4-mini-instruct-Q3_K_M.gguf, quantization: Q3_K_M}
+  - &llama31 {<<: *qwen25, id: llama-3.1-8b-q8-temp07, model_path: models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf, quantization: Q8_0, architecture: llama-3.1-8b, family: llama3.1}
+  - {<<: *llama31, id: llama-3.1-8b-q6-temp07, model_path: models/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *llama31, id: llama-3.1-8b-q4-temp07, model_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *llama31, id: llama-3.1-8b-q3-temp07, model_path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf, quantization: Q3_K_M}

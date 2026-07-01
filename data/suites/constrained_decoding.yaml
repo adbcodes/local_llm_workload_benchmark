@@ -1,6 +1,6 @@
 schema_version: 1
-name: final-constrained-decoding
-version: 1
+name: final-constrained-decoding-v2
+version: 2
 status: frozen
 benchmark_files:
   - ../messy_text_to_schema/benchmark.yaml

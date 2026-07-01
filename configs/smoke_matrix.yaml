@@ -1,8 +1,8 @@
 schema_version: 1
 
 benchmark:
-  name: three-model-five-item-smoke
-  description: Verify generation, deterministic scoring, code execution, and judging.
+  name: five-model-six-item-smoke
+  description: Verify generation and scoring across all six final benchmark families.
   workload_path: data/suites/smoke.yaml
   output_root: runs
   repetitions: 1
@@ -61,6 +61,30 @@ models:
     system_prompt: |-
       /no_think
       Follow the user's instructions precisely. Return only the requested answer without commentary.
+    generation:
+      max_output_tokens: 4096
+      temperature: 0.0
+      top_p: 1.0
+
+  - id: phi-4-mini-q4
+    backend: llama_cpp
+    model_path: models/Phi-4-mini-instruct-Q4_K_M.gguf
+    quantization: Q4_K_M
+    enabled: true
+    context_window: 16384
+    gpu_layers: -1
+    generation:
+      max_output_tokens: 4096
+      temperature: 0.0
+      top_p: 1.0
+
+  - id: llama-3.1-8b-q4
+    backend: llama_cpp
+    model_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+    quantization: Q4_K_M
+    enabled: true
+    context_window: 16384
+    gpu_layers: -1
     generation:
       max_output_tokens: 4096
       temperature: 0.0

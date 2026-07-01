@@ -1,9 +1,9 @@
 schema_version: 1
-id: temperature_stability_v1
-status: superseded
+id: temperature_stability_v2
+status: frozen
 target_question_count: 30
 repetitions: 3
-purpose: Measure accuracy, stability, and run-to-run flips at temperature 0.7.
+purpose: Measure accuracy, stability, and run-to-run flips at temperature 0.7 on the regenerated final datasets.
 selection:
   applied_reasoning: 6
   code_debug_repair: 6
