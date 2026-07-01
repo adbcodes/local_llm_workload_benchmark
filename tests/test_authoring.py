@@ -59,7 +59,7 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
 def test_deterministic_suite_excludes_external_judge_items() -> None:
     suite = load_suite(SOURCE_ROOT / "suites" / "deterministic.yaml")
 
-    assert sum(len(items) for items in suite.items.values()) == 256
+    assert sum(len(items) for items in suite.items.values()) == 272
     assert all(
         item.scoring.method != "llm_judge"
         for items in suite.items.values()
