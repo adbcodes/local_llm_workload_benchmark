@@ -70,22 +70,24 @@ final_figures:
     repetitions: 1
   model_families:
     qwen2_5: {architecture: qwen2.5-3b, color: '#1565C0'}
+    phi4_mini: {architecture: phi-4-mini-3.8b, color: '#7B1FA2'}
     gemma3: {architecture: gemma-3-4b, color: '#D32F2F'}
     qwen3: {architecture: qwen3-8b, color: '#2E7D32'}
+    llama3_1: {architecture: llama-3.1-8b, color: '#F57C00'}
   quantizations: [Q8, Q6, Q4, Q3]
   required:
     - quant_applied_reasoning
     - quant_code_debug_repair
     - quant_messy_text_to_schema
     - quant_raw_output_discipline
-    - quant_tool_trace_parseability
+    - quant_tool_arguments
     - constraint_load_score
     - constraint_content_retention
     - context_ttft
   reporting:
     one_metric_per_figure: true
     marker_shapes_encode_data: false
-    family_colors: [blue, red, green]
+    family_colors: [blue, purple, red, green, orange]
     quantization_metric: benchmark_mean_score
     constraint_configuration: Q4
     context_metric: median_ttft_seconds

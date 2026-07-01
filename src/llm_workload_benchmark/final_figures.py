@@ -9,16 +9,20 @@ from statistics import median
 from typing import Any
 
 
-FAMILY_ORDER = ["qwen2.5", "gemma3", "qwen3"]
+FAMILY_ORDER = ["qwen2.5", "phi4-mini", "gemma3", "qwen3", "llama3.1"]
 FAMILY_LABELS = {
     "qwen2.5": "Qwen2.5 3B",
+    "phi4-mini": "Phi-4 Mini 3.8B",
     "gemma3": "Gemma 3 4B",
     "qwen3": "Qwen3 8B",
+    "llama3.1": "Llama 3.1 8B",
 }
 FAMILY_COLORS = {
     "qwen2.5": "#1565C0",
+    "phi4-mini": "#7B1FA2",
     "gemma3": "#D32F2F",
     "qwen3": "#2E7D32",
+    "llama3.1": "#F57C00",
 }
 QUANT_ORDER = ["Q8", "Q6", "Q4", "Q3"]
 CONTEXT_ORDER = ["2K", "4K", "8K"]
@@ -94,12 +98,12 @@ def quantization_benchmark_score(
     return _generated(paths, len(rows), benchmark=benchmark)
 
 
-def quantization_tool_trace_parseability(
+def quantization_tool_arguments(
     root: Path, item_rows: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    """Plot JSON tool-trace parseability without claiming tool correctness."""
+    """Plot exact tool-argument accuracy with selection and format diagnostics."""
 
-    grouped: dict[tuple[str, str], list[bool]] = {}
+    grouped: dict[tuple[str, str], list[dict[str, float | None]]] = {}
     for source in item_rows:
         if source.get("benchmark") != "tool_use":
             continue
@@ -107,18 +111,43 @@ def quantization_tool_trace_parseability(
         quantization = _quant(source.get("quantization"))
         if family not in FAMILY_COLORS or quantization not in QUANT_ORDER:
             continue
+        details = _json_object(source.get("evaluation_details"))
+        argument_accuracy = _number_or_none(details.get("argument_accuracy"))
+        if argument_accuracy is None:
+            continue
         grouped.setdefault((family, quantization), []).append(
-            source.get("integration_outcome")
-            in {"scored", "scored_cleanly", "scored_after_recovery"}
+            {
+                "argument_accuracy": argument_accuracy,
+                "tool_choice_accuracy": _number_or_none(
+                    details.get("tool_choice_accuracy")
+                ),
+                "format_compliant": _number_or_none(
+                    details.get("format_compliant")
+                ),
+                "direct_answer_accuracy": _number_or_none(
+                    details.get("direct_answer_accuracy")
+                ),
+            }
         )
 
     rows = [
         {
             "family": family,
             "quantization": quantization,
-            "parseable": sum(values),
-            "attempted": len(values),
-            "parseability_percent": sum(values) / len(values) * 100,
+            "argument_accuracy_percent": sum(
+                float(value["argument_accuracy"]) for value in values
+            ) / len(values) * 100,
+            "tool_selection_accuracy_percent": _mean_present(
+                values, "tool_choice_accuracy"
+            ) * 100,
+            "format_compliance_percent": _mean_present(
+                values, "format_compliant"
+            ) * 100,
+            "direct_answer_accuracy_percent": (
+                _mean_present(values, "direct_answer_accuracy") * 100
+                if any(value["direct_answer_accuracy"] is not None for value in values)
+                else None
+            ),
             "n": len(values),
         }
         for (family, quantization), values in grouped.items()
@@ -131,7 +160,7 @@ def quantization_tool_trace_parseability(
     if not rows:
         return _skipped("requires tool-use integration outcomes")
 
-    stem = "quant_tool_trace_parseability"
+    stem = "quant_tool_arguments"
     _write_csv(root / "data" / f"{stem}.csv", rows)
     paths = _render_line_chart(
         root,
@@ -139,9 +168,9 @@ def quantization_tool_trace_parseability(
         rows,
         x_key="quantization",
         x_order=QUANT_ORDER,
-        y_key="parseability_percent",
-        y_label="Parseable JSON tool traces (%)",
-        title="Tool Trace Parseability vs Quantization",
+        y_key="argument_accuracy_percent",
+        y_label="Correct tool arguments (%)",
+        title="Tool Argument Accuracy vs Quantization",
         y_limit=(0, 105),
     )
     return _generated(paths, len(rows), benchmark="tool_use")
@@ -274,7 +303,7 @@ def generate_final_figure_bundle(
     }
     plots.update(
         {
-            "quant_tool_trace_parseability": quantization_tool_trace_parseability(
+            "quant_tool_arguments": quantization_tool_arguments(
                 output, items
             ),
             "constraint_load_score": constraint_load_score(output, items),
@@ -465,6 +494,13 @@ def _constraint_count(tags: list[str]) -> int | None:
         if match:
             return int(match.group(1))
     return None
+
+
+def _mean_present(
+    values: list[dict[str, float | None]], key: str
+) -> float:
+    present = [float(value[key]) for value in values if value[key] is not None]
+    return sum(present) / len(present) if present else 0.0
 
 
 def _context_length(tags: list[str]) -> str | None:
