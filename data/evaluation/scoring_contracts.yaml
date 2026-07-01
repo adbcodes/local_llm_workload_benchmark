@@ -42,6 +42,8 @@ methods:
     use_for: composed positive, negative, format, and ordering instructions
     expected_value: reference answer proving satisfiability
     accepted_answer_contracts: [scalar_text]
+    content_checkers:
+      json_records: exact record multiset with object-key order and array-record order ignored
     reports: [content_score, per_rule_checks, rule_compliance]
   executable_python:
     use_for: implementation and repair

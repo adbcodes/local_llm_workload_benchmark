@@ -1,19 +1,22 @@
 id: constraint_load_curve
 title: Following Multiple Rules
-description: Ten task carriers measured across one to four cumulative rule levels.
+description: Twelve practical task carriers measured across one to four cumulative rule levels.
 suite: C
 status: complete
 task_types:
   - prose explanation
   - extraction and filtering
-  - list generation
   - JSON transformation
   - CSV transformation
   - constrained rewriting
   - classification and prioritisation
   - professional email
   - YAML configuration
-  - ordering and tie-breaking
+  - privacy-safe incident communication
+  - risk-ordered work queues
+  - equipment inventory CSV
+  - privacy-safe customer support
+  - access provisioning with missing values and untrusted notes
 reporting_dimensions:
   - core task accuracy
   - compliance with each added instruction
@@ -30,17 +33,17 @@ evaluation_policy:
 items_path: items.jsonl
 authoring_paths:
   - questions.yaml
-current_question_count: 40
-target_question_count: 40
+current_question_count: 48
+target_question_count: 48
 current_difficulty_distribution:
-  easy: 10
-  medium: 20
-  hard: 10
+  easy: 12
+  medium: 24
+  hard: 12
 difficulty_distribution:
-  easy: 10
-  medium: 20
-  hard: 10
-target_visibility_distribution: {public: 20, held_out: 20}
+  easy: 12
+  medium: 24
+  hard: 12
+target_visibility_distribution: {public: 24, held_out: 24}
 order_rule: easy_to_hard
 scoring_methods:
   - constraint_rules

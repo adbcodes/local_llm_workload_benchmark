@@ -324,13 +324,14 @@ def test_data_heavy_constraint_tasks_use_larger_inputs_and_changing_answers() ->
     assert len(json.loads(employee_answers[0])) == 12
     assert len(set(employee_answers)) == 4
 
-    book_answers = [
-        str(items[f"constraint_book_csv_{level:03d}"].expected["value"])
+    access_answers = [
+        str(items[f"constraint_access_provisioning_{level:03d}"].expected["value"])
         for level in range(1, 5)
     ]
-    assert len(book_answers[0].splitlines()) == 16  # header plus 15 books
-    assert len(set(book_answers)) == 4
-    assert "END,END,0" not in book_answers[-1]
+    assert len(json.loads(access_answers[0])) == 6
+    assert len(json.loads(access_answers[1])) == 4
+    assert json.loads(access_answers[2])[1]["expiration_days"] is None
+    assert len(set(access_answers)) == 3
 
     classification_answers = [
         str(items[f"constraint_message_classification_{level:03d}"].expected["value"])
@@ -338,10 +339,6 @@ def test_data_heavy_constraint_tasks_use_larger_inputs_and_changing_answers() ->
     ]
     assert len(json.loads(classification_answers[0])) == 16
     assert len(set(classification_answers)) == 4
-
-    ordering = items["constraint_point_ordering_001"]
-    assert len(str(ordering.expected["value"]).split(",")) == 15
-
 
 def test_loader_rejects_difficulty_regression(tmp_path: Path) -> None:
     source_items = Path(
@@ -368,7 +365,7 @@ def test_loader_rejects_unknown_and_impossible_constraint_rules(
         for line in Path("data/constraint_load_curve/items.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()
-        if json.loads(line)["id"] == "constraint_paragraph_rewrite_001"
+        if json.loads(line)["id"] == "constraint_api_rate_limiting_004"
     )
     rules = source["scoring"]["parameters"]["rules"]
     rules["max_word"] = rules.pop("max_words")

@@ -14,26 +14,30 @@ QUESTIONS_PATH = Path("data/constraint_load_curve/questions.yaml")
 REVIEW_PATH = Path("docs/TEMP_CONSTRAINT_LOAD_CURVE_REVIEW.md")
 
 
-def test_constraint_load_curve_has_ten_complete_comparison_groups() -> None:
+def test_constraint_load_curve_has_twelve_complete_comparison_groups() -> None:
     items = load_suite(SUITE_PATH).items["constraint_load_curve"]
 
-    assert len(items) == 40
+    assert len(items) == 48
     assert Counter(item.subcategory for item in items) == {
-        "one_constraint": 10,
-        "two_constraints": 10,
-        "three_constraints": 10,
-        "four_constraints": 10,
+        "one_constraint": 12,
+        "two_constraints": 12,
+        "three_constraints": 12,
+        "four_constraints": 12,
     }
     assert Counter(item.difficulty for item in items) == {
-        "easy": 10,
-        "medium": 20,
-        "hard": 10,
+        "easy": 12,
+        "medium": 24,
+        "hard": 12,
     }
     assert Counter(len(item.scoring.parameters["rules"]) for item in items) == {
-        1: 10,
-        2: 10,
-        3: 10,
-        4: 10,
+        1: 12,
+        2: 12,
+        3: 12,
+        4: 12,
+    }
+    assert Counter(item.visibility for item in items) == {
+        "public": 24,
+        "held_out": 24,
     }
     assert Counter(
         tag
@@ -42,14 +46,12 @@ def test_constraint_load_curve_has_ten_complete_comparison_groups() -> None:
         for tag in item.tags
         if tag.endswith("_carrier")
     ) == {
-        "prose_carrier": 3,
+        "prose_carrier": 5,
         "extraction_carrier": 1,
-        "list_carrier": 1,
-        "structured_json_carrier": 1,
+        "structured_json_carrier": 3,
         "structured_csv_carrier": 1,
         "classification_carrier": 1,
         "structured_yaml_carrier": 1,
-        "ordering_carrier": 1,
     }
 
     groups: dict[str, list] = {}
@@ -57,7 +59,7 @@ def test_constraint_load_curve_has_ten_complete_comparison_groups() -> None:
         groups.setdefault(item.variant_of or item.id, []).append(item)
         assert score_answer(item, str(item.expected["value"])).passed
 
-    assert len(groups) == 10
+    assert len(groups) == 12
     for base_id, variants in groups.items():
         variants.sort(key=lambda item: len(item.scoring.parameters["rules"]))
         assert [len(item.scoring.parameters["rules"]) for item in variants] == [
@@ -78,16 +80,108 @@ def test_final_task_mix_and_interaction_hotspots_are_frozen() -> None:
     items = load_suite(SUITE_PATH).items["constraint_load_curve"]
     bases = [item for item in items if item.variant_of is None]
 
-    assert len(bases) == 10
+    assert len(bases) == 12
     rewrite = next(item for item in items if item.id == "constraint_paragraph_rewrite_003")
     email = next(item for item in items if item.id == "constraint_vendor_email_004")
+    incident = next(
+        item
+        for item in items
+        if item.id == "constraint_incident_status_redaction_004"
+    )
+    queue = next(item for item in items if item.id == "constraint_review_queue_004")
+    assets = next(item for item in items if item.id == "constraint_asset_inventory_csv_004")
+    refund = next(item for item in items if item.id == "constraint_refund_customer_update_004")
+    access = next(item for item in items if item.id == "constraint_access_provisioning_004")
     assert "short_rewrite_with_banned_verbs" in rewrite.tags
     assert "word_range_with_paragraph_structure" in email.tags
+    assert "required_timestamps_with_sensitive_term_redaction" in incident.tags
+    assert "three_key_sort_with_derived_band" in queue.tags
+    assert "filter_sort_and_tie_break_csv" in assets.tags
+    assert "customer_clarity_with_sensitive_data_redaction" in refund.tags
+    assert "missing_value_and_untrusted_instruction_hierarchy" in access.tags
 
-    source = rewrite.prompt.split("Source data: ", 1)[1].split(
-        " Mandatory constraints:", 1
+    source = rewrite.prompt.split("Passage:\n", 1)[1].split(
+        "\n\nRewrite request:", 1
     )[0]
     assert len(source.split()) == 80
+
+
+def test_new_constraint_families_exercise_interacting_rules() -> None:
+    items = {
+        item.id: item
+        for item in load_suite(SUITE_PATH).items["constraint_load_curve"]
+    }
+
+    incident = items["constraint_incident_status_redaction_004"]
+    leaked = str(incident.expected["value"]).replace(
+        "affected database component", "db-prod-7 token"
+    )
+    leaked_result = score_answer(incident, leaked)
+    assert leaked_result.details["checks"]["required_terms"] is True
+    assert leaked_result.details["checks"]["forbidden_terms"] is False
+
+    queue = items["constraint_review_queue_004"]
+    wrong_order = json.loads(str(queue.expected["value"]))
+    wrong_order[0], wrong_order[1] = wrong_order[1], wrong_order[0]
+    wrong_order_result = score_answer(queue, json.dumps(wrong_order))
+    assert wrong_order_result.details["content_preserved"] is True
+    assert wrong_order_result.details["content_score"] == 1
+    assert wrong_order_result.details["checks"]["json_array_field_equals"] is True
+    assert wrong_order_result.details["checks"]["json_derived_bands"] is True
+    assert wrong_order_result.details["checks"]["json_array_sorted_by"] is False
+
+    access = items["constraint_access_provisioning_004"]
+    injected = json.loads(str(access.expected["value"]))
+    injected[1]["role"] = "admin"
+    injected[0]["expiration_days"] = 90
+    access_result = score_answer(access, json.dumps(injected))
+    assert access_result.details["content_preserved"] is False
+    assert access_result.details["checks"]["json_array_field_equals"] is True
+    assert access_result.details["checks"]["json_array_required_keys"] is True
+    assert access_result.details["checks"]["forbidden_terms"] is False
+
+
+def test_constraint_content_accepts_semantic_paraphrase_but_rejects_missing_facts() -> None:
+    items = {
+        item.id: item
+        for item in load_suite(SUITE_PATH).items["constraint_load_curve"]
+    }
+    incident = items["constraint_incident_status_redaction_001"]
+
+    equivalent = score_answer(
+        incident,
+        "Checkout requests experienced an outage. Engineers brought the service back online. Monitoring now shows normal operation.",
+    )
+    assert equivalent.passed
+    assert equivalent.details["content_preserved"] is True
+
+    missing_facts = score_answer(
+        incident,
+        "Engineers investigated the report. The team reviewed logs. Monitoring continues.",
+    )
+    assert missing_facts.details["checks"]["exact_sentences"] is True
+    assert missing_facts.details["content_preserved"] is False
+    assert not missing_facts.passed
+
+
+def test_unordered_json_content_is_not_mistaken_for_an_ordering_failure() -> None:
+    items = {
+        item.id: item
+        for item in load_suite(SUITE_PATH).items["constraint_load_curve"]
+    }
+    unsorted_item = items["constraint_employee_json_001"]
+    reversed_records = list(reversed(json.loads(str(unsorted_item.expected["value"]))))
+    equivalent = score_answer(unsorted_item, json.dumps(reversed_records))
+    assert equivalent.passed
+    assert equivalent.details["content_checker"] == "json_records"
+    assert equivalent.details["content_score"] == 1
+
+    sorted_item = items["constraint_employee_json_003"]
+    wrong_order = list(reversed(json.loads(str(sorted_item.expected["value"]))))
+    invalid = score_answer(sorted_item, json.dumps(wrong_order))
+    assert invalid.details["content_preserved"] is True
+    assert invalid.details["checks"]["json_array_sorted_by"] is False
+    assert not invalid.passed
 
 
 def test_extraction_filters_cancelled_order_and_checks_gold_values() -> None:
@@ -128,9 +222,9 @@ def test_structured_and_interacting_constraint_helpers_fail_independently() -> N
         for item in load_suite(SUITE_PATH).items["constraint_load_curve"]
     }
 
-    csv_item = items["constraint_book_csv_003"]
-    old_book = str(csv_item.expected["value"]) + "\nNorthern Byte,Kabir Sen,2014"
-    csv_result = score_answer(csv_item, old_book)
+    csv_item = items["constraint_asset_inventory_csv_003"]
+    old_asset = str(csv_item.expected["value"]) + "\nPhone-D08,Maya,2021"
+    csv_result = score_answer(csv_item, old_asset)
     assert csv_result.details["content_preserved"] is False
     assert csv_result.details["checks"]["csv_year_min"] is False
 
@@ -143,17 +237,21 @@ def test_structured_and_interacting_constraint_helpers_fail_independently() -> N
     assert yaml_result.details["checks"]["yaml_only"] is True
     assert yaml_result.details["checks"]["yaml_healthcheck"] is False
 
-    ordering_item = items["constraint_point_ordering_004"]
-    wrong_tie_order = str(items["constraint_point_ordering_003"].expected["value"])
-    ordering_result = score_answer(ordering_item, wrong_tie_order)
-    assert ordering_result.details["checks"]["sorted_by_points"] is True
-    assert ordering_result.details["checks"]["ties_alphabetical"] is False
-
     email_item = items["constraint_vendor_email_004"]
     collapsed_email = str(email_item.expected["value"]).replace("\n\n", "\n")
     email_result = score_answer(email_item, collapsed_email)
     assert email_result.details["checks"]["word_range"] is True
     assert email_result.details["checks"]["exact_paragraphs"] is False
+
+
+def test_service_yaml_gold_uses_the_source_replica_count() -> None:
+    items = {
+        item.id: item
+        for item in load_suite(SUITE_PATH).items["constraint_load_curve"]
+    }
+    two_rule_gold = str(items["constraint_service_yaml_002"].expected["value"])
+    assert "replicas: 3" in two_rule_gold
+    assert "replicas: 2" not in two_rule_gold
 
 
 def test_materialized_questions_match_generator(tmp_path: Path) -> None:
@@ -187,8 +285,8 @@ def test_temporary_markdown_review_matches_dataset(tmp_path: Path) -> None:
 
     review = REVIEW_PATH.read_text(encoding="utf-8")
     assert review == regenerated_path.read_text(encoding="utf-8")
-    assert "466 questions across 16 benchmarks" in review
-    assert "[Applied Reasoning Gauntlet](#applied-reasoning)" in review
+    assert "503 questions across 16 benchmarks" in review
+    assert "[Applied Reasoning Diagnostic](#applied-reasoning)" in review
     assert "[Following Multiple Rules](#constraint-load-curve)" in review
     assert "[Messy Text to Schema](#messy-text-to-schema)" in review
     assert "[Long-Text Retrieval](#long-text-retrieval)" in review
@@ -196,6 +294,6 @@ def test_temporary_markdown_review_matches_dataset(tmp_path: Path) -> None:
     assert "Messy Text to Schema — 48 questions" in review
     assert "Confidence vs Correctness" not in review
     assert "**Conversation shown to the model**" in review
-    assert review.count("<summary><code>") == 466
-    assert review.count("<details>") == 482
+    assert review.count("<summary><code>") == 503
+    assert review.count("<details>") == 519
     assert not Path("docs/TEMP_CODE_DEBUG_REPAIR_REVIEW.html").exists()

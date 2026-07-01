@@ -787,6 +787,19 @@ def _validate_scoring_parameters(
             or any(not isinstance(row, list) or not row for row in content_value)
         ):
             raise ValueError("csv_records must be a non-empty list of rows")
+    elif content_kind == "json_records":
+        if (
+            not isinstance(content_value, list)
+            or not content_value
+            or any(not isinstance(record, dict) or not record for record in content_value)
+        ):
+            raise ValueError(
+                "json_records must be a non-empty list of non-empty objects"
+            )
+        try:
+            json.dumps(content_value)
+        except (TypeError, ValueError) as error:
+            raise ValueError("json_records must be JSON serializable") from error
     elif content_kind == "classification_labels":
         _validate_nonempty_strings(content_value, "classification labels")
     elif content_kind in {"exact_json", "exact_yaml"}:
@@ -2587,6 +2600,29 @@ def _score_constraint_content(
         return actual_counter == expected_counter, score, {
             "actual_records": actual_rows,
             "expected_records": expected_rows,
+        }
+    if kind == "json_records":
+        actual_records = parsed_json if isinstance(parsed_json, list) else []
+        if any(not isinstance(record, dict) for record in actual_records):
+            actual_records = []
+
+        def canonical_record(record: dict[str, Any]) -> str:
+            return json.dumps(
+                record,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+
+        actual_counter = Counter(canonical_record(record) for record in actual_records)
+        expected_counter = Counter(canonical_record(record) for record in specification)
+        matches = sum((actual_counter & expected_counter).values())
+        score = matches / max(len(actual_records), len(specification))
+        return actual_counter == expected_counter, score, {
+            "content_checker": "json_records",
+            "matching_records": matches,
+            "expected_records": len(specification),
+            "actual_records": len(actual_records),
         }
     if kind == "exact_json":
         return _score_exact_structure(parsed_json, specification, "json")
