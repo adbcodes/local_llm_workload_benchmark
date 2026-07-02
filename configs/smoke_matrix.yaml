@@ -1,8 +1,8 @@
 schema_version: 1
 
 benchmark:
-  name: five-model-six-item-smoke
-  description: Verify generation and scoring across all six final benchmark families.
+  name: five-model-representative-quantization-smoke
+  description: Verify all six final benchmarks and Q3, Q4, Q6, and Q8 model loading across five families.
   workload_path: data/suites/smoke.yaml
   output_root: runs
   repetitions: 1
@@ -26,10 +26,10 @@ judge:
   output_price_per_million_tokens: 0.60
 
 models:
-  - id: qwen2.5-3b-q4
+  - id: qwen2.5-3b-q3
     backend: llama_cpp
-    model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf
-    quantization: Q4_K_M
+    model_path: models/qwen2.5-3b-instruct-q3_k_m.gguf
+    quantization: Q3_K_M
     enabled: true
     context_window: 16384
     gpu_layers: -1
@@ -38,10 +38,10 @@ models:
       temperature: 0.0
       top_p: 1.0
 
-  - id: gemma-3-4b-q4
+  - id: gemma-3-4b-q6
     backend: llama_cpp
-    model_path: models/gemma-3-4b-it-Q4_K_M.gguf
-    quantization: Q4_K_M
+    model_path: models/gemma-3-4b-it-Q6_K.gguf
+    quantization: Q6_K
     enabled: true
     context_window: 16384
     gpu_layers: -1
@@ -50,10 +50,10 @@ models:
       temperature: 0.0
       top_p: 1.0
 
-  - id: qwen3-8b-q4
+  - id: qwen3-8b-q8
     backend: llama_cpp
-    model_path: models/Qwen3-8B-Q4_K_M.gguf
-    quantization: Q4_K_M
+    model_path: models/Qwen3-8B-Q8_0.gguf
+    quantization: Q8_0
     enabled: true
     context_window: 16384
     gpu_layers: -1

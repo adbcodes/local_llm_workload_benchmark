@@ -134,6 +134,9 @@ def test_numeric_and_exact_answer_verifiers() -> None:
     assert score_answer(percentage, "112.0").passed
     assert score_answer(percentage, '"112"').passed
     assert score_answer(percentage, "The answer is 112.").passed
+    assert score_answer(percentage, "FINAL: 112 kg").passed
+    assert score_answer(percentage, "FINAL: 112 kilograms").passed
+    assert not score_answer(percentage, "FINAL: 112 lb").passed
     derivation = score_answer(
         percentage,
         "17.5 percent of 640 is 112.\nFINAL: 112",

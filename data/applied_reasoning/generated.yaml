@@ -21,6 +21,10 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: kg
+      unit_aliases:
+      - kilogram
+      - kilograms
   provenance:
     kind: synthetic
     review_status: human_checked

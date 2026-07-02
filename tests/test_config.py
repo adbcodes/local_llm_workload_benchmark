@@ -83,6 +83,12 @@ def test_fast_matrix_configs_load() -> None:
 
     assert len(smoke.models) == len(deterministic.models) == 5
     assert smoke.benchmark.workload_path == Path("data/suites/smoke.yaml")
+    assert {model.quantization for model in smoke.models} == {
+        "Q3_K_M",
+        "Q4_K_M",
+        "Q6_K",
+        "Q8_0",
+    }
     assert deterministic.benchmark.workload_path == Path(
         "data/suites/deterministic.yaml"
     )

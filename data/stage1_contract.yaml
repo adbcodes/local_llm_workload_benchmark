@@ -1,0 +1,101 @@
+schema_version: 1
+stage: stage1_deterministic_matrix
+frozen_on: 2026-07-31
+
+suite:
+  path: data/suites/final_six.yaml
+  sha256: 9df4c71066ebe6839728a13e3f3c97eac44ee8da0de44475e79ec8ee3c55a4b5
+  question_count: 320
+  datasets:
+    - id: applied_reasoning
+      path: data/applied_reasoning/items.jsonl
+      questions: 48
+      sha256: 32893f30ba37119e6a5fd162aed537015a449d3695f3441c26bb7c49fc7b8e03
+    - id: code_debug_repair
+      path: data/code_debug_repair/items.jsonl
+      questions: 80
+      sha256: 7794aeb80ad878a8d194edb810c7903c70fe09f4d2638306917eb5c124745ee0
+    - id: messy_text_to_schema
+      path: data/messy_text_to_schema/items.jsonl
+      questions: 48
+      sha256: 7b4735c3c358ad969c7dfd28958402b15bd44306710e959bb8161077a768c7b9
+    - id: long_text_retrieval
+      path: data/long_text_retrieval/items.jsonl
+      questions: 48
+      sha256: 25c2ddc4f964b2788477e7186469623e6de2ba55602db7aff0e01d095531b159
+    - id: constraint_load_curve
+      path: data/constraint_load_curve/items.jsonl
+      questions: 48
+      sha256: d6839e08f94c70f613a09dedd8a7e431377b567f8228264b27e06c1409e583f6
+    - id: tool_use
+      path: data/tool_use/items.jsonl
+      questions: 48
+      sha256: 45276dac4a8bc5299ba4762c9211d44df3297ef8656239d18e9950bd10ac7b14
+
+evaluators:
+  implementation_files:
+    - path: src/llm_workload_benchmark/dataset.py
+      sha256: a46a18fa13fd88922da0191b8162ceff243c22acfd15a6c10f67f7848912e467
+    - path: src/llm_workload_benchmark/executable.py
+      sha256: dcd8ddc461d7f4bdfd8fd16475283e47149c5ab693b715866da45bd626823d63
+    - path: src/llm_workload_benchmark/answer_parser.py
+      sha256: aa0a064be2c6d66a2f4f0cce613c7427d945107798c14f0ac18deee4850fe8fd
+  versions:
+    numeric_tolerance: 2
+    restricted_python_tests: 2
+    json_exact: 1
+    exact_match: 1
+    constraint_rules: 1
+    tool_call: 1
+
+main_run:
+  config_path: configs/final_default_matrix.yaml
+  config_sha256: f699388d49244ec8f4356a356773a58347fcd187b05b5242043d6f62ef1af438
+  command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_default_matrix.yaml --skip-human-eval
+  repetitions: 1
+  generation:
+    max_output_tokens: 4096
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 40
+    repeat_penalty: 1.0
+    constrained_decoding: none
+
+models:
+  - {id: qwen2.5-3b-q8, quantization: Q8_0, path: models/qwen2.5-3b-instruct-q8_0.gguf, bytes: 3616088480, sha256: 6dcc22694c8654b045ec40bbe350212b88893fd9010e8474bae5b19a43578ba1}
+  - {id: qwen2.5-3b-q6, quantization: Q6_K, path: models/qwen2.5-3b-instruct-q6_k.gguf, bytes: 2793410976, sha256: 12da1a5d3fa6905111d8798b00ed49e0f6425441598c8c41bb37a2c36d49d0f3}
+  - {id: qwen2.5-3b-q4, quantization: Q4_K_M, path: models/qwen2.5-3b-instruct-q4_k_m.gguf, bytes: 2104932768, sha256: 626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d}
+  - {id: qwen2.5-3b-q3, quantization: Q3_K_M, path: models/qwen2.5-3b-instruct-q3_k_m.gguf, bytes: 1724178848, sha256: ba8627a48c2bddefac2f995caf7887551304f26a72137fb94b74449121d0df4e}
+  - {id: gemma-3-4b-q8, quantization: Q8_0, path: models/gemma-3-4b-it-Q8_0.gguf, bytes: 4130402176, sha256: 81bf0583ab5bad155a5a3b15d155a880a1a1e4f7de2de5c06f10f64ac49f8336}
+  - {id: gemma-3-4b-q6, quantization: Q6_K, path: models/gemma-3-4b-it-Q6_K.gguf, bytes: 3190740096, sha256: df3fb9a1449296d26258c0771d5280ceb71559ad98e2db658799a05218ed9fa1}
+  - {id: gemma-3-4b-q4, quantization: Q4_K_M, path: models/gemma-3-4b-it-Q4_K_M.gguf, bytes: 2489757856, sha256: 882e8d2db44dc554fb0ea5077cb7e4bc49e7342a1f0da57901c0802ea21a0863}
+  - {id: gemma-3-4b-q3, quantization: Q3_K_M, path: models/gemma-3-4b-it-Q3_K_M.gguf, bytes: 2098459776, sha256: cd0dc2ce517f0c2764a7a7d1274c935335fa56092bb62b39e06546fb599c382d}
+  - {id: qwen3-8b-q8, quantization: Q8_0, path: models/Qwen3-8B-Q8_0.gguf, bytes: 8709518880, sha256: edbd7ae01df991a2d4061e61451ad3d6829d8ca19f7cc846f7177499ac280c33}
+  - {id: qwen3-8b-q6, quantization: Q6_K, path: models/Qwen3-8B-Q6_K.gguf, bytes: 6725899808, sha256: 69a45d3c366bab1736b201fdb21eb9d58160999a0f330a79d2c096f50de8985d}
+  - {id: qwen3-8b-q4, quantization: Q4_K_M, path: models/Qwen3-8B-Q4_K_M.gguf, bytes: 5027783488, sha256: d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785}
+  - {id: qwen3-8b-q3, quantization: Q3_K_M, path: models/Qwen3-8B-Q3_K_M.gguf, bytes: 4124161568, sha256: c2c61b55d39ec6fc43f84b4cbbed4505fde386d4e03ed005087bfd8c69c502c3}
+  - {id: phi-4-mini-q8, quantization: Q8_0, path: models/Phi-4-mini-instruct-Q8_0.gguf, bytes: 4084611040, sha256: 26188c6050d525376a88b04514c236c5e28a36730f1e936f2a00314212b7ba42}
+  - {id: phi-4-mini-q6, quantization: Q6_K, path: models/Phi-4-mini-instruct-Q6_K.gguf, bytes: 3155622880, sha256: 72b8446a3db55617950bef48d296659050867cca41bd7a7be4622010c9589400}
+  - {id: phi-4-mini-q4, quantization: Q4_K_M, path: models/Phi-4-mini-instruct-Q4_K_M.gguf, bytes: 2491874272, sha256: 88c00229914083cd112853aab84ed51b87bdf6b9ce42f532d8c85c7c63b1730a}
+  - {id: phi-4-mini-q3, quantization: Q3_K_M, path: models/Phi-4-mini-instruct-Q3_K_M.gguf, bytes: 2117532640, sha256: 8eb40b196ca664365bb0012eac556e9700345fcf68b41cfc35e8bf4a47687653}
+  - {id: llama-3.1-8b-q8, quantization: Q8_0, path: models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf, bytes: 8540775840, sha256: 9da71c45c90a821809821244d4971e5e5dfad7eb091f0b8ff0546392393b6283}
+  - {id: llama-3.1-8b-q6, quantization: Q6_K, path: models/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf, bytes: 6596011424, sha256: 33981adf6bae52c503fb5c24f72539010632f7ed290a56c1315a8cd50adca587}
+  - {id: llama-3.1-8b-q4, quantization: Q4_K_M, path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf, bytes: 4920739232, sha256: 7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c}
+  - {id: llama-3.1-8b-q3, quantization: Q3_K_M, path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf, bytes: 4018922912, sha256: 6be122b5c8f2a33974953e58e0ffd2be505661acc6f4caf733e4bca130e89fea}
+
+preflight_smoke:
+  config_path: configs/smoke_matrix.yaml
+  config_sha256: b2fa5d824081bc73cd46515293a35704ec320219b86e060e1f502d7228aa105b
+  command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/smoke_matrix.yaml --skip-human-eval
+  evidence_path: runs/2026-07-31_14-26-48-matrix-06d1b66c
+  quantizations: [Q3_K_M, Q4_K_M, Q6_K, Q8_0]
+  models_completed: 5
+  models_failed: 0
+  item_records: 30
+  finish_reasons: {stop: 30}
+  integration_outcomes: {scored_cleanly: 27, scored_after_recovery: 3}
+  sensor_status:
+    apple_gpu: available
+    process_cpu: available
+    process_memory: available
+    temperature_and_power: requires_root_powermetrics

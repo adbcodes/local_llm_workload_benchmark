@@ -125,6 +125,8 @@ def _arithmetic() -> list[Scenario]:
             "A community kitchen has a 640 kg monthly rice allocation and donates "
             "17.5% to a nearby shelter. How many kilograms are donated?",
             112,
+            answer_unit="kg",
+            unit_aliases=("kilogram", "kilograms"),
             tags=("sanity", "percentage", "practical_context"),
         ),
         Scenario(
