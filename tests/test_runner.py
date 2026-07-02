@@ -37,7 +37,16 @@ class AnsweringBackend:
             output_tokens=max(1, len(answer.split())),
             time_to_first_token_seconds=0.05,
             finish_reason="stop",
+            prompt_eval_tokens=20,
+            prompt_cached_tokens=0,
+            prompt_eval_seconds=0.1,
+            decode_eval_tokens=max(1, len(answer.split())),
+            decode_eval_seconds=0.02,
+            decode_graphs_reused=0,
         )
+
+    def warmup(self, generation, *, seed):
+        return GenerationOutput(text="OK", output_tokens=1)
 
 
 def _correct_answers() -> dict[str, str]:
@@ -142,7 +151,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert len(result_lines) == item_count
     records = [json.loads(line) for line in result_lines]
     assert all(record["status"] == "completed" for record in records)
-    assert all(record["schema_version"] == 3 for record in records)
+    assert all(record["schema_version"] == 4 for record in records)
     assert all(record["evaluation"]["passed"] for record in records)
     assert all(record["evaluation"]["type"] == "deterministic" for record in records)
     assert all(
@@ -154,7 +163,10 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert all(record["prompt_tokens"] == 20 for record in records)
     assert all(record["time_to_first_token_seconds"] == 0.05 for record in records)
     assert all(record["output_characters"] > 0 for record in records)
-    assert all(record["peak_process_memory_bytes"] == 4_000_000_000 for record in records)
+    assert all(record["item_peak_process_rss_bytes"] == 4_000_000_000 for record in records)
+    assert all(record["prompt_tokens_per_second"] == 200.0 for record in records)
+    assert all(record["decode_tokens_per_second"] > 0 for record in records)
+    assert all(record["resume_segment"] == 1 for record in records)
     assert {record["difficulty"] for record in records} == {
         "easy",
         "medium",
@@ -172,8 +184,27 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert summary["totals"]["integration_friction_rate"] == 0.0
     assert summary["totals"]["pass_rate_ci_95"]["high"] == pytest.approx(1.0)
     assert summary["totals"]["mean_time_to_first_token_seconds"] == pytest.approx(0.05)
-    assert summary["totals"]["peak_process_memory_bytes"] == 4_000_000_000
-    assert summary["peak_process_memory_after_model_load_bytes"] == 4_000_000_000
+    assert summary["totals"]["prompt_tokens_per_second"] == pytest.approx(200.0)
+    assert summary["totals"]["decode_tokens_per_second"] == pytest.approx(
+        sum(record["decode_eval_tokens"] for record in records)
+        / sum(record["decode_eval_seconds"] for record in records)
+    )
+    assert summary["totals"]["output_tokens_per_second_end_to_end"] == pytest.approx(
+        sum(record["output_tokens"] for record in records)
+        / sum(record["generation_latency_seconds"] for record in records)
+    )
+    assert summary["totals"]["peak_process_rss_bytes"] == 4_000_000_000
+    assert summary["process_rss_before_model_load_bytes"] == 4_000_000_000
+    assert summary["process_rss_after_model_load_bytes"] == 4_000_000_000
+    assert summary["model_load_rss_delta_bytes"] == 0
+    assert summary["warmup"]["performed"] is True
+    assert summary["warmup"]["excluded_from_results"] is True
+    assert summary["resume"] == {
+        "checkpoint_granularity": "item",
+        "resumed_from_items": 0,
+        "segment": 1,
+    }
+    assert len(summary["model"]["sha256"]) == 64
     assert summary["total_prompt_tokens"] == 20 * item_count
     assert "licensed_anchor" not in summary["by_origin"]
     assert summary["by_origin"]["fresh_generated"]["attempted"] == 48
@@ -208,7 +239,7 @@ def test_runner_records_item_error_and_continues(tmp_path: Path) -> None:
         "type": "RuntimeError",
         "message": "simulated generation failure",
     }
-    assert errors[0]["schema_version"] == 3
+    assert errors[0]["schema_version"] == 4
     assert errors[0]["evaluation"] is None
 
     summary = json.loads((run_directory / "summary.json").read_text())
@@ -496,6 +527,64 @@ def test_matrix_resume_preserves_completed_model_and_restarts_partial_model(
     assert resumed_index["resume_count"] == 1
 
 
+def test_matrix_resume_continues_partial_model_from_item_checkpoint(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_matrix_config(tmp_path)
+    config = load_config(config_path)
+    answers = _correct_answers()
+    experiment = run_matrix(
+        config,
+        config_path,
+        project_root=tmp_path,
+        backend_factory=lambda model, model_path, seed: AnsweringBackend(answers),
+    )
+    index_path = experiment / "experiment.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    first_result, second_result = index["models"]
+    second_results_path = experiment / second_result["run_directory"] / "results.jsonl"
+    original_lines = second_results_path.read_text(encoding="utf-8").splitlines()
+    checkpoint_count = 7
+    checkpoint = "\n".join(original_lines[:checkpoint_count]) + "\n"
+    second_results_path.write_text(checkpoint, encoding="utf-8")
+    (experiment / second_result["run_directory"] / "summary.json").unlink()
+    index.update(status="running", models=[first_result], models_completed=1)
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+
+    loaded_models: list[str] = []
+    progress: list[RunProgress] = []
+
+    def backend_factory(model, model_path, seed):
+        loaded_models.append(model.id)
+        return AnsweringBackend(answers)
+
+    run_matrix(
+        config,
+        config_path,
+        project_root=tmp_path,
+        backend_factory=backend_factory,
+        progress_callback=progress.append,
+        resume_experiment=experiment,
+    )
+
+    resumed_lines = second_results_path.read_text(encoding="utf-8").splitlines()
+    assert resumed_lines[:checkpoint_count] == original_lines[:checkpoint_count]
+    assert len(resumed_lines) == len(original_lines)
+    assert loaded_models == ["second-model"]
+    assert len(progress) == len(original_lines) - checkpoint_count
+    resumed_records = [json.loads(line) for line in resumed_lines]
+    assert all(record["resume_segment"] == 1 for record in resumed_records[:checkpoint_count])
+    assert all(record["resume_segment"] == 2 for record in resumed_records[checkpoint_count:])
+    summary = json.loads(
+        (experiment / second_result["run_directory"] / "summary.json").read_text()
+    )
+    assert summary["resume"] == {
+        "checkpoint_granularity": "item",
+        "resumed_from_items": checkpoint_count,
+        "segment": 2,
+    }
+
+
 def test_matrix_isolates_model_load_failure_and_continues(tmp_path: Path) -> None:
     config_path = _write_matrix_config(tmp_path)
     config = load_config(config_path)
@@ -568,6 +657,10 @@ def test_llama_cpp_adapter_streams_and_extracts_performance_metrics(
         def __init__(self, **arguments):
             captured["load"] = arguments
             self.n_tokens = 17
+            self._ctx = SimpleNamespace(
+                ctx=object(),
+                reset_timings=lambda: captured.setdefault("timings_reset", True),
+            )
 
         def create_chat_completion(self, **arguments):
             captured["generation"] = arguments
@@ -607,7 +700,20 @@ def test_llama_cpp_adapter_streams_and_extracts_performance_metrics(
             }
             return [120]
 
-    monkeypatch.setitem(sys.modules, "llama_cpp", SimpleNamespace(Llama=FakeLlama))
+    fake_low_level = SimpleNamespace(
+        llama_perf_context=lambda context: SimpleNamespace(
+            t_p_eval_ms=50.0,
+            t_eval_ms=100.0,
+            n_p_eval=10,
+            n_eval=2,
+            n_reused=3,
+        )
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "llama_cpp",
+        SimpleNamespace(Llama=FakeLlama, llama_cpp=fake_low_level),
+    )
     clock_values = iter([10.0, 10.25])
     monkeypatch.setattr(
         "llm_workload_benchmark.runner.time.perf_counter",
@@ -625,7 +731,14 @@ def test_llama_cpp_adapter_streams_and_extracts_performance_metrics(
         output_tokens=1,
         time_to_first_token_seconds=0.25,
         finish_reason="stop",
+        prompt_eval_tokens=10,
+        prompt_cached_tokens=7,
+        prompt_eval_seconds=0.05,
+        decode_eval_tokens=2,
+        decode_eval_seconds=0.1,
+        decode_graphs_reused=3,
     )
+    assert captured["timings_reset"] is True
     assert captured["load"] == {
         "model_path": str(model.model_path),
         "n_ctx": 2048,

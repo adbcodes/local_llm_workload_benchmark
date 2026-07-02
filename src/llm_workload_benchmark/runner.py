@@ -9,7 +9,7 @@ import sys
 import time
 import uuid
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,6 +53,12 @@ class GenerationOutput:
     time_to_first_token_seconds: float | None = None
     finish_reason: str | None = None
     reasoning_tokens: int | None = None
+    prompt_eval_tokens: int | None = None
+    prompt_cached_tokens: int | None = None
+    prompt_eval_seconds: float | None = None
+    decode_eval_tokens: int | None = None
+    decode_eval_seconds: float | None = None
+    decode_graphs_reused: int | None = None
 
 
 @dataclass(frozen=True)
@@ -64,6 +70,25 @@ class RunProgress:
     completed_items: int
     total_items: int
     elapsed_seconds: float
+
+
+@dataclass
+class _CallableMemoryTracker:
+    """Adapt injected memory readers to the current/item/run RSS interface."""
+
+    reader: Callable[[], int | None]
+
+    def current_rss_bytes(self) -> int | None:
+        return self.reader()
+
+    def peak_rss_bytes(self) -> int | None:
+        return self.reader()
+
+    def begin_item(self) -> int | None:
+        return self.reader()
+
+    def end_item(self) -> int | None:
+        return self.reader()
 
 
 class ModelBackend(Protocol):
@@ -155,6 +180,7 @@ class LlamaCppBackend:
         seed: int,
     ) -> GenerationOutput:
         started = time.perf_counter()
+        self._reset_performance_timings()
         arguments: dict[str, Any] = {
             "messages": messages,
             "max_tokens": generation.max_output_tokens,
@@ -199,13 +225,57 @@ class LlamaCppBackend:
         output_tokens = len(
             self._model.tokenize(text.encode("utf-8"), add_bos=False, special=True)
         )
+        performance = self._performance_timings(prompt_tokens)
         return GenerationOutput(
             text=text,
             prompt_tokens=prompt_tokens,
             output_tokens=output_tokens,
             time_to_first_token_seconds=time_to_first_token_seconds,
             finish_reason=finish_reason,
+            **performance,
         )
+
+    def warmup(self, generation: GenerationConfig, *, seed: int) -> GenerationOutput:
+        """Run one short generation to initialize kernels and inference buffers."""
+        return self.generate(
+            "Reply with the single word OK.",
+            generation.model_copy(update={"max_output_tokens": 1}),
+            seed=seed,
+        )
+
+    def _reset_performance_timings(self) -> None:
+        context = getattr(self._model, "_ctx", None)
+        reset = getattr(context, "reset_timings", None)
+        if callable(reset):
+            reset()
+
+    def _performance_timings(
+        self, prompt_tokens: int | None
+    ) -> dict[str, int | float | None]:
+        context = getattr(getattr(self._model, "_ctx", None), "ctx", None)
+        if context is None:
+            return {}
+        try:
+            from llama_cpp import llama_cpp
+
+            performance = llama_cpp.llama_perf_context(context)
+        except (AttributeError, ImportError, OSError):
+            return {}
+        prompt_seconds = _milliseconds_to_positive_seconds(performance.t_p_eval_ms)
+        decode_seconds = _milliseconds_to_positive_seconds(performance.t_eval_ms)
+        prompt_eval_tokens = _positive_int_or_none(performance.n_p_eval)
+        return {
+            "prompt_eval_tokens": prompt_eval_tokens,
+            "prompt_cached_tokens": _nonnegative_difference_or_none(
+                prompt_tokens, prompt_eval_tokens
+            ),
+            "prompt_eval_seconds": prompt_seconds,
+            "decode_eval_tokens": _positive_int_or_none(performance.n_eval),
+            "decode_eval_seconds": decode_seconds,
+            "decode_graphs_reused": _nonnegative_int_or_none(
+                performance.n_reused
+            ),
+        }
 
     def close(self) -> None:
         close = getattr(self._model, "close", None)
@@ -270,21 +340,45 @@ def run_benchmark(
             )
     model_path = _resolve_from_root(root, model.model_path)
 
-    run_directory = create_run(
-        config,
-        config_path,
-        project_root=root,
-        run_directory=run_directory,
+    requested_run_directory = (
+        _resolve_from_root(root, run_directory) if run_directory is not None else None
     )
-    telemetry: RuntimeTelemetry | None = None
-    if peak_memory_reader is None:
-        telemetry = RuntimeTelemetry(run_directory / "telemetry.jsonl")
-        telemetry.start()
-        memory_reader = telemetry.peak_rss_bytes
+    is_resume = bool(
+        requested_run_directory is not None and requested_run_directory.exists()
+    )
+    if is_resume:
+        run_directory = requested_run_directory
+        _validate_resume_manifest(run_directory, config, config_path)
     else:
-        memory_reader = peak_memory_reader
+        run_directory = create_run(
+            config,
+            config_path,
+            project_root=root,
+            run_directory=requested_run_directory,
+        )
     results_path = run_directory / "results.jsonl"
     summary_path = run_directory / "summary.json"
+    records = _load_resumable_records(results_path) if is_resume else []
+    _validate_record_prefix(records, suite, config.benchmark.repetitions, model.id)
+    resumed_from_items = len(records)
+    resume_segment = max(
+        (int(record.get("resume_segment") or 1) for record in records),
+        default=0,
+    ) + 1
+    telemetry: RuntimeTelemetry | None = None
+    if peak_memory_reader is None:
+        telemetry_path = (
+            run_directory / "telemetry.jsonl"
+            if resume_segment == 1
+            else run_directory / f"telemetry.resume-{resume_segment}.jsonl"
+        )
+        telemetry = RuntimeTelemetry(telemetry_path)
+        telemetry.start()
+        memory_tracker: RuntimeTelemetry | _CallableMemoryTracker = telemetry
+    else:
+        memory_tracker = _CallableMemoryTracker(peak_memory_reader)
+
+    process_rss_before_model_load_bytes = memory_tracker.current_rss_bytes()
 
     load_started = time.perf_counter()
     try:
@@ -299,7 +393,10 @@ def run_benchmark(
                 model_path=model_path,
                 suite_path=suite_path,
                 load_seconds=load_seconds,
-                peak_memory_after_model_load_bytes=memory_reader(),
+                process_rss_before_model_load_bytes=(
+                    process_rss_before_model_load_bytes
+                ),
+                process_rss_after_model_load_bytes=memory_tracker.current_rss_bytes(),
                 telemetry=telemetry_summary,
                 error=error,
             ),
@@ -309,22 +406,58 @@ def run_benchmark(
             f"{summary_path}"
         ) from error
     load_seconds = time.perf_counter() - load_started
-    peak_memory_after_model_load_bytes = memory_reader()
+    process_rss_after_model_load_bytes = memory_tracker.current_rss_bytes()
 
-    records: list[dict[str, Any]] = []
+    warmup_started = time.perf_counter()
+    warmup = getattr(backend, "warmup", None)
+    try:
+        if callable(warmup):
+            warmup(model.generation, seed=config.benchmark.seed)
+            warmup_performed = True
+        else:
+            warmup_performed = False
+    except Exception as error:
+        _release_backend(backend)
+        telemetry_summary = telemetry.stop() if telemetry is not None else None
+        _write_json(
+            summary_path,
+            _failed_summary(
+                model=model,
+                model_path=model_path,
+                suite_path=suite_path,
+                load_seconds=load_seconds,
+                process_rss_before_model_load_bytes=(
+                    process_rss_before_model_load_bytes
+                ),
+                process_rss_after_model_load_bytes=process_rss_after_model_load_bytes,
+                telemetry=telemetry_summary,
+                error=error,
+                status="warmup_error",
+            ),
+        )
+        raise EvaluationError(
+            f"model {model.id!r} warm-up failed: {error}; failure summary: "
+            f"{summary_path}"
+        ) from error
+    warmup_seconds = time.perf_counter() - warmup_started if warmup_performed else None
+
     total_items = (
         sum(len(items) for items in suite.items.values())
         * config.benchmark.repetitions
     )
     run_started = time.perf_counter()
     telemetry_summary: dict[str, Any] | None = None
+    planned_run_order = 0
     try:
-        with results_path.open("w", encoding="utf-8") as results_file:
+        with results_path.open("a", encoding="utf-8") as results_file:
             for repetition in range(1, config.benchmark.repetitions + 1):
                 seed = config.benchmark.seed + repetition - 1
                 for benchmark_id, benchmark_items in suite.items.items():
                     suite_id = suite.definitions[benchmark_id].suite
                     for item in benchmark_items:
+                        planned_run_order += 1
+                        if planned_run_order <= resumed_from_items:
+                            continue
                         source_record = next(
                             (
                                 record
@@ -357,9 +490,16 @@ def run_benchmark(
                                 else None
                             ),
                             judge_panel_backends=judge_panel_backends,
-                            peak_memory_reader=memory_reader,
+                            memory_tracker=memory_tracker,
+                            process_rss_before_model_load_bytes=(
+                                process_rss_before_model_load_bytes
+                            ),
+                            process_rss_after_model_load_bytes=(
+                                process_rss_after_model_load_bytes
+                            ),
+                            resume_segment=resume_segment,
                         )
-                        record["run_order"] = len(records) + 1
+                        record["run_order"] = planned_run_order
                         if source_record is not None:
                             _attach_pair_metrics(record, source_record)
                         records.append(record)
@@ -393,7 +533,13 @@ def run_benchmark(
             suite_path=suite_path,
             definitions=suite.definitions,
             load_seconds=load_seconds,
-            peak_memory_after_model_load_bytes=peak_memory_after_model_load_bytes,
+            process_rss_before_model_load_bytes=process_rss_before_model_load_bytes,
+            process_rss_after_model_load_bytes=process_rss_after_model_load_bytes,
+            peak_process_rss_bytes=memory_tracker.peak_rss_bytes(),
+            warmup_performed=warmup_performed,
+            warmup_seconds=warmup_seconds,
+            resumed_from_items=resumed_from_items,
+            resume_segment=resume_segment,
             telemetry=telemetry_summary,
         ),
     )
@@ -411,7 +557,7 @@ def run_matrix(
     progress_callback: Callable[[RunProgress], None] | None = None,
     resume_experiment: Path | None = None,
 ) -> Path:
-    """Run enabled models sequentially, optionally resuming at model boundaries."""
+    """Run enabled models sequentially, resuming completed items when requested."""
 
     root = (project_root or Path.cwd()).resolve()
     enabled_models = [model for model in config.models if model.enabled]
@@ -517,7 +663,7 @@ def run_matrix(
         if preserved_result is not None:
             model_results.append(preserved_result)
             continue
-        if child_directory.exists():
+        if child_directory.exists() and not (child_directory / "manifest.json").is_file():
             shutil.rmtree(child_directory)
         write_index("running")
         single_model_config = config.model_copy(
@@ -600,13 +746,18 @@ def _evaluate_item(
     judge_backend: JudgeBackend | None,
     judge_panel_configs: list[JudgeConfig] | None,
     judge_panel_backends: list[JudgeBackend] | None,
-    peak_memory_reader: Callable[[], int | None],
+    memory_tracker: RuntimeTelemetry | _CallableMemoryTracker,
+    process_rss_before_model_load_bytes: int | None,
+    process_rss_after_model_load_bytes: int | None,
+    resume_segment: int,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     cpu_started = time.process_time()
+    item_rss_before_generation_bytes = memory_tracker.begin_item()
     output: GenerationOutput | None = None
     latency_seconds: float | None = None
-    peak_process_memory_bytes: int | None = None
+    generation_cpu_seconds: float | None = None
+    item_peak_process_rss_bytes: int | None = None
     evaluated_response: str | None = None
     cleanup_applied: str | None = None
     try:
@@ -650,7 +801,7 @@ def _evaluate_item(
         else:
             output = backend.generate(item.prompt, generation, seed=seed)
         latency_seconds = time.perf_counter() - started
-        peak_process_memory_bytes = peak_memory_reader()
+        generation_cpu_seconds = time.process_time() - cpu_started
         evaluated_response, cleanup_applied = _prepare_response_for_scoring(
             output.text,
             model.response_cleanup,
@@ -694,8 +845,9 @@ def _evaluate_item(
         )
         wall_seconds = time.perf_counter() - started
         cpu_seconds = time.process_time() - cpu_started
+        item_peak_process_rss_bytes = memory_tracker.end_item()
         return {
-            "schema_version": 3,
+            "schema_version": 4,
             "status": "completed",
             "model_id": model.id,
             "benchmark": item.benchmark,
@@ -713,6 +865,7 @@ def _evaluate_item(
             "dataset_origin": _dataset_origin(item),
             "repetition": repetition,
             "seed": seed,
+            "resume_segment": resume_segment,
             "raw_response": output.text,
             "evaluated_response": evaluated_response,
             "response_cleanup": cleanup_applied,
@@ -722,18 +875,47 @@ def _evaluate_item(
             ).hexdigest(),
             "evaluation": evaluation.model_dump(mode="json"),
             "integration_outcome": evaluation.integration_outcome,
+            "generation_latency_seconds": latency_seconds,
             "latency_seconds": latency_seconds,
             "time_to_first_token_seconds": output.time_to_first_token_seconds,
             "prompt_tokens": output.prompt_tokens,
             "output_tokens": output.output_tokens,
             "reasoning_tokens": output.reasoning_tokens,
+            "prompt_eval_tokens": output.prompt_eval_tokens,
+            "prompt_cached_tokens": output.prompt_cached_tokens,
+            "prompt_eval_seconds": output.prompt_eval_seconds,
+            "prompt_tokens_per_second": _rate(
+                output.prompt_eval_tokens, output.prompt_eval_seconds
+            ),
+            "decode_eval_tokens": output.decode_eval_tokens,
+            "decode_eval_seconds": output.decode_eval_seconds,
+            "decode_graphs_reused": output.decode_graphs_reused,
+            "decode_tokens_per_second": _rate(
+                output.decode_eval_tokens, output.decode_eval_seconds
+            ),
             "output_characters": len(output.text),
             "output_tokens_per_second_end_to_end": output_tokens_per_second,
-            "peak_process_memory_bytes": peak_process_memory_bytes,
+            "item_rss_before_generation_bytes": item_rss_before_generation_bytes,
+            "item_peak_process_rss_bytes": item_peak_process_rss_bytes,
+            "item_peak_rss_delta_from_post_load_bytes": _difference_or_none(
+                item_peak_process_rss_bytes, process_rss_after_model_load_bytes
+            ),
+            "process_rss_before_model_load_bytes": (
+                process_rss_before_model_load_bytes
+            ),
+            "process_rss_after_model_load_bytes": process_rss_after_model_load_bytes,
+            "model_load_rss_delta_bytes": _difference_or_none(
+                process_rss_after_model_load_bytes,
+                process_rss_before_model_load_bytes,
+            ),
+            "peak_process_memory_bytes": item_peak_process_rss_bytes,
             "process_wall_seconds": wall_seconds,
             "process_cpu_seconds": cpu_seconds,
+            "generation_process_cpu_seconds": generation_cpu_seconds,
             "process_cpu_utilization_percent": (
-                cpu_seconds / wall_seconds * 100 if wall_seconds > 0 else None
+                generation_cpu_seconds / latency_seconds * 100
+                if latency_seconds > 0
+                else None
             ),
             "finish_reason": output.finish_reason,
             "error": None,
@@ -741,8 +923,9 @@ def _evaluate_item(
     except Exception as error:
         wall_seconds = time.perf_counter() - started
         cpu_seconds = time.process_time() - cpu_started
+        item_peak_process_rss_bytes = memory_tracker.end_item()
         return {
-            "schema_version": 3,
+            "schema_version": 4,
             "status": "error",
             "model_id": model.id,
             "benchmark": item.benchmark,
@@ -760,6 +943,7 @@ def _evaluate_item(
             "dataset_origin": _dataset_origin(item),
             "repetition": repetition,
             "seed": seed,
+            "resume_segment": resume_segment,
             "raw_response": output.text if output is not None else None,
             "evaluated_response": evaluated_response,
             "response_cleanup": cleanup_applied,
@@ -769,6 +953,11 @@ def _evaluate_item(
             ).hexdigest(),
             "evaluation": None,
             "integration_outcome": "evaluation_error",
+            "generation_latency_seconds": (
+                latency_seconds
+                if latency_seconds is not None
+                else time.perf_counter() - started
+            ),
             "latency_seconds": (
                 latency_seconds
                 if latency_seconds is not None
@@ -780,6 +969,34 @@ def _evaluate_item(
             "prompt_tokens": output.prompt_tokens if output is not None else None,
             "output_tokens": output.output_tokens if output is not None else None,
             "reasoning_tokens": output.reasoning_tokens if output is not None else None,
+            "prompt_eval_tokens": (
+                output.prompt_eval_tokens if output is not None else None
+            ),
+            "prompt_cached_tokens": (
+                output.prompt_cached_tokens if output is not None else None
+            ),
+            "prompt_eval_seconds": (
+                output.prompt_eval_seconds if output is not None else None
+            ),
+            "prompt_tokens_per_second": (
+                _rate(output.prompt_eval_tokens, output.prompt_eval_seconds)
+                if output is not None
+                else None
+            ),
+            "decode_eval_tokens": (
+                output.decode_eval_tokens if output is not None else None
+            ),
+            "decode_eval_seconds": (
+                output.decode_eval_seconds if output is not None else None
+            ),
+            "decode_graphs_reused": (
+                output.decode_graphs_reused if output is not None else None
+            ),
+            "decode_tokens_per_second": (
+                _rate(output.decode_eval_tokens, output.decode_eval_seconds)
+                if output is not None
+                else None
+            ),
             "output_characters": len(output.text) if output is not None else None,
             "output_tokens_per_second_end_to_end": (
                 output.output_tokens / latency_seconds
@@ -789,15 +1006,31 @@ def _evaluate_item(
                 and latency_seconds > 0
                 else None
             ),
-            "peak_process_memory_bytes": (
-                peak_process_memory_bytes
-                if peak_process_memory_bytes is not None
-                else peak_memory_reader()
+            "item_rss_before_generation_bytes": item_rss_before_generation_bytes,
+            "item_peak_process_rss_bytes": item_peak_process_rss_bytes,
+            "item_peak_rss_delta_from_post_load_bytes": _difference_or_none(
+                item_peak_process_rss_bytes, process_rss_after_model_load_bytes
             ),
+            "process_rss_before_model_load_bytes": (
+                process_rss_before_model_load_bytes
+            ),
+            "process_rss_after_model_load_bytes": process_rss_after_model_load_bytes,
+            "model_load_rss_delta_bytes": _difference_or_none(
+                process_rss_after_model_load_bytes,
+                process_rss_before_model_load_bytes,
+            ),
+            "peak_process_memory_bytes": item_peak_process_rss_bytes,
             "process_wall_seconds": wall_seconds,
             "process_cpu_seconds": cpu_seconds,
+            "generation_process_cpu_seconds": (
+                generation_cpu_seconds
+            ),
             "process_cpu_utilization_percent": (
-                cpu_seconds / wall_seconds * 100 if wall_seconds > 0 else None
+                generation_cpu_seconds / latency_seconds * 100
+                if generation_cpu_seconds is not None
+                and latency_seconds is not None
+                and latency_seconds > 0
+                else None
             ),
             "finish_reason": output.finish_reason if output is not None else None,
             "error": {
@@ -902,6 +1135,24 @@ def _combine_generation_outputs(
         ),
         finish_reason=outputs[-1].finish_reason if outputs else None,
         reasoning_tokens=sum(output.reasoning_tokens or 0 for output in outputs) or None,
+        prompt_eval_tokens=(
+            sum(output.prompt_eval_tokens or 0 for output in outputs) or None
+        ),
+        prompt_cached_tokens=(
+            _sum_optional_int(output.prompt_cached_tokens for output in outputs)
+        ),
+        prompt_eval_seconds=(
+            sum(output.prompt_eval_seconds or 0.0 for output in outputs) or None
+        ),
+        decode_eval_tokens=(
+            sum(output.decode_eval_tokens or 0 for output in outputs) or None
+        ),
+        decode_eval_seconds=(
+            sum(output.decode_eval_seconds or 0.0 for output in outputs) or None
+        ),
+        decode_graphs_reused=(
+            _sum_optional_int(output.decode_graphs_reused for output in outputs)
+        ),
     )
 
 
@@ -919,7 +1170,13 @@ def _build_summary(
     suite_path: Path,
     definitions: dict[str, Any],
     load_seconds: float,
-    peak_memory_after_model_load_bytes: int | None,
+    process_rss_before_model_load_bytes: int | None,
+    process_rss_after_model_load_bytes: int | None,
+    peak_process_rss_bytes: int | None,
+    warmup_performed: bool,
+    warmup_seconds: float | None,
+    resumed_from_items: int,
+    resume_segment: int,
     telemetry: dict[str, Any] | None,
 ) -> dict[str, Any]:
     _attach_paired_metrics(records)
@@ -966,9 +1223,16 @@ def _build_summary(
         }
         for benchmark, group_records in benchmark_records.items()
     }
+    totals = _aggregate(records)
+    observed_peaks = [
+        value
+        for value in (peak_process_rss_bytes, totals.get("peak_process_rss_bytes"))
+        if isinstance(value, int)
+    ]
+    run_peak_process_rss_bytes = max(observed_peaks, default=None)
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "status": "completed",
         "model": _model_summary(model, model_path),
         "dataset": {
@@ -976,11 +1240,29 @@ def _build_summary(
             "sha256": _suite_hash(suite_path),
         },
         "model_load_seconds": load_seconds,
-        "peak_process_memory_after_model_load_bytes": (
-            peak_memory_after_model_load_bytes
+        "warmup": {
+            "performed": warmup_performed,
+            "excluded_from_results": True,
+            "latency_seconds": warmup_seconds,
+        },
+        "resume": {
+            "segment": resume_segment,
+            "resumed_from_items": resumed_from_items,
+            "checkpoint_granularity": "item",
+        },
+        "process_rss_before_model_load_bytes": process_rss_before_model_load_bytes,
+        "process_rss_after_model_load_bytes": process_rss_after_model_load_bytes,
+        "model_load_rss_delta_bytes": _difference_or_none(
+            process_rss_after_model_load_bytes,
+            process_rss_before_model_load_bytes,
+        ),
+        "peak_process_rss_bytes": run_peak_process_rss_bytes,
+        "peak_process_rss_delta_from_preload_bytes": _difference_or_none(
+            run_peak_process_rss_bytes,
+            process_rss_before_model_load_bytes,
         ),
         "telemetry": telemetry,
-        "totals": _aggregate(records),
+        "totals": totals,
         "suites": {
             suite_id: _aggregate(suite_group)
             for suite_id, suite_group in sorted(suite_records.items())
@@ -1014,21 +1296,26 @@ def _failed_summary(
     model_path: Path,
     suite_path: Path,
     load_seconds: float,
-    peak_memory_after_model_load_bytes: int | None,
+    process_rss_before_model_load_bytes: int | None,
+    process_rss_after_model_load_bytes: int | None,
     telemetry: dict[str, Any] | None,
     error: Exception,
+    status: str = "model_load_error",
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "status": "model_load_error",
+        "status": status,
         "model": _model_summary(model, model_path),
         "dataset": {
             "path": str(suite_path),
             "sha256": _suite_hash(suite_path),
         },
         "model_load_seconds": load_seconds,
-        "peak_process_memory_after_model_load_bytes": (
-            peak_memory_after_model_load_bytes
+        "process_rss_before_model_load_bytes": process_rss_before_model_load_bytes,
+        "process_rss_after_model_load_bytes": process_rss_after_model_load_bytes,
+        "model_load_rss_delta_bytes": _difference_or_none(
+            process_rss_after_model_load_bytes,
+            process_rss_before_model_load_bytes,
         ),
         "telemetry": telemetry,
         "error": {"type": type(error).__name__, "message": str(error)},
@@ -1059,9 +1346,21 @@ def rebuild_run_summary(
         suite_path=suite_path,
         definitions=definitions,
         load_seconds=float(previous.get("model_load_seconds") or 0.0),
-        peak_memory_after_model_load_bytes=previous.get(
-            "peak_process_memory_after_model_load_bytes"
+        process_rss_before_model_load_bytes=previous.get(
+            "process_rss_before_model_load_bytes"
         ),
+        process_rss_after_model_load_bytes=previous.get(
+            "process_rss_after_model_load_bytes",
+            previous.get("peak_process_memory_after_model_load_bytes"),
+        ),
+        peak_process_rss_bytes=previous.get(
+            "peak_process_rss_bytes",
+            previous.get("peak_process_memory_after_model_load_bytes"),
+        ),
+        warmup_performed=bool(previous.get("warmup", {}).get("performed")),
+        warmup_seconds=previous.get("warmup", {}).get("latency_seconds"),
+        resumed_from_items=int(previous.get("resume", {}).get("resumed_from_items") or 0),
+        resume_segment=int(previous.get("resume", {}).get("segment") or 1),
         telemetry=previous.get("telemetry"),
     )
     _write_json(summary_path, rebuilt)
@@ -1072,7 +1371,10 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     completed = [record for record in records if record["status"] == "completed"]
     scored = [record for record in completed if record.get("evaluation") is not None]
     scores = [record["evaluation"]["score"] for record in scored]
-    latencies = [record["latency_seconds"] for record in completed]
+    latencies = [
+        record.get("generation_latency_seconds", record["latency_seconds"])
+        for record in completed
+    ]
     time_to_first_token_values = [
         record["time_to_first_token_seconds"]
         for record in completed
@@ -1084,9 +1386,26 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         if record["output_tokens_per_second_end_to_end"] is not None
     ]
     peak_memory_values = [
-        record["peak_process_memory_bytes"]
+        record.get("item_peak_process_rss_bytes", record.get("peak_process_memory_bytes"))
         for record in records
-        if record["peak_process_memory_bytes"] is not None
+        if record.get("item_peak_process_rss_bytes", record.get("peak_process_memory_bytes"))
+        is not None
+    ]
+    total_generation_seconds = sum(latencies)
+    total_output_tokens = sum(record.get("output_tokens") or 0 for record in completed)
+    prompt_timing_records = [
+        record
+        for record in completed
+        if isinstance(record.get("prompt_eval_tokens"), int)
+        and isinstance(record.get("prompt_eval_seconds"), int | float)
+        and record["prompt_eval_seconds"] > 0
+    ]
+    decode_timing_records = [
+        record
+        for record in completed
+        if isinstance(record.get("decode_eval_tokens"), int)
+        and isinstance(record.get("decode_eval_seconds"), int | float)
+        and record["decode_eval_seconds"] > 0
     ]
     passed = sum(record["evaluation"]["passed"] is True for record in scored)
     confidence_interval = _wilson_interval(passed, len(records))
@@ -1210,19 +1529,76 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "run_to_run_flip_rate": _run_to_run_flip_rate(scored),
         "mean_score": sum(scores) / len(records) if records else None,
+        "generation_latency_seconds": sum(
+            record.get("generation_latency_seconds", record["latency_seconds"])
+            for record in records
+        ),
         "latency_seconds": sum(record["latency_seconds"] for record in records),
         "mean_latency_seconds": _mean(latencies),
         "mean_time_to_first_token_seconds": _mean(time_to_first_token_values),
         "mean_output_tokens_per_second_end_to_end": _mean(output_rates),
+        "output_tokens_per_second_end_to_end": _rate(
+            total_output_tokens, total_generation_seconds
+        ),
+        "prompt_eval_tokens": (
+            sum(record["prompt_eval_tokens"] for record in prompt_timing_records)
+            if prompt_timing_records
+            else None
+        ),
+        "prompt_cached_tokens": (
+            sum(record.get("prompt_cached_tokens") or 0 for record in completed)
+            if any(record.get("prompt_cached_tokens") is not None for record in completed)
+            else None
+        ),
+        "prompt_eval_seconds": (
+            sum(record["prompt_eval_seconds"] for record in prompt_timing_records)
+            if prompt_timing_records
+            else None
+        ),
+        "prompt_tokens_per_second": _rate(
+            sum(record["prompt_eval_tokens"] for record in prompt_timing_records),
+            sum(record["prompt_eval_seconds"] for record in prompt_timing_records),
+        ),
+        "decode_eval_tokens": (
+            sum(record["decode_eval_tokens"] for record in decode_timing_records)
+            if decode_timing_records
+            else None
+        ),
+        "decode_eval_seconds": (
+            sum(record["decode_eval_seconds"] for record in decode_timing_records)
+            if decode_timing_records
+            else None
+        ),
+        "decode_graphs_reused": (
+            sum(record.get("decode_graphs_reused") or 0 for record in completed)
+            if any(record.get("decode_graphs_reused") is not None for record in completed)
+            else None
+        ),
+        "decode_tokens_per_second": _rate(
+            sum(record["decode_eval_tokens"] for record in decode_timing_records),
+            sum(record["decode_eval_seconds"] for record in decode_timing_records),
+        ),
         "mean_process_wall_seconds": _mean(
             [record.get("process_wall_seconds") for record in records]
         ),
         "mean_process_cpu_seconds": _mean(
             [record["process_cpu_seconds"] for record in records]
         ),
-        "mean_process_cpu_utilization_percent": _mean(
-            [record.get("process_cpu_utilization_percent") for record in records]
+        "generation_process_cpu_seconds": sum(
+            record.get("generation_process_cpu_seconds") or 0.0
+            for record in records
         ),
+        "mean_process_cpu_utilization_percent": _mean(
+            [
+                value
+                for record in records
+                if isinstance(
+                    (value := record.get("process_cpu_utilization_percent")),
+                    int | float,
+                )
+            ]
+        ),
+        "peak_process_rss_bytes": max(peak_memory_values, default=None),
         "peak_process_memory_bytes": max(peak_memory_values, default=None),
     }
 
@@ -1486,6 +1862,7 @@ def _model_summary(model: ModelConfig, model_path: Path) -> dict[str, Any]:
         "family": model.family,
         "role": model.role,
         "file_size_bytes": model_path.stat().st_size if model_path.is_file() else None,
+        "sha256": _file_sha256(model_path) if model_path.is_file() else None,
         "context_window": model.context_window,
         "gpu_layers": model.gpu_layers,
         "threads": model.threads,
@@ -1536,6 +1913,126 @@ def _suite_hash(suite_path: Path) -> str:
         digest.update(path.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        while chunk := source.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_resume_manifest(
+    run_directory: Path,
+    config: BenchmarkConfig,
+    config_path: Path,
+) -> None:
+    manifest_path = run_directory / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise EvaluationError(
+            f"cannot resume invalid run manifest {manifest_path}: {error}"
+        ) from error
+    expected_hash = hashlib.sha256(config_path.read_bytes()).hexdigest()
+    if manifest.get("config_source", {}).get("sha256") != expected_hash:
+        raise EvaluationError(
+            "cannot resume run because its configuration hash does not match "
+            f"{config_path}"
+        )
+    manifest_models = manifest.get("config", {}).get("models") or []
+    expected_models = config.model_dump(mode="json").get("models") or []
+    if manifest_models != expected_models:
+        raise EvaluationError("cannot resume run because its model configuration changed")
+
+
+def _load_resumable_records(results_path: Path) -> list[dict[str, Any]]:
+    if not results_path.is_file():
+        return []
+    lines = results_path.read_text(encoding="utf-8").splitlines()
+    records: list[dict[str, Any]] = []
+    valid_lines: list[str] = []
+    for index, line in enumerate(lines):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as error:
+            if any(candidate.strip() for candidate in lines[index + 1 :]):
+                raise EvaluationError(
+                    f"cannot resume {results_path}: malformed JSONL before final line"
+                ) from error
+            results_path.write_text(
+                "".join(f"{valid}\n" for valid in valid_lines),
+                encoding="utf-8",
+            )
+            break
+        if not isinstance(record, dict):
+            raise EvaluationError(f"cannot resume {results_path}: record is not an object")
+        records.append(record)
+        valid_lines.append(line)
+    return records
+
+
+def _validate_record_prefix(
+    records: list[dict[str, Any]],
+    suite: BenchmarkSuite,
+    repetitions: int,
+    model_id: str,
+) -> None:
+    expected = [
+        (repetition, item.id)
+        for repetition in range(1, repetitions + 1)
+        for benchmark_items in suite.items.values()
+        for item in benchmark_items
+    ]
+    if len(records) > len(expected):
+        raise EvaluationError("cannot resume run with more records than planned items")
+    for run_order, (record, (repetition, item_id)) in enumerate(
+        zip(records, expected), start=1
+    ):
+        identity = (record.get("repetition"), record.get("item_id"))
+        if identity != (repetition, item_id) or record.get("model_id") != model_id:
+            raise EvaluationError(
+                f"cannot resume run: record {run_order} does not match the planned item"
+            )
+
+
+def _rate(tokens: int | None, seconds: float | None) -> float | None:
+    if tokens is None or seconds is None or seconds <= 0:
+        return None
+    return tokens / seconds
+
+
+def _sum_optional_int(values: Iterable[int | None]) -> int | None:
+    available = [value for value in values if isinstance(value, int)]
+    return sum(available) if available else None
+
+
+def _difference_or_none(left: int | None, right: int | None) -> int | None:
+    if left is None or right is None:
+        return None
+    return left - right
+
+
+def _nonnegative_difference_or_none(
+    left: int | None, right: int | None
+) -> int | None:
+    difference = _difference_or_none(left, right)
+    return max(0, difference) if difference is not None else None
+
+
+def _positive_int_or_none(value: Any) -> int | None:
+    return int(value) if isinstance(value, int) and value > 0 else None
+
+
+def _nonnegative_int_or_none(value: Any) -> int | None:
+    return int(value) if isinstance(value, int) and value >= 0 else None
+
+
+def _milliseconds_to_positive_seconds(value: Any) -> float | None:
+    return float(value) / 1000 if isinstance(value, int | float) and value > 0 else None
 
 
 def _resolve_from_root(root: Path, path: Path) -> Path:

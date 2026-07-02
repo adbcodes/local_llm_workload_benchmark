@@ -23,6 +23,7 @@ class RuntimeTelemetry:
     interval_seconds: float = 1.0
     _samples: list[dict[str, Any]] = field(default_factory=list, init=False)
     _peak_rss_bytes: int | None = field(default=None, init=False)
+    _active_item_peak_rss_bytes: int | None = field(default=None, init=False)
     _started_at: float = field(default=0.0, init=False)
     _cpu_started: float = field(default=0.0, init=False)
     _stop_event: threading.Event = field(default_factory=threading.Event, init=False)
@@ -51,10 +52,40 @@ class RuntimeTelemetry:
         return self._summary(elapsed, cpu_seconds)
 
     def peak_rss_bytes(self) -> int | None:
+        """Return the run-wide sampled peak RSS."""
         current = _current_process_rss_bytes()
-        if current is not None:
-            self._peak_rss_bytes = max(self._peak_rss_bytes or 0, current)
+        self._record_rss(current)
         return self._peak_rss_bytes
+
+    def current_rss_bytes(self) -> int | None:
+        """Return current RSS, without presenting a lifetime peak as current."""
+        current = _current_process_rss_bytes()
+        self._record_rss(current)
+        return current
+
+    def begin_item(self) -> int | None:
+        """Start a new item-specific RSS window and return its initial RSS."""
+        current = _current_process_rss_bytes()
+        self._active_item_peak_rss_bytes = current
+        self._record_rss(current)
+        return current
+
+    def end_item(self) -> int | None:
+        """Close the active RSS window and return that item's sampled peak."""
+        current = _current_process_rss_bytes()
+        self._record_rss(current)
+        peak = self._active_item_peak_rss_bytes
+        self._active_item_peak_rss_bytes = None
+        return peak
+
+    def _record_rss(self, rss: int | None) -> None:
+        if rss is None:
+            return
+        self._peak_rss_bytes = max(self._peak_rss_bytes or 0, rss)
+        if self._active_item_peak_rss_bytes is not None:
+            self._active_item_peak_rss_bytes = max(
+                self._active_item_peak_rss_bytes, rss
+            )
 
     def _sample_loop(self) -> None:
         while not self._stop_event.wait(self.interval_seconds):
@@ -62,8 +93,7 @@ class RuntimeTelemetry:
 
     def _sample(self) -> None:
         rss = _current_process_rss_bytes()
-        if rss is not None:
-            self._peak_rss_bytes = max(self._peak_rss_bytes or 0, rss)
+        self._record_rss(rss)
         gpu = _apple_gpu_metrics() if platform.system() == "Darwin" else {}
         power = _privileged_power_metrics() if _can_sample_powermetrics() else {}
         self._samples.append(
