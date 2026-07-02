@@ -13,17 +13,27 @@ class ArtifactError(ValueError):
 
 MODEL_FIELDS = [
     "variant_id", "architecture", "family", "backend", "quantization",
+    "model_sha256",
     "temperature", "top_p", "top_k", "repeat_penalty", "max_output_tokens",
     "constrained_decoding", "context_window", "threads", "batch_size",
     "gpu_layers", "flash_attention", "kv_cache_type",
 ]
 CONFIGURATION_FIELDS = MODEL_FIELDS + [
     "status", "summary_status", "error", "model_load_seconds", "model_file_bytes",
+    "warmup_performed", "warmup_latency_seconds", "resume_segment",
+    "resumed_from_items", "checkpoint_granularity",
     "run_elapsed_seconds", "item_latency_seconds_total",
     "attempted", "completed", "passed", "pass_rate", "mean_score",
-    "mean_latency_seconds", "mean_ttft_seconds", "mean_output_tokens_per_second",
+    "mean_latency_seconds", "mean_ttft_seconds",
+    "output_tokens_per_second_end_to_end", "prompt_eval_tokens",
+    "prompt_cached_tokens", "prompt_eval_seconds", "prompt_tokens_per_second",
+    "decode_eval_tokens", "decode_eval_seconds", "decode_graphs_reused",
+    "decode_tokens_per_second",
+    "generation_process_cpu_seconds",
     "mean_process_cpu_seconds", "mean_process_cpu_utilization_percent",
-    "peak_process_memory_bytes", "integration_friction_rate",
+    "process_rss_before_model_load_bytes", "process_rss_after_model_load_bytes",
+    "model_load_rss_delta_bytes", "peak_process_rss_bytes",
+    "peak_process_rss_delta_from_preload_bytes", "integration_friction_rate",
     "run_to_run_flip_rate", "mean_system_gpu_utilization_percent",
     "peak_system_gpu_utilization_percent", "mean_cpu_power_watts",
     "mean_gpu_power_watts", "mean_system_power_watts", "mean_cpu_temperature_c",
@@ -31,7 +41,9 @@ CONFIGURATION_FIELDS = MODEL_FIELDS + [
     "memory_saved_vs_q8_bytes", "speed_ratio_vs_q8",
     "pass_rate_ci_95_low", "pass_rate_ci_95_high",
     "estimated_generation_energy_joules",
-    "energy_per_correct_answer_joules", "power_sensor_status",
+    "energy_per_correct_answer_joules", "sensor_status",
+    "process_cpu_sensor_status", "process_memory_sensor_status",
+    "apple_gpu_sensor_status", "power_sensor_status",
 ]
 GROUP_FIELDS = [
     "attempted", "completed", "passed", "pass_rate", "mean_score",
@@ -41,8 +53,13 @@ GROUP_FIELDS = [
     "integration_parse_rate", "recovery_rate", "recoverable_friction_rate",
     "parse_failure_rate",
     "latency_seconds_total",
-    "mean_latency_seconds", "mean_ttft_seconds", "mean_output_tokens_per_second",
-    "peak_process_memory_bytes", "integration_friction_rate",
+    "mean_latency_seconds", "mean_ttft_seconds",
+    "output_tokens_per_second_end_to_end", "prompt_eval_tokens",
+    "prompt_cached_tokens", "prompt_eval_seconds", "prompt_tokens_per_second",
+    "decode_eval_tokens", "decode_eval_seconds", "decode_graphs_reused",
+    "decode_tokens_per_second",
+    "peak_process_rss_bytes",
+    "integration_friction_rate",
     "pass_rate_ci_95_low", "pass_rate_ci_95_high",
 ]
 SUITE_FIELDS = MODEL_FIELDS + [
@@ -58,10 +75,19 @@ ITEM_FIELDS = MODEL_FIELDS + [
     "split", "visibility", "dataset_origin", "repetition", "seed", "status",
     "passed", "score", "semantic_outcome", "semantic_score",
     "protocol_outcome", "protocol_score", "protocol_violations",
-    "integration_outcome", "integration_score", "latency_seconds", "ttft_seconds",
+    "integration_outcome", "integration_score", "generation_latency_seconds",
+    "ttft_seconds",
     "prompt_tokens", "output_tokens", "reasoning_tokens", "output_characters",
-    "output_tokens_per_second", "process_wall_seconds", "process_cpu_seconds",
-    "process_cpu_utilization_percent", "process_memory_bytes", "finish_reason",
+    "prompt_eval_tokens", "prompt_cached_tokens", "prompt_eval_seconds",
+    "prompt_tokens_per_second",
+    "decode_eval_tokens", "decode_eval_seconds", "decode_graphs_reused",
+    "decode_tokens_per_second",
+    "output_tokens_per_second_end_to_end", "process_wall_seconds",
+    "process_cpu_seconds", "generation_process_cpu_seconds",
+    "process_cpu_utilization_percent", "item_rss_before_generation_bytes",
+    "item_peak_process_rss_bytes", "item_peak_rss_delta_from_post_load_bytes",
+    "process_rss_before_model_load_bytes", "process_rss_after_model_load_bytes",
+    "model_load_rss_delta_bytes", "finish_reason", "resume_segment",
     "prompt_sha256", "system_prompt_sha256", "run_order", "response_contract",
     "scoring_method", "evaluation_type", "evaluation_details", "raw_response",
     "evaluated_response", "error",
@@ -190,6 +216,8 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
             if isinstance(summary.get("telemetry"), dict)
             else {}
         )
+        warmup = summary.get("warmup") if isinstance(summary.get("warmup"), dict) else {}
+        resume = summary.get("resume") if isinstance(summary.get("resume"), dict) else {}
         configuration_rows.append(
             {
                 **base,
@@ -198,12 +226,35 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
                 "error": entry.get("error") or summary.get("error"),
                 "model_load_seconds": summary.get("model_load_seconds"),
                 "model_file_bytes": model.get("file_size_bytes"),
+                "warmup_performed": warmup.get("performed"),
+                "warmup_latency_seconds": warmup.get("latency_seconds"),
+                "resume_segment": resume.get("segment"),
+                "resumed_from_items": resume.get("resumed_from_items"),
+                "checkpoint_granularity": resume.get("checkpoint_granularity"),
                 "run_elapsed_seconds": telemetry.get("elapsed_seconds"),
                 "item_latency_seconds_total": totals.get("latency_seconds"),
                 **_aggregate_fields(totals),
                 "mean_process_cpu_seconds": totals.get("mean_process_cpu_seconds"),
                 "mean_process_cpu_utilization_percent": totals.get(
                     "mean_process_cpu_utilization_percent"
+                ),
+                "generation_process_cpu_seconds": totals.get(
+                    "generation_process_cpu_seconds"
+                ),
+                "process_rss_before_model_load_bytes": summary.get(
+                    "process_rss_before_model_load_bytes"
+                ),
+                "process_rss_after_model_load_bytes": summary.get(
+                    "process_rss_after_model_load_bytes"
+                ),
+                "model_load_rss_delta_bytes": summary.get(
+                    "model_load_rss_delta_bytes"
+                ),
+                "peak_process_rss_bytes": summary.get(
+                    "peak_process_rss_bytes", totals.get("peak_process_rss_bytes")
+                ),
+                "peak_process_rss_delta_from_preload_bytes": summary.get(
+                    "peak_process_rss_delta_from_preload_bytes"
                 ),
                 "run_to_run_flip_rate": totals.get("run_to_run_flip_rate"),
                 "mean_system_gpu_utilization_percent": telemetry.get(
@@ -217,6 +268,16 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
                 "mean_system_power_watts": telemetry.get("mean_system_power_watts"),
                 "mean_cpu_temperature_c": telemetry.get("mean_cpu_temperature_c"),
                 "telemetry_sample_count": telemetry.get("sample_count"),
+                "sensor_status": telemetry.get("sensor_status"),
+                "process_cpu_sensor_status": telemetry.get(
+                    "sensor_status", {}
+                ).get("process_cpu"),
+                "process_memory_sensor_status": telemetry.get(
+                    "sensor_status", {}
+                ).get("process_memory"),
+                "apple_gpu_sensor_status": telemetry.get(
+                    "sensor_status", {}
+                ).get("apple_gpu"),
                 **_energy_fields(totals, telemetry),
             }
         )
@@ -278,25 +339,63 @@ def _collect_rows(experiment: Path, entries: list[Any]) -> dict[str, Any]:
                             record.get("integration_outcome"),
                         ),
                         "integration_score": evaluation.get("integration_score"),
-                        "latency_seconds": record.get("latency_seconds"),
+                        "generation_latency_seconds": record.get(
+                            "generation_latency_seconds", record.get("latency_seconds")
+                        ),
                         "ttft_seconds": record.get("time_to_first_token_seconds"),
                         "prompt_tokens": record.get("prompt_tokens"),
                         "output_tokens": record.get("output_tokens"),
                         "reasoning_tokens": record.get("reasoning_tokens"),
                         "output_characters": record.get("output_characters"),
-                        "output_tokens_per_second": record.get(
+                        "prompt_eval_tokens": record.get("prompt_eval_tokens"),
+                        "prompt_cached_tokens": record.get("prompt_cached_tokens"),
+                        "prompt_eval_seconds": record.get("prompt_eval_seconds"),
+                        "prompt_tokens_per_second": record.get(
+                            "prompt_tokens_per_second"
+                        ),
+                        "decode_eval_tokens": record.get("decode_eval_tokens"),
+                        "decode_eval_seconds": record.get("decode_eval_seconds"),
+                        "decode_graphs_reused": record.get(
+                            "decode_graphs_reused"
+                        ),
+                        "decode_tokens_per_second": record.get(
+                            "decode_tokens_per_second"
+                        ),
+                        "output_tokens_per_second_end_to_end": record.get(
                             "output_tokens_per_second_end_to_end"
                         ),
                         "process_wall_seconds": record.get("process_wall_seconds"),
                         "process_cpu_seconds": record.get("process_cpu_seconds"),
+                        "generation_process_cpu_seconds": record.get(
+                            "generation_process_cpu_seconds"
+                        ),
                         "process_cpu_utilization_percent": record.get(
                             "process_cpu_utilization_percent"
                         ),
-                        "process_memory_bytes": record.get("peak_process_memory_bytes"),
+                        "item_rss_before_generation_bytes": record.get(
+                            "item_rss_before_generation_bytes"
+                        ),
+                        "item_peak_process_rss_bytes": record.get(
+                            "item_peak_process_rss_bytes",
+                            record.get("peak_process_memory_bytes"),
+                        ),
+                        "item_peak_rss_delta_from_post_load_bytes": record.get(
+                            "item_peak_rss_delta_from_post_load_bytes"
+                        ),
+                        "process_rss_before_model_load_bytes": record.get(
+                            "process_rss_before_model_load_bytes"
+                        ),
+                        "process_rss_after_model_load_bytes": record.get(
+                            "process_rss_after_model_load_bytes"
+                        ),
+                        "model_load_rss_delta_bytes": record.get(
+                            "model_load_rss_delta_bytes"
+                        ),
                         "finish_reason": record.get("finish_reason"),
                         "prompt_sha256": record.get("prompt_sha256"),
                         "system_prompt_sha256": record.get("system_prompt_sha256"),
                         "run_order": record.get("run_order"),
+                        "resume_segment": record.get("resume_segment"),
                         "response_contract": record.get("response_contract"),
                         "scoring_method": record.get("scoring_method"),
                         "evaluation_type": evaluation.get("type"),
@@ -324,6 +423,7 @@ def _model_fields(model: dict[str, Any], fallback_id: str) -> dict[str, Any]:
         "family": model.get("family"),
         "backend": model.get("backend"),
         "quantization": model.get("quantization"),
+        "model_sha256": model.get("sha256"),
         "temperature": generation.get("temperature"),
         "top_p": generation.get("top_p"),
         "top_k": generation.get("top_k"),
@@ -369,11 +469,26 @@ def _aggregate_fields(aggregate: Any) -> dict[str, Any]:
         "recovery_rate": values.get("recovery_rate"),
         "recoverable_friction_rate": values.get("recoverable_friction_rate"),
         "parse_failure_rate": values.get("parse_failure_rate"),
-        "latency_seconds_total": values.get("latency_seconds"),
+        "latency_seconds_total": values.get(
+            "generation_latency_seconds", values.get("latency_seconds")
+        ),
         "mean_latency_seconds": values.get("mean_latency_seconds"),
         "mean_ttft_seconds": values.get("mean_time_to_first_token_seconds"),
-        "mean_output_tokens_per_second": values.get("mean_output_tokens_per_second_end_to_end"),
-        "peak_process_memory_bytes": values.get("peak_process_memory_bytes"),
+        "output_tokens_per_second_end_to_end": values.get(
+            "output_tokens_per_second_end_to_end",
+            values.get("mean_output_tokens_per_second_end_to_end"),
+        ),
+        "prompt_eval_tokens": values.get("prompt_eval_tokens"),
+        "prompt_cached_tokens": values.get("prompt_cached_tokens"),
+        "prompt_eval_seconds": values.get("prompt_eval_seconds"),
+        "prompt_tokens_per_second": values.get("prompt_tokens_per_second"),
+        "decode_eval_tokens": values.get("decode_eval_tokens"),
+        "decode_eval_seconds": values.get("decode_eval_seconds"),
+        "decode_graphs_reused": values.get("decode_graphs_reused"),
+        "decode_tokens_per_second": values.get("decode_tokens_per_second"),
+        "peak_process_rss_bytes": values.get(
+            "peak_process_rss_bytes", values.get("peak_process_memory_bytes")
+        ),
         "integration_friction_rate": values.get("integration_friction_rate"),
         "pass_rate_ci_95_low": interval[0] if interval else None,
         "pass_rate_ci_95_high": interval[1] if interval else None,
@@ -460,12 +575,12 @@ def _attach_q8_baselines(
         )
         if group_field is None:
             row["memory_saved_vs_q8_bytes"] = _difference(
-                baseline.get("peak_process_memory_bytes") if baseline else None,
-                row.get("peak_process_memory_bytes"),
+                baseline.get("peak_process_rss_bytes") if baseline else None,
+                row.get("peak_process_rss_bytes"),
             )
             row["speed_ratio_vs_q8"] = _ratio(
-                row.get("mean_output_tokens_per_second"),
-                baseline.get("mean_output_tokens_per_second") if baseline else None,
+                row.get("output_tokens_per_second_end_to_end"),
+                baseline.get("output_tokens_per_second_end_to_end") if baseline else None,
             )
 
 

@@ -53,9 +53,9 @@ FRONTIER_DATA_FIELDS = [
     "quantization_label",
     "mean_score",
     "score_percent",
-    "peak_process_memory_bytes",
-    "peak_process_memory_gib",
-    "mean_output_tokens_per_second",
+    "peak_process_rss_bytes",
+    "peak_process_rss_gib",
+    "output_tokens_per_second_end_to_end",
     "is_pareto",
 ]
 QUANTIZATION_MARKERS = {8: "o", 6: "s", 4: "D", 3: "^"}
@@ -87,9 +87,9 @@ def generate_plots(
             artifact_root,
             configuration_rows,
             stem=MEMORY_PLOT_STEM,
-            x_field="peak_process_memory_gib",
-            source_x_field="peak_process_memory_bytes",
-            x_label="Peak process memory (GiB)",
+            x_field="peak_process_rss_gib",
+            source_x_field="peak_process_rss_bytes",
+            x_label="Peak process RSS (GiB)",
             title="Memory–Quality Frontier",
             minimize_x=True,
         ),
@@ -97,8 +97,8 @@ def generate_plots(
             artifact_root,
             configuration_rows,
             stem=SPEED_PLOT_STEM,
-            x_field="mean_output_tokens_per_second",
-            source_x_field="mean_output_tokens_per_second",
+            x_field="output_tokens_per_second_end_to_end",
+            source_x_field="output_tokens_per_second_end_to_end",
             x_label="End-to-end output tokens per second",
             title="Speed–Quality Frontier",
             minimize_x=False,
@@ -166,7 +166,7 @@ def _generate_frontier(
             ),
         }
 
-    if source_x_field == "peak_process_memory_bytes":
+    if source_x_field == "peak_process_rss_bytes":
         for row in rows:
             row[x_field] = row[source_x_field] / (1024**3)
     pareto_ids = {

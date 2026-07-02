@@ -22,6 +22,7 @@ def _write_experiment(tmp_path: Path) -> Path:
         "backend": "llama_cpp",
         "quantization": "Q8_0",
         "file_size_bytes": 1_000,
+        "sha256": "a" * 64,
         "context_window": 4096,
         "threads": None,
         "batch_size": 512,
@@ -57,6 +58,17 @@ def _write_experiment(tmp_path: Path) -> Path:
         "mean_latency_seconds": 0.2,
         "mean_time_to_first_token_seconds": 0.05,
         "mean_output_tokens_per_second_end_to_end": 20.0,
+        "output_tokens_per_second_end_to_end": 18.0,
+        "prompt_tokens_per_second": 200.0,
+        "prompt_eval_tokens": 20,
+        "prompt_cached_tokens": 3,
+        "prompt_eval_seconds": 0.1,
+        "decode_eval_tokens": 4,
+        "decode_eval_seconds": 0.16,
+        "decode_graphs_reused": 2,
+        "decode_tokens_per_second": 25.0,
+        "generation_process_cpu_seconds": 0.15,
+        "peak_process_rss_bytes": 2 * 1024**3,
         "peak_process_memory_bytes": 2 * 1024**3,
         "integration_friction_rate": 0.0,
     }
@@ -66,6 +78,21 @@ def _write_experiment(tmp_path: Path) -> Path:
                 "status": "completed",
                 "model": model,
                 "model_load_seconds": 0.1,
+                "warmup": {
+                    "performed": True,
+                    "excluded_from_results": True,
+                    "latency_seconds": 0.02,
+                },
+                "resume": {
+                    "segment": 1,
+                    "resumed_from_items": 0,
+                    "checkpoint_granularity": "item",
+                },
+                "process_rss_before_model_load_bytes": 100,
+                "process_rss_after_model_load_bytes": 800,
+                "model_load_rss_delta_bytes": 700,
+                "peak_process_rss_bytes": 2 * 1024**3,
+                "peak_process_rss_delta_from_preload_bytes": 2 * 1024**3 - 100,
                 "totals": aggregate,
                 "suites": {"A": aggregate},
                 "benchmarks": {
@@ -121,9 +148,24 @@ def _write_experiment(tmp_path: Path) -> Path:
                     "integration_score": 1.0,
                 },
                 "latency_seconds": 0.2,
+                "generation_latency_seconds": 0.2,
                 "time_to_first_token_seconds": 0.05,
+                "prompt_eval_tokens": 20,
+                "prompt_cached_tokens": 3,
+                "prompt_eval_seconds": 0.1,
+                "prompt_tokens_per_second": 200.0,
+                "decode_eval_tokens": 4,
+                "decode_eval_seconds": 0.16,
+                "decode_graphs_reused": 2,
+                "decode_tokens_per_second": 25.0,
                 "output_tokens_per_second_end_to_end": 20.0,
-                "peak_process_memory_bytes": 2 * 1024**3,
+                "item_rss_before_generation_bytes": 800,
+                "item_peak_process_rss_bytes": 2 * 1024**3,
+                "item_peak_rss_delta_from_post_load_bytes": 2 * 1024**3 - 800,
+                "process_rss_before_model_load_bytes": 100,
+                "process_rss_after_model_load_bytes": 800,
+                "model_load_rss_delta_bytes": 700,
+                "resume_segment": 1,
             }
         )
         + "\n",
@@ -179,7 +221,9 @@ def _write_quantization_experiment(tmp_path: Path) -> Path:
         aggregate["pass_rate"] = 0.0
         aggregate["mean_score"] = 0.75
         aggregate["peak_process_memory_bytes"] = int(1.2 * 1024**3)
+        aggregate["peak_process_rss_bytes"] = int(1.2 * 1024**3)
         aggregate["mean_output_tokens_per_second_end_to_end"] = 30.0
+        aggregate["output_tokens_per_second_end_to_end"] = 28.0
     q4_summary["benchmarks"]["reasoning"]["reported_score"] = 0.75
     q4_directory = experiment / "models" / "model-q4"
     (q4_directory / "summary.json").write_text(
@@ -243,6 +287,18 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     assert configurations[0]["energy_per_correct_answer_joules"] == "1.0"
     assert configurations[0]["run_elapsed_seconds"] == "0.35"
     assert configurations[0]["item_latency_seconds_total"] == "0.2"
+    assert configurations[0]["model_sha256"] == "a" * 64
+    assert configurations[0]["warmup_performed"] == "True"
+    assert configurations[0]["checkpoint_granularity"] == "item"
+    assert configurations[0]["output_tokens_per_second_end_to_end"] == "18.0"
+    assert configurations[0]["prompt_tokens_per_second"] == "200.0"
+    assert configurations[0]["prompt_cached_tokens"] == "3"
+    assert configurations[0]["decode_graphs_reused"] == "2"
+    assert configurations[0]["decode_tokens_per_second"] == "25.0"
+    assert configurations[0]["model_load_rss_delta_bytes"] == "700"
+    assert json.loads(configurations[0]["sensor_status"])[
+        "temperature_and_power"
+    ] == "available"
     assert json.loads(configurations[1]["error"])["message"] == "load failed"
     with paths["suites"].open(newline="") as source:
         suite = list(csv.DictReader(source))[0]
@@ -256,6 +312,14 @@ def test_export_experiment_artifacts_writes_normalized_partial_results(
     assert item["semantic_outcome"] == "correct"
     assert item["protocol_outcome"] == "compliant"
     assert item["integration_outcome"] == "scored_cleanly"
+    assert item["generation_latency_seconds"] == "0.2"
+    assert item["prompt_tokens_per_second"] == "200.0"
+    assert item["prompt_cached_tokens"] == "3"
+    assert item["decode_graphs_reused"] == "2"
+    assert item["decode_tokens_per_second"] == "25.0"
+    assert item["output_tokens_per_second_end_to_end"] == "20.0"
+    assert item["item_peak_process_rss_bytes"] == str(2 * 1024**3)
+    assert item["resume_segment"] == "1"
 
 
 def test_artifact_pass_rate_counts_errors_for_older_saved_summaries(
