@@ -1,11 +1,10 @@
 schema_version: 1
-name: local-llm-deterministic-benchmarks
+name: final-five-workloads
 version: 1
-status: pilot
+status: frozen
 benchmark_files:
   - ../applied_reasoning/benchmark.yaml
   - ../code_debug_repair/benchmark.yaml
   - ../messy_text_to_schema/benchmark.yaml
-  - ../tool_use/benchmark.yaml
   - ../constraint_load_curve/benchmark.yaml
-  - ../long_text_retrieval/benchmark.yaml
+  - ../tool_use/benchmark.yaml

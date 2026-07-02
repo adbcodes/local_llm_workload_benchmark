@@ -12,7 +12,7 @@ SUITE_PATH = Path("data/suites/reasoning.yaml")
 GENERATED_PATH = Path(
     "data/applied_reasoning/generated.yaml"
 )
-QUANT_CONFIG_PATH = Path("configs/applied_reasoning_quant_matrix.yaml")
+QUANT_CONFIG_PATH = Path("configs/final_default_matrix.yaml")
 
 
 def test_applied_reasoning_has_fresh_headline_dataset() -> None:
@@ -163,10 +163,10 @@ def test_detector_posterior_uses_valid_priors() -> None:
     assert detector.expected["value"] == "5/8"
 
 
-def test_quantization_config_runs_only_the_headline_suite() -> None:
+def test_final_quantization_config_includes_applied_reasoning() -> None:
     config = load_config(QUANT_CONFIG_PATH)
 
-    assert config.benchmark.workload_path == Path("data/suites/reasoning.yaml")
+    assert config.benchmark.workload_path == Path("data/suites/final_five.yaml")
     assert len(config.models) == 20
     assert {model.quantization for model in config.models} == {
         "Q8_0",

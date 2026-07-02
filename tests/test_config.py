@@ -77,11 +77,13 @@ models:
         load_config(config_path)
 
 
-def test_fast_matrix_configs_load() -> None:
+def test_retained_matrix_configs_load() -> None:
     smoke = load_config(Path("configs/smoke_matrix.yaml"))
-    deterministic = load_config(Path("configs/deterministic_matrix.yaml"))
+    five = load_config(Path("configs/final_default_matrix.yaml"))
+    retrieval = load_config(Path("configs/final_retrieval_matrix.yaml"))
 
-    assert len(smoke.models) == len(deterministic.models) == 5
+    assert len(smoke.models) == 5
+    assert len(five.models) == len(retrieval.models) == 20
     assert smoke.benchmark.workload_path == Path("data/suites/smoke.yaml")
     assert {model.quantization for model in smoke.models} == {
         "Q3_K_M",
@@ -89,6 +91,7 @@ def test_fast_matrix_configs_load() -> None:
         "Q6_K",
         "Q8_0",
     }
-    assert deterministic.benchmark.workload_path == Path(
-        "data/suites/deterministic.yaml"
+    assert five.benchmark.workload_path == Path("data/suites/final_five.yaml")
+    assert retrieval.benchmark.workload_path == Path(
+        "data/suites/final_retrieval.yaml"
     )

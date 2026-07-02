@@ -50,31 +50,48 @@ def test_stage1_dataset_and_evaluator_contract_is_frozen() -> None:
     }
 
 
-def test_stage1_model_inventory_matches_the_main_config() -> None:
+def test_stage1_model_inventory_matches_both_execution_configs() -> None:
     contract = yaml.safe_load(CONTRACT_PATH.read_text(encoding="utf-8"))
-    run_contract = contract["main_run"]
-    config_path = ROOT / run_contract["config_path"]
-    config = load_config(config_path)
+    execution = contract["execution"]
     frozen_models = {entry["id"]: entry for entry in contract["models"]}
 
-    assert _sha256(config_path) == run_contract["config_sha256"]
-    assert len(config.models) == len(frozen_models) == 20
-    assert set(frozen_models) == {model.id for model in config.models}
-    assert config.benchmark.repetitions == run_contract["repetitions"] == 1
+    assert execution["repetitions"] == 1
+    assert execution["total_generations"] == 6_400
+    assert {entry["id"] for entry in execution["matrices"]} == {
+        "five_workloads",
+        "long_text_retrieval",
+    }
 
-    for model in config.models:
-        frozen = frozen_models[model.id]
-        model_path = ROOT / model.model_path
-        assert frozen["path"] == str(model.model_path)
-        assert frozen["quantization"] == model.quantization
-        assert model_path.stat().st_size == frozen["bytes"]
-        assert re.fullmatch(r"[0-9a-f]{64}", frozen["sha256"])
-        assert model.generation.model_dump() == run_contract["generation"]
+    generation_total = 0
+    for run_contract in execution["matrices"]:
+        config_path = ROOT / run_contract["config_path"]
+        suite_path = ROOT / run_contract["suite_path"]
+        config = load_config(config_path)
+        suite = load_suite(suite_path)
 
-    assert run_contract["command"].endswith(
-        "llm-benchmark benchmark --config configs/final_default_matrix.yaml "
-        "--skip-human-eval"
-    )
+        assert _sha256(config_path) == run_contract["config_sha256"]
+        assert _sha256(suite_path) == run_contract["suite_sha256"]
+        assert config.benchmark.workload_path == Path(run_contract["suite_path"])
+        assert len(config.models) == len(frozen_models) == 20
+        assert set(frozen_models) == {model.id for model in config.models}
+        assert config.benchmark.repetitions == execution["repetitions"]
+        assert sum(map(len, suite.items.values())) == run_contract["question_count"]
+        assert run_contract["generation_count"] == 20 * run_contract["question_count"]
+        assert run_contract["command"].endswith(
+            f"llm-benchmark benchmark --config {run_contract['config_path']}"
+        )
+        generation_total += run_contract["generation_count"]
+
+        for model in config.models:
+            frozen = frozen_models[model.id]
+            model_path = ROOT / model.model_path
+            assert frozen["path"] == str(model.model_path)
+            assert frozen["quantization"] == model.quantization
+            assert model_path.stat().st_size == frozen["bytes"]
+            assert re.fullmatch(r"[0-9a-f]{64}", frozen["sha256"])
+            assert model.generation.model_dump() == execution["generation"]
+
+    assert generation_total == execution["total_generations"]
 
 
 def test_stage1_smoke_contract_spans_families_and_quantizations() -> None:

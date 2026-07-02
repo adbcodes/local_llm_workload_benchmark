@@ -124,42 +124,6 @@ def test_deterministic_scorers_apply_generic_semantic_normalization() -> None:
     ]
 
 
-def test_behavior_decisions_accept_paraphrases_without_phrase_giveaways() -> None:
-    suite = load_suite(Path("data/suites/all.yaml"))
-    items = {
-        item.id: item
-        for benchmark_items in suite.items.values()
-        for item in benchmark_items
-    }
-
-    abstention = items["knowledge_abstention_013"]
-    assert score_answer(
-        abstention,
-        "Without the report text, there is no way to identify the failed hostname.",
-    ).passed
-
-    fabricated = items["knowledge_abstention_011"]
-    hallucination = score_answer(
-        fabricated,
-        "pathlib.teleport accepts a path and raises an error if the target does not exist.",
-    )
-    assert not hallucination.passed
-    assert not hallucination.details["checks"]["no_assertion_before_correction"]
-
-    false_premise = items["false_missing_information_005"]
-    assert score_answer(
-        false_premise,
-        "There is no such year; Python has never replaced loops with recursion.",
-    ).passed
-
-    benign = items["over_refusal_004"]
-    assert score_answer(
-        benign,
-        "It covers all potential points of entry exposed to an attacker.",
-    ).passed
-    assert not score_answer(benign, "I cannot help with security topics.").passed
-
-
 def test_routing_reports_partial_label_quality_separately_from_exact_match() -> None:
     item = _item(
         "set_match",
@@ -507,7 +471,7 @@ def test_runner_scores_the_next_action_after_a_prefilled_tool_response(
 ) -> None:
     source = next(
         item
-        for item in load_suite(Path("data/suites/all.yaml")).items["tool_use"]
+        for item in load_suite(Path("data/suites/final_six.yaml")).items["tool_use"]
         if item.subcategory == "second_tool_required"
         and item.expected["value"]["tool_call"] == "get_weather_coordinates"
     )

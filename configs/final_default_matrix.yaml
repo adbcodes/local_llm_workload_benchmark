@@ -1,17 +1,11 @@
 schema_version: 1
 benchmark:
-  name: final-default-matrix
-  description: Twenty default configurations across five model families for the final benchmark figures.
-  workload_path: data/suites/final_six.yaml
+  name: final-five-workload-quantization-matrix
+  description: Five non-retrieval workloads across five model families and four quantizations.
+  workload_path: data/suites/final_five.yaml
   output_root: runs
   repetitions: 1
   seed: 42
-judge: &judge
-  provider: cerebras
-  model: gpt-oss-120b
-  family: openai
-  api_key_env: CEREBRAS_API_KEY
-  cache_path: runs/judge_cache.jsonl
 models:
   - &qwen25
     id: qwen2.5-3b-q8

@@ -1,7 +1,7 @@
 schema_version: 1
-name: local-llm-benchmark-schema-pilot
+name: local-llm-core-test-suite
 version: 1
-status: pilot
+status: frozen
 benchmark_files:
   - ../applied_reasoning/benchmark.yaml
   - ../messy_text_to_schema/benchmark.yaml

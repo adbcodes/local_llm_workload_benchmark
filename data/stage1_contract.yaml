@@ -48,10 +48,8 @@ evaluators:
     constraint_rules: 1
     tool_call: 1
 
-main_run:
-  config_path: configs/final_default_matrix.yaml
-  config_sha256: f699388d49244ec8f4356a356773a58347fcd187b05b5242043d6f62ef1af438
-  command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_default_matrix.yaml --skip-human-eval
+execution:
+  total_generations: 6400
   repetitions: 1
   generation:
     max_output_tokens: 4096
@@ -60,6 +58,23 @@ main_run:
     top_k: 40
     repeat_penalty: 1.0
     constrained_decoding: none
+  matrices:
+    - id: five_workloads
+      config_path: configs/final_default_matrix.yaml
+      config_sha256: 5953281a34002604a70c97a89429ce2859d2a4721b12f232fa034a7d473fb9b9
+      suite_path: data/suites/final_five.yaml
+      suite_sha256: eb234d52309b16444496c01af344be74ff6c0fbd70b480f0bdcf7425ac4c3782
+      question_count: 272
+      generation_count: 5440
+      command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_default_matrix.yaml
+    - id: long_text_retrieval
+      config_path: configs/final_retrieval_matrix.yaml
+      config_sha256: 12051b5b14bb0661b3d8c1cfc5eb86e9094e0f1ec57dcffe0ee0733644a20c7e
+      suite_path: data/suites/final_retrieval.yaml
+      suite_sha256: 45da0192ac240f991ad4e0a4617aa9eb0a22aaa43a1dfeabf30c9ee6d5f66636
+      question_count: 48
+      generation_count: 960
+      command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_retrieval_matrix.yaml
 
 models:
   - {id: qwen2.5-3b-q8, quantization: Q8_0, path: models/qwen2.5-3b-instruct-q8_0.gguf, bytes: 3616088480, sha256: 6dcc22694c8654b045ec40bbe350212b88893fd9010e8474bae5b19a43578ba1}

@@ -1,6 +1,6 @@
 schema_version: 1
-name: local-llm-reasoning
+name: local-llm-reasoning-test-suite
 version: 1
-status: pilot
+status: frozen
 benchmark_files:
   - ../applied_reasoning/benchmark.yaml

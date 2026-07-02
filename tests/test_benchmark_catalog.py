@@ -4,92 +4,64 @@ from pathlib import Path
 import json
 import re
 import runpy
-import subprocess
-import sys
 
 import yaml
 
-from llm_workload_benchmark.dataset import load_suite, score_answer
 from llm_workload_benchmark.catalog import validate_catalog
+from llm_workload_benchmark.dataset import load_suite, score_answer
 
 
 CATALOG_PATH = Path("data/catalog.yaml")
 QUESTION_SET_IDS = {
-    "applied_reasoning", "code_debug_repair", "knowledge_abstention",
-    "messy_text_to_schema", "tables_to_decisions", "inbox_routing", "tool_use",
-    "constraint_load_curve", "negative_instructions", "instruction_hierarchy",
-    "raw_output_discipline", "grounded_compression", "india_focused_tasks",
-    "long_text_retrieval", "conversation_memory", "clean_vs_noisy",
-    "false_missing_information", "answer_stability", "confidence_correctness",
-    "shuffled_choices", "prompt_format_sensitivity", "over_refusal",
-}
-OPTIONAL_QUESTION_SET_IDS = {
-    "confidence_correctness", "conversation_memory", "inbox_routing",
-    "india_focused_tasks", "negative_instructions", "tables_to_decisions",
-}
-ACTIVE_QUESTION_SET_IDS = QUESTION_SET_IDS - OPTIONAL_QUESTION_SET_IDS
-POPULATED_QUESTION_SET_IDS = QUESTION_SET_IDS
-NEWLY_FILLED_QUESTION_SET_IDS = {
-    "knowledge_abstention", "negative_instructions", "instruction_hierarchy",
-    "raw_output_discipline", "india_focused_tasks", "long_text_retrieval",
-    "conversation_memory", "clean_vs_noisy", "false_missing_information",
-    "answer_stability", "confidence_correctness", "shuffled_choices",
-    "prompt_format_sensitivity", "over_refusal",
+    "applied_reasoning",
+    "code_debug_repair",
+    "messy_text_to_schema",
+    "tool_use",
+    "constraint_load_curve",
+    "grounded_compression",
+    "long_text_retrieval",
 }
 
 
-def benchmark_directory(benchmark_id: str) -> Path:
-    prefix = Path("data/optional") if benchmark_id in OPTIONAL_QUESTION_SET_IDS else Path("data")
-    return prefix / benchmark_id
-
-
-def test_catalog_matches_the_six_suite_plan() -> None:
+def test_catalog_contains_only_planned_evidence_tracks() -> None:
     catalog = yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8"))
 
     assert catalog["schema_version"] == 2
-    assert [suite["id"] for suite in catalog["suites"]] == list("ABCDEF")
+    assert [suite["id"] for suite in catalog["suites"]] == list("ABCDE")
     entries = catalog["benchmarks"]
-    ids = [entry["id"] for entry in entries]
-    assert len(ids) == len(set(ids)) == 24
-    assert {entry["id"] for entry in entries if entry["kind"] == "question_set"} == QUESTION_SET_IDS
+    assert len(entries) == len(QUESTION_SET_IDS) == 7
+    assert {entry["id"] for entry in entries} == QUESTION_SET_IDS
+    assert all(entry["kind"] == "question_set" for entry in entries)
+    assert catalog["probe_sets"] == []
 
 
-def test_every_catalog_definition_exists_and_declares_its_task_types() -> None:
+def test_every_catalog_definition_exists_and_declares_its_contract() -> None:
     catalog = yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8"))
 
     for entry in catalog["benchmarks"]:
-        path = CATALOG_PATH.parent / entry["definition_path"]
-        definition = yaml.safe_load(path.read_text(encoding="utf-8"))
+        definition = yaml.safe_load(
+            (CATALOG_PATH.parent / entry["definition_path"]).read_text(
+                encoding="utf-8"
+            )
+        )
         assert definition["id"] == entry["id"]
-        if entry["kind"] == "question_set":
-            assert definition["suite"] == entry["suite"]
-            assert definition["task_types"]
-            assert definition["metrics"]
-            assert definition["evaluation_policy"]
-            assert definition["scoring_methods"]
+        assert definition["suite"] == entry["suite"]
+        assert definition["task_types"]
+        assert definition["metrics"]
+        assert definition["evaluation_policy"]
+        assert definition["scoring_methods"]
 
 
-def test_every_question_set_has_a_consistent_primary_evaluation_policy() -> None:
-    suite = load_suite(Path("data/suites/all.yaml"))
-    policies = {
-        benchmark_id: definition.evaluation_policy
+def test_evaluation_contracts_cover_the_retained_benchmarks() -> None:
+    suites = [
+        load_suite(Path("data/suites/final_six.yaml")),
+        load_suite(Path("data/suites/judged.yaml")),
+    ]
+    definitions = {
+        benchmark_id: definition
+        for suite in suites
         for benchmark_id, definition in suite.definitions.items()
     }
-
-    assert set(policies) == ACTIVE_QUESTION_SET_IDS
-    assert policies["raw_output_discipline"].primary_outcome == "protocol"
-    assert policies["raw_output_discipline"].protocol_requirement == "required"
-    assert policies["tool_use"].primary_outcome == "semantic"
-    assert policies["tool_use"].protocol_requirement == "required"
-    assert {
-        benchmark_id
-        for benchmark_id, policy in policies.items()
-        if policy.primary_outcome == "semantic"
-    } == ACTIVE_QUESTION_SET_IDS - {"raw_output_discipline"}
-
-
-def test_evaluation_contract_files_cover_declared_scorers_and_metrics() -> None:
-    suite = load_suite(Path("data/suites/all.yaml"))
     scoring = yaml.safe_load(
         Path("data/evaluation/scoring_contracts.yaml").read_text(encoding="utf-8")
     )
@@ -102,141 +74,30 @@ def test_evaluation_contract_files_cover_declared_scorers_and_metrics() -> None:
 
     declared_scorers = {
         scorer
-        for definition in suite.definitions.values()
+        for definition in definitions.values()
         for scorer in definition.scoring_methods
     }
-    assert scoring["schema_version"] == 2
     assert declared_scorers <= set(scoring["methods"])
-
-    answer_contracts = set(normalization["accepted_answer_contracts"])
     referenced_contracts = {
         contract
         for method in scoring["methods"].values()
         for contract in method["accepted_answer_contracts"]
     }
-    assert normalization["schema_version"] == 2
-    assert referenced_contracts <= answer_contracts
-
-    assert reporting["schema_version"] == 2
-    for definition in suite.definitions.values():
+    assert referenced_contracts <= set(normalization["accepted_answer_contracts"])
+    for definition in definitions.values():
         policy = definition.evaluation_policy
         outcome = reporting["outcomes"][policy.primary_outcome]
         assert outcome["strict_metric"] == policy.primary_metric
         assert outcome["partial_credit_metric"] == policy.partial_credit_metric
 
 
-def test_planned_question_sets_are_empty_but_runnable_templates() -> None:
-    catalog = yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8"))
-    for entry in catalog["benchmarks"]:
-        if entry["kind"] != "question_set" or entry["status"] != "planned":
-            continue
-        directory = (CATALOG_PATH.parent / entry["definition_path"]).parent
-        definition = yaml.safe_load((directory / "benchmark.yaml").read_text())
-        questions = yaml.safe_load((directory / "questions.yaml").read_text())
-        assert definition["current_question_count"] == 0
-        assert questions["schema_version"] == 1
-        assert questions["benchmark"] == entry["id"]
-        assert questions["item_template"]
-        assert questions["items"] == []
-        assert (directory / "items.jsonl").read_text(encoding="utf-8") == ""
-
-    suite = load_suite(Path("data/suites/all.yaml"))
-    assert sum(len(items) for items in suite.items.values()) == 503
-
-
-def test_backbone_generator_reproduces_planned_templates(tmp_path: Path) -> None:
-    generated_root = tmp_path / "data"
-    subprocess.run(
-        [sys.executable, "scripts/generate_benchmark_backbone.py", "--root", str(generated_root)],
-        check=True,
-    )
-    for benchmark_id in QUESTION_SET_IDS - POPULATED_QUESTION_SET_IDS:
-        for filename in ("benchmark.yaml", "questions.yaml", "items.jsonl"):
-            assert (generated_root / benchmark_id / filename).read_text() == (
-                benchmark_directory(benchmark_id) / filename
-            ).read_text()
-
-
-def test_evaluation_and_probe_definitions_exist() -> None:
-    catalog = yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8"))
-    for relative_path in catalog["evaluation_files"].values():
-        assert (CATALOG_PATH.parent / relative_path).is_file()
-    for relative_path in catalog["probe_sets"]:
-        assert (CATALOG_PATH.parent / relative_path).is_file()
-    assert not list(Path("data/planned").glob("*.yaml"))
-
+def test_catalog_validation_counts_only_retained_questions() -> None:
     result = validate_catalog(CATALOG_PATH)
-    assert result.benchmark_count == 24
-    assert result.question_set_count == 16
-    assert result.current_question_count == 503
+
+    assert result.benchmark_count == 7
+    assert result.question_set_count == 7
+    assert result.current_question_count == 340
     assert result.planned_question_set_count == 0
-
-
-def test_optional_suite_is_separate_from_the_active_suite() -> None:
-    active = load_suite(Path("data/suites/all.yaml"))
-    optional = load_suite(Path("data/suites/optional.yaml"))
-
-    assert set(active.definitions) == ACTIVE_QUESTION_SET_IDS
-    assert set(optional.definitions) == OPTIONAL_QUESTION_SET_IDS
-    assert set(active.definitions).isdisjoint(optional.definitions)
-
-
-def test_structured_work_sets_hit_their_targets_and_cover_task_types() -> None:
-    expected = {
-        "tables_to_decisions": {
-            "count": 30,
-            "subcategories": {
-                "totals_and_differences",
-                "small_joins",
-                "trends_with_exception_rows",
-                "duplicated_rows",
-                "inconsistent_rows",
-                "decision_from_table_evidence",
-            },
-        },
-        "inbox_routing": {
-            "count": 30,
-            "subcategories": {
-                "single_label_routing",
-                "multi_label_routing",
-                "urgency_under_polite_tone",
-                "ask_for_more_information_cases",
-                "out_of_scope_messages",
-            },
-        },
-        "tool_use": {
-            "count": 48,
-            "subcategories": {
-                "direct_tool_selection",
-                "tool_disambiguation",
-                "typed_arguments",
-                "argument_conversion",
-                "multi_argument_binding",
-                "nested_arguments",
-                "no_tool_needed",
-                "unavailable_tool",
-                "optional_defaults",
-                "confirmation_required",
-                "confirmation_granted",
-                "second_tool_required",
-                "second_tool_not_required",
-                "third_tool_required",
-                "third_tool_not_required",
-                "fourth_tool_required",
-                "fourth_tool_not_required",
-            },
-        },
-    }
-
-    for benchmark_id, requirements in expected.items():
-        document = yaml.safe_load(
-            (benchmark_directory(benchmark_id) / "questions.yaml").read_text()
-        )
-        items = document["items"]
-        assert len(items) == requirements["count"]
-        assert {item["subcategory"] for item in items} == requirements["subcategories"]
-        assert {item["difficulty"] for item in items} == {"easy", "medium", "hard"}
-        assert sum(item["visibility"] == "public" for item in items) == len(items) // 2
 
 
 def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> None:
@@ -253,7 +114,7 @@ def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> 
     assert retrieval_document["items"] == remaining_generator["long_text_items"]()
     assert tool_document["items"] == structured_generator["_tool_items"]()
 
-    retrieval_items = load_suite(Path("data/suites/all.yaml")).items[
+    retrieval_items = load_suite(Path("data/suites/final_six.yaml")).items[
         "long_text_retrieval"
     ]
     assert len(retrieval_items) == 48
@@ -367,7 +228,7 @@ def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> 
         for item in retrieval_items
     )
 
-    tool_items = load_suite(Path("data/suites/all.yaml")).items["tool_use"]
+    tool_items = load_suite(Path("data/suites/final_six.yaml")).items["tool_use"]
     no_tool_items = [item for item in tool_items if item.expected["value"]["tool_call"] is None]
     assert len(tool_items) == 48
     assert Counter(item.difficulty for item in tool_items) == {
@@ -516,7 +377,7 @@ def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> 
 
 
 def test_retrieval_golds_are_independently_derived_from_source_documents() -> None:
-    items = load_suite(Path("data/suites/all.yaml")).items["long_text_retrieval"][::3]
+    items = load_suite(Path("data/suites/final_six.yaml")).items["long_text_retrieval"][::3]
 
     def expected(index: int):
         return items[index].expected["value"]
@@ -612,22 +473,3 @@ def test_retrieval_golds_are_independently_derived_from_source_documents() -> No
     assert base_fee and credit
     calculated_fee = int(base_fee.group(1).replace(",", "")) * (100 - int(credit.group(1))) // 100
     assert calculated_fee == expected(15)
-
-
-def test_newly_filled_sets_hit_targets_and_keep_sources_before_variants() -> None:
-    for benchmark_id in NEWLY_FILLED_QUESTION_SET_IDS:
-        directory = benchmark_directory(benchmark_id)
-        definition = yaml.safe_load((directory / "benchmark.yaml").read_text())
-        document = yaml.safe_load((directory / "questions.yaml").read_text())
-        items = document["items"]
-        item_order = {entry["id"]: index for index, entry in enumerate(items)}
-
-        assert len(items) == definition["target_question_count"]
-        assert {
-            visibility: sum(item["visibility"] == visibility for item in items)
-            for visibility in ("public", "held_out")
-        } == definition["target_visibility_distribution"]
-        assert {item["difficulty"] for item in items} == {"easy", "medium", "hard"}
-        for entry in items:
-            if source_id := entry.get("source_item"):
-                assert item_order[source_id] < item_order[entry["id"]]

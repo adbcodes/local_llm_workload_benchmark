@@ -1,67 +1,36 @@
 schema_version: 2
-name: local-llm-benchmark-catalog
+name: local-llm-final-benchmark-catalog
 suites:
   - id: A
     title: Core Capability
-    question: Can it think, compute, and code?
-    scoring: Exact match and code execution
+    question: Can it reason and repair code?
+    scoring: Exact answers and isolated Python tests
   - id: B
     title: Structured Work
-    question: Can it do real desk work with data?
-    scoring: JSON, table, label, and tool checks
+    question: Can it extract data and choose tools?
+    scoring: Exact JSON and tool-call checks
   - id: C
     title: Instruction Control
-    question: Does it obey rules and formats?
-    scoring: Data-driven rule checks
+    question: Can it follow cumulative constraints?
+    scoring: Data-driven rule and content checks
   - id: D
-    title: Communication
-    question: Can it write and summarize safely?
-    scoring: Fact checks, judge panel, and preference voting
+    title: Grounded Communication
+    question: Can it compress source material faithfully?
+    scoring: Deterministic checks plus a calibrated LLM judge
   - id: E
-    title: Reliability and Trust
-    question: Does it stay correct under stress?
-    scoring: Retained score against matched clean items
-  - id: F
-    title: Local Runtime Effects
-    question: What changes under quantization, sampling, and context pressure?
-    scoring: Frozen probe set reruns
+    title: Long-Context Reliability
+    question: Can it retrieve evidence from difficult long documents?
+    scoring: Exact evidence-grounded answers
 benchmarks:
   - {id: applied_reasoning, suite: A, status: complete, kind: question_set, definition_path: applied_reasoning/benchmark.yaml}
   - {id: code_debug_repair, suite: A, status: complete, kind: question_set, definition_path: code_debug_repair/benchmark.yaml}
-  - {id: knowledge_abstention, suite: A, status: started, kind: question_set, definition_path: knowledge_abstention/benchmark.yaml}
   - {id: messy_text_to_schema, suite: B, status: complete, kind: question_set, definition_path: messy_text_to_schema/benchmark.yaml}
-  - {id: tables_to_decisions, suite: B, status: started, kind: question_set, definition_path: optional/tables_to_decisions/benchmark.yaml, active: false}
-  - {id: inbox_routing, suite: B, status: started, kind: question_set, definition_path: optional/inbox_routing/benchmark.yaml, active: false}
   - {id: tool_use, suite: B, status: complete, kind: question_set, definition_path: tool_use/benchmark.yaml}
   - {id: constraint_load_curve, suite: C, status: complete, kind: question_set, definition_path: constraint_load_curve/benchmark.yaml}
-  - {id: negative_instructions, suite: C, status: started, kind: question_set, definition_path: optional/negative_instructions/benchmark.yaml, active: false}
-  - {id: instruction_hierarchy, suite: C, status: started, kind: question_set, definition_path: instruction_hierarchy/benchmark.yaml}
-  - {id: raw_output_discipline, suite: C, status: started, kind: question_set, definition_path: raw_output_discipline/benchmark.yaml}
   - {id: grounded_compression, suite: D, status: started, kind: question_set, definition_path: grounded_compression/benchmark.yaml}
-  - {id: personal_model_preference, suite: D, status: started, kind: evaluation_track, definition_path: personal_model_preference/plan.yaml}
-  - {id: india_focused_tasks, suite: D, status: started, kind: question_set, definition_path: optional/india_focused_tasks/benchmark.yaml, active: false}
   - {id: long_text_retrieval, suite: E, status: complete, kind: question_set, definition_path: long_text_retrieval/benchmark.yaml}
-  - {id: conversation_memory, suite: E, status: started, kind: question_set, definition_path: optional/conversation_memory/benchmark.yaml, active: false}
-  - {id: clean_vs_noisy, suite: E, status: started, kind: question_set, definition_path: clean_vs_noisy/benchmark.yaml}
-  - {id: false_missing_information, suite: E, status: started, kind: question_set, definition_path: false_missing_information/benchmark.yaml}
-  - {id: answer_stability, suite: E, status: started, kind: question_set, definition_path: answer_stability/benchmark.yaml}
-  - {id: confidence_correctness, suite: E, status: started, kind: question_set, definition_path: optional/confidence_correctness/benchmark.yaml, active: false}
-  - {id: shuffled_choices, suite: E, status: started, kind: question_set, definition_path: shuffled_choices/benchmark.yaml}
-  - {id: prompt_format_sensitivity, suite: E, status: started, kind: question_set, definition_path: prompt_format_sensitivity/benchmark.yaml}
-  - {id: over_refusal, suite: E, status: started, kind: question_set, definition_path: over_refusal/benchmark.yaml}
-  - {id: local_runtime_effects, suite: F, status: planned, kind: experiment_group, definition_path: runtime_effects/plan.yaml}
 evaluation_files:
   scoring_contracts: evaluation/scoring_contracts.yaml
   normalization: evaluation/normalization.yaml
-  judge_panel: evaluation/judge_panel.yaml
   reporting: evaluation/reporting.yaml
-  frontier_anchor: evaluation/frontier_anchor.yaml
-probe_sets:
-  - probes/frozen_probe_v1.yaml
-  - probes/temperature_stability_v1.yaml
-  - probes/constrained_decoding_v1.yaml
-  - probes/repetition_penalty_v1.yaml
-  - probes/temperature_stability_v2.yaml
-  - probes/constrained_decoding_v2.yaml
-  - probes/repetition_penalty_v2.yaml
-  - probes/context_speed_v2.yaml
+probe_sets: []

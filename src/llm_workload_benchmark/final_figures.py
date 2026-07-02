@@ -39,10 +39,6 @@ QUANTIZATION_BENCHMARKS = {
         "messy_text_to_schema",
         "Schema Extraction vs Quantization",
     ),
-    "quant_raw_output_discipline": (
-        "raw_output_discipline",
-        "Raw Output Discipline vs Quantization",
-    ),
 }
 
 
@@ -272,25 +268,25 @@ def context_ttft(root: Path, context_items: list[dict[str, Any]]) -> dict[str, A
 
 
 def generate_final_figure_bundle(
-    default_experiment: Path,
-    context_experiment: Path,
+    five_experiment: Path,
+    retrieval_experiment: Path,
 ) -> Path:
-    """Generate the compact evidence-backed figure bundle from saved runs."""
+    """Generate figures from independent five-workload and retrieval matrices."""
 
     from llm_workload_benchmark.artifacts import export_experiment_artifacts
 
-    for experiment in dict.fromkeys((default_experiment, context_experiment)):
+    for experiment in dict.fromkeys((five_experiment, retrieval_experiment)):
         export_experiment_artifacts(experiment)
 
-    default_root = default_experiment / "artifacts"
-    context_root = context_experiment / "artifacts"
-    output = default_root / "final_figures"
+    five_root = five_experiment / "artifacts"
+    retrieval_root = retrieval_experiment / "artifacts"
+    output = five_root / "final_figures"
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
 
-    items = _read_csv(default_root / "data" / "items.csv")
-    context_items = _read_csv(context_root / "data" / "items.csv")
+    items = _read_csv(five_root / "data" / "items.csv")
+    retrieval_items = _read_csv(retrieval_root / "data" / "items.csv")
     plots = {
         stem: quantization_benchmark_score(
             output,
@@ -303,19 +299,26 @@ def generate_final_figure_bundle(
     }
     plots.update(
         {
+            "quant_long_text_retrieval": quantization_benchmark_score(
+                output,
+                retrieval_items,
+                benchmark="long_text_retrieval",
+                stem="quant_long_text_retrieval",
+                title="Long-Text Retrieval vs Quantization",
+            ),
             "quant_tool_arguments": quantization_tool_arguments(
                 output, items
             ),
             "constraint_load_score": constraint_load_score(output, items),
             "constraint_content_retention": constraint_content_retention(output, items),
-            "context_ttft": context_ttft(output, context_items),
+            "context_ttft": context_ttft(output, retrieval_items),
         }
     )
     manifest = {
         "schema_version": 2,
         "sources": {
-            "default": str(default_experiment),
-            "context": str(context_experiment),
+            "five_workloads": str(five_experiment),
+            "retrieval": str(retrieval_experiment),
         },
         "family_colors": FAMILY_COLORS,
         "design": {

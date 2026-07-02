@@ -17,18 +17,7 @@ from llm_workload_benchmark.catalog import CatalogError, validate_catalog
 from llm_workload_benchmark.config import ConfigError, load_config
 from llm_workload_benchmark.dataset import DatasetError
 from llm_workload_benchmark.final_figures import generate_final_figure_bundle
-from llm_workload_benchmark.preference import (
-    PreferenceError,
-    completed_model_ids,
-)
-from llm_workload_benchmark.preference_terminal import run_terminal_preferences
 from llm_workload_benchmark.rejudge import RejudgeError, rejudge_experiment
-from llm_workload_benchmark.runtime_matrix import (
-    RuntimeMatrixError,
-    combination_count,
-    load_runtime_matrix,
-    run_runtime_matrix,
-)
 from llm_workload_benchmark.runner import (
     EvaluationError,
     RunProgress,
@@ -230,15 +219,11 @@ def benchmark_command(
         resolve_path=True,
         help="YAML model-matrix configuration to execute.",
     ),
-    human_eval: bool = typer.Option(
-        True,
-        "--human-eval/--skip-human-eval",
-        help="Run blind multi-model terminal voting after model generation.",
-    ),
-    color: bool = typer.Option(
-        True,
-        "--color/--no-color",
-        help="Enable Python syntax colours in the human ballot.",
+    skip_human_eval: bool = typer.Option(
+        False,
+        "--skip-human-eval",
+        hidden=True,
+        help="Compatibility flag; human preference collection has been removed.",
     ),
     resume_experiment: Path | None = typer.Option(
         None,
@@ -251,8 +236,9 @@ def benchmark_command(
         help="Resume an interrupted matrix, preserving completed model runs.",
     ),
 ) -> None:
-    """Run the model matrix, then collect blind terminal preferences."""
+    """Run a resumable model matrix and export its artifacts."""
 
+    del skip_human_eval
     progress_display = _ProgressDisplay()
 
     def show_progress(progress: RunProgress) -> None:
@@ -285,29 +271,6 @@ def benchmark_command(
             err=True,
         )
         raise typer.Exit(code=1) from error
-
-    if human_eval:
-        try:
-            model_ids = completed_model_ids(experiment_directory)
-            if len(model_ids) >= 2:
-                typer.echo(
-                    f"\nHUMAN PREFERENCE  {len(model_ids)} anonymous answers"
-                )
-                result = run_terminal_preferences(
-                    experiment_directory,
-                    model_ids=model_ids,
-                    seed=config.benchmark.seed,
-                    input_fn=typer.prompt,
-                    output_fn=lambda value: typer.echo(value, color=color),
-                    color=color,
-                )
-                if not result.is_complete:
-                    typer.echo("Human evaluation paused. Run `prefer` to resume.")
-                else:
-                    typer.echo("Ballot complete. Vote saved.")
-        except (PreferenceError, OSError) as error:
-            typer.echo(f"Error: {error}", err=True)
-            raise typer.Exit(code=1) from error
 
     typer.echo(f"\nExperiment saved to {experiment_directory}")
     _show_artifact_paths(artifact_paths)
@@ -356,57 +319,6 @@ def rejudge_command(
     typer.echo(f"Rejudged experiment saved to {target}")
 
 
-@app.command("runtime-matrix")
-def runtime_matrix_command(
-    config_path: Path = typer.Option(
-        Path("configs/runtime_matrix.yaml"),
-        "--config",
-        "-c",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        resolve_path=True,
-        help="Quantization and runtime-axis matrix configuration.",
-    ),
-) -> None:
-    """Run every configured quantization and setting combination."""
-
-    progress_display = _ProgressDisplay()
-
-    def show_progress(progress: RunProgress) -> None:
-        progress_display.update(progress)
-
-    try:
-        runtime_config = load_runtime_matrix(config_path)
-        _build_configured_dataset(runtime_config.benchmark.workload_path)
-        typer.echo(
-            f"Running {combination_count(runtime_config)} runtime combinations."
-        )
-        experiment = run_runtime_matrix(
-            runtime_config,
-            config_path,
-            progress_callback=show_progress,
-        )
-    except (
-        RuntimeMatrixError,
-        ConfigError,
-        DatasetError,
-        EvaluationError,
-        OSError,
-    ) as error:
-        progress_display.finish()
-        typer.echo(f"Error: {error}", err=True)
-        raise typer.Exit(code=1) from error
-    progress_display.finish()
-
-    typer.echo(f"Artifact manifest: {experiment / 'artifacts' / 'manifest.json'}")
-    typer.echo(
-        f"Configuration CSV: "
-        f"{experiment / 'artifacts' / 'data' / 'configurations.csv'}"
-    )
-
-
 def _build_configured_dataset(workload_path: Path) -> None:
     suite_path = (
         workload_path if workload_path.is_absolute() else Path.cwd() / workload_path
@@ -445,77 +357,18 @@ def artifacts_command(
 
 @app.command("figures")
 def figures_command(
-    default_experiment: Path = typer.Option(..., "--default-experiment", exists=True,
-                                            file_okay=False, resolve_path=True),
-    context_experiment: Path = typer.Option(..., "--context-experiment", exists=True,
-                                            file_okay=False, resolve_path=True),
+    five_experiment: Path = typer.Option(..., "--five-experiment", exists=True,
+                                         file_okay=False, resolve_path=True),
+    retrieval_experiment: Path = typer.Option(..., "--retrieval-experiment", exists=True,
+                                              file_okay=False, resolve_path=True),
 ) -> None:
-    """Generate the compact benchmark figure bundle from default and context runs."""
+    """Generate figures from the independent five-workload and retrieval runs."""
     try:
         root = generate_final_figure_bundle(
-            default_experiment,
-            context_experiment,
+            five_experiment,
+            retrieval_experiment,
         )
     except (ArtifactError, OSError, ValueError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(f"Final figure manifest: {root / 'manifest.json'}")
-
-
-@app.command("prefer")
-def prefer_command(
-    experiment_directory: Path = typer.Option(
-        ...,
-        "--experiment",
-        "-e",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        resolve_path=True,
-        help="Saved matrix experiment containing completed model answers.",
-    ),
-    seed: int = typer.Option(
-        42,
-        "--seed",
-        help="Seed for stable anonymous answer ordering.",
-    ),
-    output_path: Path | None = typer.Option(
-        None,
-        "--output",
-        "-o",
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-        help="Vote destination; defaults to the experiment arena artifact.",
-    ),
-    color: bool = typer.Option(
-        True,
-        "--color/--no-color",
-        help="Enable Python syntax colours in the terminal ballot.",
-    ),
-) -> None:
-    """Run one blind terminal ballot for all completed model answers."""
-
-    try:
-        model_ids = completed_model_ids(experiment_directory)
-        typer.echo(f"HUMAN PREFERENCE  {len(model_ids)} anonymous answers")
-        result = run_terminal_preferences(
-            experiment_directory,
-            model_ids=model_ids,
-            seed=seed,
-            output_path=output_path,
-            input_fn=typer.prompt,
-            output_fn=lambda value: typer.echo(value, color=color),
-            color=color,
-        )
-        if not result.output_path.exists():
-            typer.echo("\nVoting stopped before a vote was cast.")
-            return
-        if not result.is_complete:
-            typer.echo("\nVoting progress saved.")
-            return
-        typer.echo("Ballot complete. Vote saved.")
-    except (PreferenceError, OSError) as error:
-        typer.echo(f"Error: {error}", err=True)
-        raise typer.Exit(code=1) from error

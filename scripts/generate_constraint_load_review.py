@@ -10,7 +10,7 @@ from typing import Any
 from llm_workload_benchmark.dataset import BenchmarkDefinition, DatasetItem, load_suite
 
 
-DEFAULT_SUITE = Path("data/suites/all.yaml")
+DEFAULT_SUITE = Path("data/suites/final_six.yaml")
 DEFAULT_OUTPUT = Path("docs/TEMP_CONSTRAINT_LOAD_CURVE_REVIEW.md")
 
 SUITE_TITLES = {
@@ -124,6 +124,8 @@ def _navigation(
         )
     sections = []
     for suite, title in SUITE_TITLES.items():
+        if not grouped[suite]:
+            continue
         sections.append(f"### {title}\n\n" + "\n".join(grouped[suite]))
     return "\n\n".join(sections)
 
@@ -143,7 +145,7 @@ def generate_review(
     )
     document = f"""# Dataset Benchmarks — Temporary Review
 
-> Generated from `data/suites/all.yaml`. Edit the question YAML or generators,
+> Generated from `data/suites/final_six.yaml`. Edit the question YAML or generators,
 > then regenerate this file. Do not edit this review by hand.
 
 **{total} questions across {len(suite.items)} benchmarks.**

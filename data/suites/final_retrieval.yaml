@@ -1,0 +1,6 @@
+schema_version: 1
+name: final-long-text-retrieval
+version: 1
+status: frozen
+benchmark_files:
+  - ../long_text_retrieval/benchmark.yaml

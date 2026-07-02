@@ -15,11 +15,11 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
 ) -> None:
     data_root = tmp_path / "data"
     shutil.copytree(SOURCE_ROOT, data_root)
-    suite_path = data_root / "suites" / "all.yaml"
+    suite_path = data_root / "suites" / "final_six.yaml"
 
     first = build_authoring_suite(suite_path)
     assert not first.written
-    assert len(first.unchanged) == 16
+    assert len(first.unchanged) == 6
 
     source_path = (
         data_root / "applied_reasoning" / "generated.yaml"
@@ -37,7 +37,7 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
 
     rebuilt = build_authoring_suite(suite_path)
     assert rebuilt.written == (data_root / "applied_reasoning" / "items.jsonl",)
-    assert len(rebuilt.unchanged) == 15
+    assert len(rebuilt.unchanged) == 5
     assert "A relief kitchen" in rebuilt.written[0].read_text(encoding="utf-8")
 
 
@@ -58,7 +58,7 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
 
 
 def test_deterministic_suite_excludes_external_judge_items() -> None:
-    suite = load_suite(SOURCE_ROOT / "suites" / "deterministic.yaml")
+    suite = load_suite(SOURCE_ROOT / "suites" / "final_six.yaml")
 
     assert sum(len(items) for items in suite.items.values()) == 320
     assert all(

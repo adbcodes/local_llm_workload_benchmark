@@ -20,7 +20,8 @@ subcategory shards as needed.
 ## Build and validate
 
 ```bash
-uv run llm-benchmark dataset build --suite data/suites/all.yaml
+uv run llm-benchmark dataset build --suite data/suites/final_six.yaml
+uv run llm-benchmark dataset build --suite data/suites/judged.yaml
 ```
 
 The command rewrites only JSONL files whose YAML source changed. `run` and
@@ -30,7 +31,7 @@ CI can verify that committed JSONL is current without modifying it:
 
 ```bash
 uv run llm-benchmark dataset build \
-  --suite data/suites/all.yaml \
+  --suite data/suites/final_six.yaml \
   --check
 ```
 
@@ -44,31 +45,26 @@ Set `benchmark.workload_path` in a model config to one of the suite manifests:
 - `data/suites/coding.yaml`
 - `data/suites/judged.yaml`
 - `data/suites/smoke.yaml`
-- `data/suites/all.yaml`
+- `data/suites/final_five.yaml`
+- `data/suites/final_retrieval.yaml`
+- `data/suites/final_six.yaml`
 
 A suite selects benchmark files and may optionally filter item IDs,
 subcategories, difficulties, splits, or review statuses. The smoke suite shows
 an explicit-ID example.
 
-Run every implemented benchmark with:
+Run the final deterministic evidence as two independent matrices:
 
 ```bash
 uv run llm-benchmark benchmark \
-  --config configs/all_matrix.yaml \
-  --skip-human-eval
+  --config configs/final_default_matrix.yaml
+uv run llm-benchmark benchmark \
+  --config configs/final_retrieval_matrix.yaml
 ```
 
-The all-suite includes an LLM-judged benchmark, so it requires `GROQ_API_KEY`.
-
-## Planned benchmarks
-
-`data/catalog.yaml` is the navigation index for all 20 planned
-benchmarks. Categories whose evaluators do not exist yet use a `draft.yaml`
-with one starter item. These drafts are intentionally excluded from runnable
-suites until their evaluator and runtime schema are implemented.
-
-The quantization and laptop-value benchmarks are derived comparisons, so their
-YAML files reference `data/suites/all.yaml` instead of duplicating questions.
+The five-workload matrix contains 272 questions; retrieval contains 48. Both
+use the same 20 model/quantization configurations. `grounded_compression` stays
+separate under `data/suites/judged.yaml` and is not run until its Stage 2 audit.
 
 ## Applied Reasoning sources
 

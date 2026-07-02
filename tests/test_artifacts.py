@@ -411,8 +411,8 @@ def test_figures_cli_writes_compact_manifest(tmp_path: Path) -> None:
         app,
         [
             "figures",
-            "--default-experiment", str(experiment),
-            "--context-experiment", str(experiment),
+            "--five-experiment", str(experiment),
+            "--retrieval-experiment", str(experiment),
         ],
     )
 
@@ -421,4 +421,4 @@ def test_figures_cli_writes_compact_manifest(tmp_path: Path) -> None:
     manifest_path = experiment / "artifacts" / "final_figures" / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
     assert len(manifest["plots"]) == 8
-    assert set(manifest["sources"]) == {"default", "context"}
+    assert set(manifest["sources"]) == {"five_workloads", "retrieval"}
