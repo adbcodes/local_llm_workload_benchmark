@@ -1,56 +1,54 @@
 schema_version: 1
 updated: 2026-07-31
-purpose: Pinned source and integrity metadata for model families added to the final matrix.
+purpose: Pinned source and integrity metadata for the final five-model quantization cohort.
 families:
-  phi4-mini:
-    architecture: phi-4-mini-3.8b
-    upstream_model: https://huggingface.co/microsoft/Phi-4-mini-instruct
-    gguf_repository: https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF
-    gguf_revision: 78eb92a46fc37e6b524df991ed9aca9bc6aa7b80
-    files:
-      - quantization: Q8_0
-        remote_filename: Phi-4-mini-instruct.Q8_0.gguf
-        local_path: models/Phi-4-mini-instruct-Q8_0.gguf
-        bytes: 4084611040
-        sha256: 26188c6050d525376a88b04514c236c5e28a36730f1e936f2a00314212b7ba42
-      - quantization: Q6_K
-        remote_filename: Phi-4-mini-instruct-Q6_K.gguf
-        local_path: models/Phi-4-mini-instruct-Q6_K.gguf
-        bytes: 3155622880
-        sha256: 72b8446a3db55617950bef48d296659050867cca41bd7a7be4622010c9589400
-      - quantization: Q4_K_M
-        remote_filename: Phi-4-mini-instruct-Q4_K_M.gguf
-        local_path: models/Phi-4-mini-instruct-Q4_K_M.gguf
-        bytes: 2491874272
-        sha256: 88c00229914083cd112853aab84ed51b87bdf6b9ce42f532d8c85c7c63b1730a
-      - quantization: Q3_K_M
-        remote_filename: Phi-4-mini-instruct-Q3_K_M.gguf
-        local_path: models/Phi-4-mini-instruct-Q3_K_M.gguf
-        bytes: 2117532640
-        sha256: 8eb40b196ca664365bb0012eac556e9700345fcf68b41cfc35e8bf4a47687653
   llama3.1:
     architecture: llama-3.1-8b
     upstream_model: https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct
     gguf_repository: https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
     gguf_revision: bf5b95e96dac0462e2a09145ec66cae9a3f12067
     files:
-      - quantization: Q8_0
-        remote_filename: Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
-        local_path: models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
-        bytes: 8540775840
-        sha256: 9da71c45c90a821809821244d4971e5e5dfad7eb091f0b8ff0546392393b6283
-      - quantization: Q6_K
-        remote_filename: Meta-Llama-3.1-8B-Instruct-Q6_K.gguf
-        local_path: models/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf
-        bytes: 6596011424
-        sha256: 33981adf6bae52c503fb5c24f72539010632f7ed290a56c1315a8cd50adca587
-      - quantization: Q4_K_M
-        remote_filename: Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
-        local_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
-        bytes: 4920739232
-        sha256: 7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c
-      - quantization: Q3_K_M
-        remote_filename: Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf
-        local_path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf
-        bytes: 4018922912
-        sha256: 6be122b5c8f2a33974953e58e0ffd2be505661acc6f4caf733e4bca130e89fea
+      - {quantization: Q8_0, remote_filename: Meta-Llama-3.1-8B-Instruct-Q8_0.gguf, local_path: models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf, bytes: 8540775840, sha256: 9da71c45c90a821809821244d4971e5e5dfad7eb091f0b8ff0546392393b6283}
+      - {quantization: Q6_K, remote_filename: Meta-Llama-3.1-8B-Instruct-Q6_K.gguf, local_path: models/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf, bytes: 6596011424, sha256: 33981adf6bae52c503fb5c24f72539010632f7ed290a56c1315a8cd50adca587}
+      - {quantization: Q4_K_M, remote_filename: Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf, local_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf, bytes: 4920739232, sha256: 7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c}
+      - {quantization: Q3_K_M, remote_filename: Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf, local_path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf, bytes: 4018922912, sha256: 6be122b5c8f2a33974953e58e0ffd2be505661acc6f4caf733e4bca130e89fea}
+  qwen3:
+    architecture: qwen3-8b
+    upstream_model: https://huggingface.co/Qwen/Qwen3-8B
+    gguf_repository: https://huggingface.co/bartowski/Qwen_Qwen3-8B-GGUF
+    gguf_revision: 0b69f75b7472688e6808490aa2b85efdb81b5ce7
+    files:
+      - {quantization: Q8_0, remote_filename: Qwen_Qwen3-8B-Q8_0.gguf, local_path: models/Qwen3-8B-Q8_0.gguf, bytes: 8709518880, sha256: edbd7ae01df991a2d4061e61451ad3d6829d8ca19f7cc846f7177499ac280c33}
+      - {quantization: Q6_K, remote_filename: Qwen_Qwen3-8B-Q6_K.gguf, local_path: models/Qwen3-8B-Q6_K.gguf, bytes: 6725899808, sha256: 69a45d3c366bab1736b201fdb21eb9d58160999a0f330a79d2c096f50de8985d}
+      - {quantization: Q4_K_M, remote_filename: Qwen_Qwen3-8B-Q4_K_M.gguf, local_path: models/Qwen3-8B-Q4_K_M.gguf, bytes: 5027784224, sha256: 54fffa050078e984116639c83dfb64b5aa6d4cd474e018b076777c632bbccccd}
+      - {quantization: Q3_K_M, remote_filename: Qwen_Qwen3-8B-Q3_K_M.gguf, local_path: models/Qwen3-8B-Q3_K_M.gguf, bytes: 4124161568, sha256: c2c61b55d39ec6fc43f84b4cbbed4505fde386d4e03ed005087bfd8c69c502c3}
+  mistral:
+    architecture: mistral-7b-v0.3
+    upstream_model: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3
+    gguf_repository: https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF
+    gguf_revision: 61fd4167fff3ab01ee1cfe0da183fa27a944db48
+    files:
+      - {quantization: Q8_0, remote_filename: Mistral-7B-Instruct-v0.3-Q8_0.gguf, local_path: models/Mistral-7B-Instruct-v0.3-Q8_0.gguf, bytes: 7702565088, sha256: 404857e776114baada71a08ebd3bba79d721ec7fca99705e7e7b892ae8bc583f}
+      - {quantization: Q6_K, remote_filename: Mistral-7B-Instruct-v0.3-Q6_K.gguf, local_path: models/Mistral-7B-Instruct-v0.3-Q6_K.gguf, bytes: 5947248864, sha256: 757d75df89821a94841f341f3270b0709d36891dd8fbc41dfd059d213b54c3f5}
+      - {quantization: Q4_K_M, remote_filename: Mistral-7B-Instruct-v0.3-Q4_K_M.gguf, local_path: models/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf, bytes: 4372812000, sha256: 1270d22c0fbb3d092fb725d4d96c457b7b687a5f5a715abe1e818da303e562b6}
+      - {quantization: Q3_K_M, remote_filename: Mistral-7B-Instruct-v0.3-Q3_K_M.gguf, local_path: models/Mistral-7B-Instruct-v0.3-Q3_K_M.gguf, bytes: 3522941152, sha256: 145b11df092f04bbecb9fd99e83d1f3d8a6d1e53805682bfba1fe314f306e1d5}
+  gemma3:
+    architecture: gemma-3-12b
+    upstream_model: https://huggingface.co/google/gemma-3-12b-it
+    gguf_repository: https://huggingface.co/bartowski/google_gemma-3-12b-it-GGUF
+    gguf_revision: 648e3a36a77c8a9f12d86e741f9dcb9089c769c4
+    files:
+      - {quantization: Q8_0, remote_filename: google_gemma-3-12b-it-Q8_0.gguf, local_path: models/google_gemma-3-12b-it-Q8_0.gguf, bytes: 12509949984, sha256: da78c6801f4fae0061780cdd0c12cf7b1deb4459587dca1c2d3c1c11528b60e1}
+      - {quantization: Q6_K, remote_filename: google_gemma-3-12b-it-Q6_K.gguf, local_path: models/google_gemma-3-12b-it-Q6_K.gguf, bytes: 9660608544, sha256: a1385c0fd73b8fcb560bf55f9e1870346292a096476a2b9372aa04bd0aeae1d0}
+      - {quantization: Q4_K_M, remote_filename: google_gemma-3-12b-it-Q4_K_M.gguf, local_path: models/google_gemma-3-12b-it-Q4_K_M.gguf, bytes: 7300575264, sha256: fc57f67efa46d711c346e587cbef7d049e95f3df8db2eb2271153343ef0acc7b}
+      - {quantization: Q3_K_M, remote_filename: google_gemma-3-12b-it-Q3_K_M.gguf, local_path: models/google_gemma-3-12b-it-Q3_K_M.gguf, bytes: 6008614944, sha256: b566ae4850815706bbaa9105efa0e722421544aa41999424924d61f915ea868e}
+  qwen2.5-coder:
+    architecture: qwen2.5-coder-7b
+    upstream_model: https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct
+    gguf_repository: https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
+    gguf_revision: 13fb94bfda8c8cf22497dc57b78f391a9acb426a
+    files:
+      - {quantization: Q8_0, remote_filename: qwen2.5-coder-7b-instruct-q8_0.gguf, local_path: models/qwen2.5-coder-7b-instruct-q8_0.gguf, bytes: 8098525184, sha256: b36a4e1c3ddf2ba6fd5501b926128e5fc6430881caaff07e9629bd18f06f685f}
+      - {quantization: Q6_K, remote_filename: qwen2.5-coder-7b-instruct-q6_k.gguf, local_path: models/qwen2.5-coder-7b-instruct-q6_k.gguf, bytes: 6254198784, sha256: 46291ddea1bfb608fe63d9a1907eea6918bda87a7626593edc4bf97c5fd73f9d}
+      - {quantization: Q4_K_M, remote_filename: qwen2.5-coder-7b-instruct-q4_k_m.gguf, local_path: models/qwen2.5-coder-7b-instruct-q4_k_m.gguf, bytes: 4683073536, sha256: 509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c}
+      - {quantization: Q3_K_M, remote_filename: qwen2.5-coder-7b-instruct-q3_k_m.gguf, local_path: models/qwen2.5-coder-7b-instruct-q3_k_m.gguf, bytes: 3808391104, sha256: ff5c64615cf8a44651d208e9d8da1f753feefc21605e6c1ee67957aa77257c3c}

@@ -101,16 +101,15 @@ def test_stage1_smoke_contract_spans_families_and_quantizations() -> None:
     config = load_config(config_path)
 
     assert _sha256(config_path) == smoke_contract["config_sha256"]
-    assert len(config.models) == smoke_contract["models_completed"] == 5
-    assert smoke_contract["models_failed"] == 0
-    assert smoke_contract["item_records"] == 30
+    assert len(config.models) == 5
+    assert smoke_contract["status"] == "pending"
     assert {model.quantization for model in config.models} == set(
         smoke_contract["quantizations"]
     )
     assert {model.id for model in config.models} == {
-        "qwen2.5-3b-q3",
-        "gemma-3-4b-q6",
+        "llama-3.1-8b-q3",
         "qwen3-8b-q8",
-        "phi-4-mini-q4",
-        "llama-3.1-8b-q4",
+        "mistral-7b-v0.3-q6",
+        "gemma-3-12b-q4",
+        "qwen2.5-coder-7b-q4",
     }

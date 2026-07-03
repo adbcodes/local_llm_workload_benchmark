@@ -7,13 +7,13 @@ benchmark:
   repetitions: 1
   seed: 42
 models:
-  - &qwen25
-    id: qwen2.5-3b-q8
+  - &llama31
+    id: llama-3.1-8b-q8
     backend: llama_cpp
-    model_path: models/qwen2.5-3b-instruct-q8_0.gguf
+    model_path: models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
     quantization: Q8_0
-    architecture: qwen2.5-3b
-    family: qwen2.5
+    architecture: llama-3.1-8b
+    family: llama3.1
     context_window: 16384
     gpu_layers: -1
     batch_size: 512
@@ -21,21 +21,11 @@ models:
     generation: &default_generation
       {max_output_tokens: 4096, temperature: 0.0, top_p: 1.0, top_k: 40,
        repeat_penalty: 1.0, constrained_decoding: none}
-  - {<<: *qwen25, id: qwen2.5-3b-q6, model_path: models/qwen2.5-3b-instruct-q6_k.gguf, quantization: Q6_K}
-  - {<<: *qwen25, id: qwen2.5-3b-q4, model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf, quantization: Q4_K_M}
-  - {<<: *qwen25, id: qwen2.5-3b-q3, model_path: models/qwen2.5-3b-instruct-q3_k_m.gguf, quantization: Q3_K_M}
-  - &gemma3
-    <<: *qwen25
-    id: gemma-3-4b-q8
-    model_path: models/gemma-3-4b-it-Q8_0.gguf
-    quantization: Q8_0
-    architecture: gemma-3-4b
-    family: gemma3
-  - {<<: *gemma3, id: gemma-3-4b-q6, model_path: models/gemma-3-4b-it-Q6_K.gguf, quantization: Q6_K}
-  - {<<: *gemma3, id: gemma-3-4b-q4, model_path: models/gemma-3-4b-it-Q4_K_M.gguf, quantization: Q4_K_M}
-  - {<<: *gemma3, id: gemma-3-4b-q3, model_path: models/gemma-3-4b-it-Q3_K_M.gguf, quantization: Q3_K_M}
+  - {<<: *llama31, id: llama-3.1-8b-q6, model_path: models/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *llama31, id: llama-3.1-8b-q4, model_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *llama31, id: llama-3.1-8b-q3, model_path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf, quantization: Q3_K_M}
   - &qwen3
-    <<: *qwen25
+    <<: *llama31
     id: qwen3-8b-q8
     model_path: models/Qwen3-8B-Q8_0.gguf
     quantization: Q8_0
@@ -48,23 +38,33 @@ models:
   - {<<: *qwen3, id: qwen3-8b-q6, model_path: models/Qwen3-8B-Q6_K.gguf, quantization: Q6_K}
   - {<<: *qwen3, id: qwen3-8b-q4, model_path: models/Qwen3-8B-Q4_K_M.gguf, quantization: Q4_K_M}
   - {<<: *qwen3, id: qwen3-8b-q3, model_path: models/Qwen3-8B-Q3_K_M.gguf, quantization: Q3_K_M}
-  - &phi4
-    <<: *qwen25
-    id: phi-4-mini-q8
-    model_path: models/Phi-4-mini-instruct-Q8_0.gguf
+  - &mistral7
+    <<: *llama31
+    id: mistral-7b-v0.3-q8
+    model_path: models/Mistral-7B-Instruct-v0.3-Q8_0.gguf
     quantization: Q8_0
-    architecture: phi-4-mini-3.8b
-    family: phi4-mini
-  - {<<: *phi4, id: phi-4-mini-q6, model_path: models/Phi-4-mini-instruct-Q6_K.gguf, quantization: Q6_K}
-  - {<<: *phi4, id: phi-4-mini-q4, model_path: models/Phi-4-mini-instruct-Q4_K_M.gguf, quantization: Q4_K_M}
-  - {<<: *phi4, id: phi-4-mini-q3, model_path: models/Phi-4-mini-instruct-Q3_K_M.gguf, quantization: Q3_K_M}
-  - &llama31
-    <<: *qwen25
-    id: llama-3.1-8b-q8
-    model_path: models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
+    architecture: mistral-7b-v0.3
+    family: mistral
+  - {<<: *mistral7, id: mistral-7b-v0.3-q6, model_path: models/Mistral-7B-Instruct-v0.3-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *mistral7, id: mistral-7b-v0.3-q4, model_path: models/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *mistral7, id: mistral-7b-v0.3-q3, model_path: models/Mistral-7B-Instruct-v0.3-Q3_K_M.gguf, quantization: Q3_K_M}
+  - &gemma3
+    <<: *llama31
+    id: gemma-3-12b-q8
+    model_path: models/google_gemma-3-12b-it-Q8_0.gguf
     quantization: Q8_0
-    architecture: llama-3.1-8b
-    family: llama3.1
-  - {<<: *llama31, id: llama-3.1-8b-q6, model_path: models/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf, quantization: Q6_K}
-  - {<<: *llama31, id: llama-3.1-8b-q4, model_path: models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf, quantization: Q4_K_M}
-  - {<<: *llama31, id: llama-3.1-8b-q3, model_path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf, quantization: Q3_K_M}
+    architecture: gemma-3-12b
+    family: gemma3
+  - {<<: *gemma3, id: gemma-3-12b-q6, model_path: models/google_gemma-3-12b-it-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *gemma3, id: gemma-3-12b-q4, model_path: models/google_gemma-3-12b-it-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *gemma3, id: gemma-3-12b-q3, model_path: models/google_gemma-3-12b-it-Q3_K_M.gguf, quantization: Q3_K_M}
+  - &qwen25coder
+    <<: *llama31
+    id: qwen2.5-coder-7b-q8
+    model_path: models/qwen2.5-coder-7b-instruct-q8_0.gguf
+    quantization: Q8_0
+    architecture: qwen2.5-coder-7b
+    family: qwen2.5-coder
+  - {<<: *qwen25coder, id: qwen2.5-coder-7b-q6, model_path: models/qwen2.5-coder-7b-instruct-q6_k.gguf, quantization: Q6_K}
+  - {<<: *qwen25coder, id: qwen2.5-coder-7b-q4, model_path: models/qwen2.5-coder-7b-instruct-q4_k_m.gguf, quantization: Q4_K_M}
+  - {<<: *qwen25coder, id: qwen2.5-coder-7b-q3, model_path: models/qwen2.5-coder-7b-instruct-q3_k_m.gguf, quantization: Q3_K_M}

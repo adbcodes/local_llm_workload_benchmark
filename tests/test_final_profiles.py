@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import yaml
+
 from llm_workload_benchmark.config import load_config
 from llm_workload_benchmark.dataset import load_suite
 
@@ -22,11 +24,11 @@ def test_final_quantization_profiles_are_independent_and_complete() -> None:
     expected_models = {
         (architecture, quantization)
         for architecture in (
-            "qwen2.5-3b",
-            "phi-4-mini-3.8b",
-            "gemma-3-4b",
-            "qwen3-8b",
             "llama-3.1-8b",
+            "qwen3-8b",
+            "mistral-7b-v0.3",
+            "gemma-3-12b",
+            "qwen2.5-coder-7b",
         )
         for quantization in ("Q8_0", "Q6_K", "Q4_K_M", "Q3_K_M")
     }
@@ -36,6 +38,25 @@ def test_final_quantization_profiles_are_independent_and_complete() -> None:
     assert [model.model_dump() for model in retrieval.models] == [
         model.model_dump() for model in five.models
     ]
+
+
+def test_final_profiles_match_pinned_model_sources() -> None:
+    config = load_config(ROOT / "configs" / "final_default_matrix.yaml")
+    sources = yaml.safe_load(
+        (ROOT / "data" / "model_sources.yaml").read_text(encoding="utf-8")
+    )
+    pinned = {
+        (family["architecture"], file["quantization"], file["local_path"])
+        for family in sources["families"].values()
+        for file in family["files"]
+    }
+
+    assert len(sources["families"]) == 5
+    assert len(pinned) == 20
+    assert {
+        (model.architecture, model.quantization, str(model.model_path))
+        for model in config.models
+    } == pinned
 
 
 def test_split_suites_partition_the_frozen_six() -> None:
