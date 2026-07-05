@@ -1774,7 +1774,7 @@ items:
 
     1. Start with "Hi Sam," and end with "Regards, Alex"
 
-    2. Use between 45 and 80 words'
+    2. Use a formal, professional, and respectful tone'
   response_contract:
     type: text
     format: prose
@@ -1808,9 +1808,9 @@ items:
         boundary:
           prefix: Hi Sam,
           suffix: Regards, Alex
-        word_range:
-          min: 45
-          max: 80
+      semantic_requirements:
+      - id: semantic_tone
+        description: Use a formal, professional, and respectful tone
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -1842,7 +1842,7 @@ items:
 
     1. Start with "Hi Sam," and end with "Regards, Alex"
 
-    2. Use between 45 and 80 words
+    2. Use a formal, professional, and respectful tone
 
     3. Include "August 15", "August 31", and "Q3" but never "unfortunately"'
   response_contract:
@@ -1880,9 +1880,6 @@ items:
         boundary:
           prefix: Hi Sam,
           suffix: Regards, Alex
-        word_range:
-          min: 45
-          max: 80
         required_forbidden_terms:
           required:
           - August 15
@@ -1890,6 +1887,9 @@ items:
           - Q3
           forbidden:
           - unfortunately
+      semantic_requirements:
+      - id: semantic_tone
+        description: Use a formal, professional, and respectful tone
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -1921,7 +1921,7 @@ items:
 
     1. Start with "Hi Sam," and end with "Regards, Alex"
 
-    2. Use between 45 and 80 words
+    2. Use a formal, professional, and respectful tone
 
     3. Include "August 15", "August 31", and "Q3" but never "unfortunately"
 
@@ -1964,9 +1964,6 @@ items:
         boundary:
           prefix: Hi Sam,
           suffix: Regards, Alex
-        word_range:
-          min: 45
-          max: 80
         required_forbidden_terms:
           required:
           - August 15
@@ -1975,6 +1972,9 @@ items:
           forbidden:
           - unfortunately
         exact_paragraphs: 4
+      semantic_requirements:
+      - id: semantic_tone
+        description: Use a formal, professional, and respectful tone
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -2913,7 +2913,7 @@ items:
 
     CSV acceptance criteria
 
-    1. Return valid CSV with the exact header asset,owner,year and at least 10 data rows'
+    1. Return all supplied records as valid CSV with the exact header asset,owner,year'
   response_contract:
     type: text
     format: structured_csv
@@ -3037,7 +3037,7 @@ items:
 
     CSV acceptance criteria
 
-    1. Return valid CSV with the exact header asset,owner,year and at least 10 data rows
+    1. Return all supplied records as valid CSV with the exact header asset,owner,year
 
     2. Keep only assets purchased in 2022 or later'
   response_contract:
@@ -3155,7 +3155,7 @@ items:
 
     CSV acceptance criteria
 
-    1. Return valid CSV with the exact header asset,owner,year and at least 10 data rows
+    1. Return all supplied records as valid CSV with the exact header asset,owner,year
 
     2. Keep only assets purchased in 2022 or later
 
@@ -3278,7 +3278,7 @@ items:
 
     CSV acceptance criteria
 
-    1. Return valid CSV with the exact header asset,owner,year and at least 10 data rows
+    1. Return all supplied records as valid CSV with the exact header asset,owner,year
 
     2. Keep only assets purchased in 2022 or later
 
@@ -3585,7 +3585,7 @@ items:
 
     [ ] Do not expose "Reema Nair", "8842", or "pay-prod-3"
 
-    [ ] Use between 34 and 38 words'
+    [ ] Use a formal, professional, and reassuring tone without blaming the customer'
   response_contract:
     type: text
     format: prose
@@ -3617,9 +3617,9 @@ items:
         - Reema Nair
         - '8842'
         - pay-prod-3
-        word_range:
-          min: 34
-          max: 38
+      semantic_requirements:
+      - id: semantic_tone
+        description: Use a formal, professional, and reassuring tone without blaming the customer
   provenance:
     kind: synthetic
     review_status: human_checked

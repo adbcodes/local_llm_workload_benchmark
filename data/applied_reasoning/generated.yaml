@@ -2,7 +2,13 @@ schema_version: 1
 benchmark: applied_reasoning
 generated_by: applied_reasoning_v3
 seed: 20260731
-prompt_suffix: 'You may show concise working. End with exactly one final line in this format: FINAL: <answer>'
+prompt_suffix: 'You may show concise working before the final line. End with exactly one final line containing
+  only FINAL: followed by the answer and requested unit, if any. Do not put an equation, calculation,
+  parentheses, or explanation after FINAL:. Valid final line: FINAL: 42 kg
+
+  Invalid final line: FINAL: 20 + 22 = 42 kg
+
+  Invalid final line: FINAL: 42 kg (20 + 22)'
 items:
 - id: reason_arithmeticperc_001
   subcategory: arithmetic_percentages

@@ -11,6 +11,18 @@ ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = "remaining_benchmarks_v1"
 SEED = 20260724
 
+
+def exact_answer_case_sensitive(value: Any) -> bool:
+    """Keep machine identifiers exact; human labels remain case-insensitive."""
+
+    if not isinstance(value, str) or value == "NOT PROVIDED":
+        return False
+    return bool(
+        "/" in value
+        or "_" in value
+        or re.fullmatch(r"[A-Z0-9.-]+", value) and any(ch.isdigit() for ch in value)
+    )
+
 def item(
     benchmark: str,
     number: int,
@@ -462,7 +474,7 @@ def long_text_items() -> list[dict[str, Any]]:
     tiers = [
         ("easy", 1400, "2k_context", [
             (("RELEASE NOTE RN-42 — SIGNED AND PUBLISHED: Production deployment uses configuration file config/prod-eu.yaml. The release manager and Security approver signed this note on 2026-08-14.",), "repository", ("Draft RN-39 proposed config/prod-europe.yaml but was closed without approval.", "The staging guide uses examples/staging.yaml for local rehearsals."), "direct_retrieval", "Which configuration file does the signed production release note require? Return the path only.", "config/prod-eu.yaml", "exact_match", "text"),
-            (("INCIDENT CLOSURE INC-731 — SIGNED: Monitoring and the customer-status log confirm that service was restored at 2027-03-18T14:26Z. Operations signed the closure after the final health check.",), "incident", ("The incident commander estimated restoration by 14:10Z during the outage.", "A later retrospective meeting started at 15:05Z."), "direct_retrieval", "On what date does the signed incident closure say service was restored? Return an ISO date.", "2027-03-18", "date_value", "date"),
+            (("INCIDENT CLOSURE INC-731 — SIGNED: Monitoring and the customer-status log confirm that service was restored at 2027-03-18T14:26Z. Operations signed the closure after the final health check.",), "incident", ("The incident commander estimated restoration by 14:10Z during the outage.", "A later retrospective meeting started at 15:05Z."), "direct_retrieval", "On what date does the signed incident closure say service was restored? Return the ISO date in YYYY-MM-DD format, for example 2027-03-18.", "2027-03-18", "date_value", "date"),
             (("ORDER FORM OF-118 — EXECUTED: The monthly service-credit cap for the hosted reporting service is INR 18,500. Both customer and supplier signatures are present.",), "contract", ("A supplier quote listed a proposed cap of INR 22,000.", "The procurement request reserved INR 20,000 before negotiation."), "direct_retrieval", "What monthly service-credit cap is stated in the executed order form? Return rupees as digits only.", 18500, "numeric_tolerance", "number"),
             (("SUPPORT ROUTING DIRECTORY RD-9 — APPROVED: Issue code ACCT-LOCK routes to the Identity Operations queue. The support director approved revision 9 for current use.",), "support", ("A retired routing sheet sent ACCT-LOCK to General Accounts.", "Issue code ACCT-BILL routes to Billing Operations."), "direct_retrieval", "Which queue currently owns issue code ACCT-LOCK according to the approved routing directory? Return the queue name only.", "Identity Operations", "exact_match", "text"),
         ]),
@@ -500,7 +512,7 @@ def long_text_items() -> list[dict[str, Any]]:
                     scenario_index,
                 ) + query
                 extra = {} if position == "start" else {"source_item": source_id, "variant_of": source_id}
-                params = {"absolute_tolerance": 0} if method == "numeric_tolerance" else ({"strip": True, "case_sensitive": False} if method == "exact_match" else {})
+                params = {"absolute_tolerance": 0} if method == "numeric_tolerance" else ({"strip": True, "case_sensitive": exact_answer_case_sensitive(expected)} if method == "exact_match" else {})
                 generated = item("long_text_retrieval", number, f"fact_at_{position}", difficulty, prompt, expected, method, contract=contract, parameters=params, **extra)
                 generated["tags"].extend([
                     length_tag,

@@ -35,6 +35,12 @@ ScoringMethod = Literal[
     "tool_trace",
     "confidence_value",
 ]
+EVALUATOR_VERSIONS: dict[ScoringMethod, int] = {
+    "date_value": 2,
+    "json_exact": 2,
+    "constraint_rules": 2,
+    "tool_call": 2,
+}
 BehaviorDecision = Literal[
     "fabricated_entity",
     "unanswerable",
@@ -496,8 +502,8 @@ def _validate_scoring_parameters(
             "allow_surrounding_text",
             "answer_format",
         },
-        "json_exact": {"allow_diagnostic_normalization"},
-        "constraint_rules": {"rules", "content_requirements"},
+        "json_exact": {"allow_diagnostic_normalization", "case_insensitive_paths"},
+        "constraint_rules": {"rules", "content_requirements", "semantic_requirements"},
         "executable_python": {
             "timeout_seconds",
             "memory_limit_mb",
@@ -557,12 +563,31 @@ def _validate_scoring_parameters(
         diagnostic = parameters.get("allow_diagnostic_normalization", True)
         if not isinstance(diagnostic, bool):
             raise ValueError("allow_diagnostic_normalization must be a boolean")
+        paths = parameters.get("case_insensitive_paths", [])
+        if not isinstance(paths, list) or any(
+            not isinstance(path, str) or not path.startswith("$") for path in paths
+        ):
+            raise ValueError("case_insensitive_paths must be a list of JSON paths")
         return
     if method == "set_match":
         separator = parameters.get("separator", ",")
         if not isinstance(separator, str) or not separator:
             raise ValueError("set_match separator must be a non-empty string")
         return
+    if method == "constraint_rules":
+        semantic_requirements = parameters.get("semantic_requirements", [])
+        if not isinstance(semantic_requirements, list) or any(
+            not isinstance(requirement, dict)
+            or set(requirement) != {"id", "description"}
+            or not isinstance(requirement["id"], str)
+            or not requirement["id"].strip()
+            or not isinstance(requirement["description"], str)
+            or not requirement["description"].strip()
+            for requirement in semantic_requirements
+        ):
+            raise ValueError(
+                "semantic_requirements must contain id and description objects"
+            )
     if method == "behavior_rules":
         return
     if method == "tool_call":
@@ -1169,7 +1194,11 @@ def score_answer(item: DatasetItem, answer: str) -> EvaluationResult:
     return EvaluationResult(
         type="deterministic",
         evaluator=method,
-        version=2 if item.benchmark == "applied_reasoning" else 1,
+        version=(
+            2
+            if item.benchmark == "applied_reasoning"
+            else EVALUATOR_VERSIONS.get(method, 1)
+        ),
         passed=score.passed,
         score=score.score,
         details={**score.details, **extraction_details},
@@ -1615,6 +1644,23 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
         and _json_values_equal(expected_leaves[path], actual_leaves[path])
     }
     leaf_accuracy = len(matched_paths) / len(all_paths) if all_paths else 1.0
+    case_insensitive_paths = set(
+        item.scoring.parameters.get("case_insensitive_paths", [])
+    )
+    normalized_matched_paths = {
+        path
+        for path in all_paths
+        if path in expected_leaves
+        and path in actual_leaves
+        and _json_leaf_values_equal(
+            actual_leaves[path],
+            expected_leaves[path],
+            case_insensitive=path in case_insensitive_paths,
+        )
+    }
+    normalized_leaf_accuracy = (
+        len(normalized_matched_paths) / len(all_paths) if all_paths else 1.0
+    )
     content_score = leaf_accuracy
     protocol_score = float(protocol_compliant)
     score = content_score
@@ -1631,6 +1677,8 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
                 parsed.protocol_violations[0] if parsed.protocol_violations else None
             ),
             "leaf_accuracy": leaf_accuracy,
+            "normalized_leaf_accuracy": normalized_leaf_accuracy,
+            "case_insensitive_paths": sorted(case_insensitive_paths),
             "content_score": content_score,
             "protocol_score": protocol_score,
             **_answer_parse_details(parsed),
@@ -1972,6 +2020,7 @@ def _score_tool_call(item: DatasetItem, answer: str) -> ScoreResult:
     )
 
     no_tool_expected = expected_tool is None
+    stop_continue_accuracy = float((actual_tool is None) == no_tool_expected)
     expected_keys = (
         {"tool_call", "arguments", "answer"}
         if no_tool_expected
@@ -2015,6 +2064,8 @@ def _score_tool_call(item: DatasetItem, answer: str) -> ScoreResult:
             "tool_choice_accuracy": tool_choice_accuracy,
             "argument_accuracy": argument_accuracy,
             "direct_answer_accuracy": direct_answer_accuracy,
+            "explanation_accuracy": direct_answer_accuracy,
+            "stop_continue_accuracy": stop_continue_accuracy,
             "direct_answer_pattern_matches": direct_answer_pattern_matches,
             "argument_names_ok": argument_names_ok,
             "format_compliant": format_compliant,
@@ -2173,6 +2224,19 @@ def _json_values_equal(left: Any, right: Any) -> bool:
             for left_item, right_item in zip(left, right)
         )
     return left == right
+
+
+def _json_leaf_values_equal(
+    left: Any,
+    right: Any,
+    *,
+    case_insensitive: bool,
+) -> bool:
+    if case_insensitive and isinstance(left, str) and isinstance(right, str):
+        return " ".join(left.strip().casefold().split()) == " ".join(
+            right.strip().casefold().split()
+        )
+    return _json_values_equal(left, right)
 
 
 def _flatten_json(value: Any, path: str = "$") -> dict[str, Any]:
@@ -2552,6 +2616,9 @@ def _score_constraints(item: DatasetItem, answer: str) -> ScoreResult:
             **content_details,
             "constraint_score": constraint_score,
             "checks": checks,
+            "semantic_requirements": item.scoring.parameters.get(
+                "semantic_requirements", []
+            ),
             "word_count": len(words),
             **classification_details,
         },

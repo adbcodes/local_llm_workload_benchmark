@@ -29,7 +29,11 @@ def test_constraint_load_curve_has_twelve_complete_comparison_groups() -> None:
         "medium": 24,
         "hard": 12,
     }
-    assert Counter(len(item.scoring.parameters["rules"]) for item in items) == {
+    assert Counter(
+        len(item.scoring.parameters["rules"])
+        + len(item.scoring.parameters.get("semantic_requirements", []))
+        for item in items
+    ) == {
         1: 12,
         2: 12,
         3: 12,
@@ -61,8 +65,13 @@ def test_constraint_load_curve_has_twelve_complete_comparison_groups() -> None:
 
     assert len(groups) == 12
     for base_id, variants in groups.items():
-        variants.sort(key=lambda item: len(item.scoring.parameters["rules"]))
-        assert [len(item.scoring.parameters["rules"]) for item in variants] == [
+        def requirement_count(item) -> int:
+            return len(item.scoring.parameters["rules"]) + len(
+                item.scoring.parameters.get("semantic_requirements", [])
+            )
+
+        variants.sort(key=requirement_count)
+        assert [requirement_count(item) for item in variants] == [
             1,
             2,
             3,
@@ -71,7 +80,12 @@ def test_constraint_load_curve_has_twelve_complete_comparison_groups() -> None:
         assert variants[0].id == base_id
         previous_rules: set[str] = set()
         for item in variants:
-            active_rules = set(item.scoring.parameters["rules"])
+            active_rules = set(item.scoring.parameters["rules"]) | {
+                requirement["id"]
+                for requirement in item.scoring.parameters.get(
+                    "semantic_requirements", []
+                )
+            }
             assert previous_rules < active_rules
             previous_rules = active_rules
 
@@ -240,8 +254,13 @@ def test_structured_and_interacting_constraint_helpers_fail_independently() -> N
     email_item = items["constraint_vendor_email_004"]
     collapsed_email = str(email_item.expected["value"]).replace("\n\n", "\n")
     email_result = score_answer(email_item, collapsed_email)
-    assert email_result.details["checks"]["word_range"] is True
     assert email_result.details["checks"]["exact_paragraphs"] is False
+    assert email_result.details["semantic_requirements"] == [
+        {
+            "id": "semantic_tone",
+            "description": "Use a formal, professional, and respectful tone",
+        }
+    ]
 
 
 def test_service_yaml_gold_uses_the_source_replica_count() -> None:

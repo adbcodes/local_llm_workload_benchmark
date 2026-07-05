@@ -110,6 +110,29 @@ def test_dates_require_declared_unambiguous_formats() -> None:
     assert ambiguous.status == "unparseable"
 
 
+def test_date_parser_recovers_one_iso_date_from_timestamp_as_format_failure() -> None:
+    parsed = parse_answer(
+        "2027-03-18T14:26Z",
+        "date",
+        date_formats=("%Y-%m-%d",),
+    )
+
+    assert parsed.value == "2027-03-18"
+    assert parsed.status == "recovered"
+    assert parsed.protocol_violations == ["date_not_exact_format"]
+    assert "extract_iso_date_from_surrounding_text" in parsed.normalization_steps
+
+
+def test_date_parser_rejects_multiple_dates_in_surrounding_text() -> None:
+    parsed = parse_answer(
+        "started 2027-03-17T09:00Z and ended 2027-03-18T14:26Z",
+        "date",
+        date_formats=("%Y-%m-%d",),
+    )
+
+    assert parsed.status == "unparseable"
+
+
 def test_missing_final_marker_can_use_only_the_last_line_when_contract_allows_it() -> None:
     parsed = parse_answer(
         "working\nThe answer is (B).",
@@ -177,6 +200,26 @@ def test_code_fence_recovery_is_logged() -> None:
     parsed = parse_answer("```python\ndef solve():\n    return 1\n```", "code")
     assert parsed.value.startswith("def solve")
     assert parsed.protocol_violations == ["markdown_fence"]
+
+
+def test_one_code_fence_with_surrounding_prose_is_recovered() -> None:
+    parsed = parse_answer(
+        "Here is the function:\n```python\ndef solve():\n    return 1\n```\nThis fixes it.",
+        "code",
+    )
+
+    assert parsed.value.startswith("def solve")
+    assert parsed.protocol_violations == ["markdown_fence"]
+
+
+def test_multiple_code_fences_are_not_collapsed_into_one_candidate() -> None:
+    parsed = parse_answer(
+        "```python\ndef solve():\n    return 1\n```\n"
+        "```python\ndef solve():\n    return 2\n```",
+        "code",
+    )
+
+    assert "```" in parsed.value
 
 
 def test_truncated_output_is_never_recovered_from_a_gold_looking_value() -> None:

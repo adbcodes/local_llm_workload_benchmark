@@ -514,7 +514,7 @@ TASKS: list[dict[str, Any]] = [
         ],
         "rules": [
             (
-                "Return valid CSV with the exact header title,author,year and at least 10 data rows",
+                "Return all supplied records as valid CSV with the exact header title,author,year",
                 "csv_format",
                 {"header": ["title", "author", "year"], "minimum_data_rows": 10},
             ),
@@ -671,7 +671,11 @@ TASKS: list[dict[str, Any]] = [
                 "boundary",
                 {"prefix": "Hi Sam,", "suffix": "Regards, Alex"},
             ),
-            ("Use between 45 and 80 words", "word_range", {"min": 45, "max": 80}),
+            (
+                "Use a formal, professional, and respectful tone",
+                "semantic_tone",
+                True,
+            ),
             (
                 'Include "August 15", "August 31", and "Q3" but never "unfortunately"',
                 "required_forbidden_terms",
@@ -917,7 +921,7 @@ TASKS: list[dict[str, Any]] = [
         ],
         "rules": [
             (
-                "Return valid CSV with the exact header asset,owner,year and at least 10 data rows",
+                "Return all supplied records as valid CSV with the exact header asset,owner,year",
                 "csv_format",
                 {"header": ["asset", "owner", "year"], "minimum_data_rows": 10},
             ),
@@ -975,7 +979,11 @@ TASKS: list[dict[str, Any]] = [
                 "forbidden_terms",
                 ["Reema Nair", "8842", "pay-prod-3"],
             ),
-            ("Use between 34 and 38 words", "word_range", {"min": 34, "max": 38}),
+            (
+                "Use a formal, professional, and reassuring tone without blaming the customer",
+                "semantic_tone",
+                True,
+            ),
         ],
         "hotspot": "customer_clarity_with_sensitive_data_redaction",
     },
@@ -1082,6 +1090,21 @@ def build_document() -> dict[str, Any]:
         visibility = "public" if task_index % 2 == 0 else "held_out"
         for level in range(1, 5):
             selected_rules = task["rules"][:level]
+            semantic_requirements = [
+                {"id": rule_key, "description": description}
+                for description, rule_key, _ in selected_rules
+                if rule_key.startswith("semantic_")
+            ]
+            scoring_parameters = {
+                "content_requirements": deepcopy(task["content"][level - 1]),
+                "rules": {
+                    rule_key: deepcopy(rule_value)
+                    for _, rule_key, rule_value in selected_rules
+                    if not rule_key.startswith("semantic_")
+                },
+            }
+            if semantic_requirements:
+                scoring_parameters["semantic_requirements"] = semantic_requirements
             prompt = render_prompt(
                 task,
                 task_index,
@@ -1106,13 +1129,7 @@ def build_document() -> dict[str, Any]:
                 "expected": {"value": task["answers"][level - 1]},
                 "scoring": {
                     "method": "constraint_rules",
-                    "parameters": {
-                        "content_requirements": deepcopy(task["content"][level - 1]),
-                        "rules": {
-                            rule_key: deepcopy(rule_value)
-                            for _, rule_key, rule_value in selected_rules
-                        },
-                    },
+                    "parameters": scoring_parameters,
                 },
                 "provenance": {
                     "kind": "synthetic",

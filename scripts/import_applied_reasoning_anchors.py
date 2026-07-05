@@ -14,8 +14,11 @@ import yaml
 MATH_URL = "https://huggingface.co/datasets/qwedsacf/competition_math"
 BBH_URL = "https://github.com/suzgunmirac/BIG-Bench-Hard"
 FINAL_ANSWER_INSTRUCTION = (
-    "You may show concise working. End with exactly one final line in this format: "
-    "FINAL: <answer>"
+    "You may show concise working before the final line. End with exactly one final "
+    "line containing only FINAL: followed by the answer and requested unit, if any. "
+    "Do not put an equation, calculation, parentheses, or explanation after FINAL:. "
+    "Valid final line: FINAL: 42 kg\nInvalid final line: FINAL: 20 + 22 = 42 kg\n"
+    "Invalid final line: FINAL: 42 kg (20 + 22)"
 )
 
 

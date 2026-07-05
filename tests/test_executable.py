@@ -218,6 +218,31 @@ def normalize_event_codes(codes):
     assert partial.details["tests_passed"] == 1
 
 
+def test_python_evaluator_executes_one_fence_surrounded_by_prose() -> None:
+    result = evaluate_python(
+        _coding_item(),
+        "Here is the corrected function:\n```python\n"
+        "def normalize_event_codes(codes):\n"
+        "    return list(dict.fromkeys(code.strip().upper() for code in codes if code.strip()))\n"
+        "```\nThis preserves the requested behavior.",
+    )
+
+    assert result.passed
+    assert result.details["diagnostic_wrapper"] == "markdown_fence"
+
+
+def test_python_evaluator_allows_safe_delete_statements() -> None:
+    result = evaluate_python(
+        _coding_item(),
+        "def normalize_event_codes(codes):\n"
+        "    seen = {'discard': True}\n"
+        "    del seen['discard']\n"
+        "    return list(dict.fromkeys(code.strip().upper() for code in codes if code.strip()))",
+    )
+
+    assert result.passed
+
+
 def test_python_evaluator_enforces_declared_input_preservation() -> None:
     item = _coding_item().model_copy(deep=True)
     result = evaluate_python(

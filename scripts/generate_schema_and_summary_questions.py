@@ -158,6 +158,7 @@ def _schema_fixture(
         boundary_instruction = "The first character must be [ and the last must be ]."
         format_name = "array"
     schema = json.dumps(_annotation("root", expected), ensure_ascii=False, indent=2)
+    case_insensitive_paths = _case_insensitive_paths(expected)
     prompt = (
         f"{_schema_opener(item_id)} Return {value_kind}. The strings in the schema are "
         "type annotations, not literal output values. Preserve every key and nesting level exactly; "
@@ -171,6 +172,11 @@ def _schema_fixture(
     if note:
         prompt += note.strip() + " "
     prompt += "Text: " + text.strip()
+    scoring_parameters: dict[str, Any] = {
+        "allow_diagnostic_normalization": True,
+    }
+    if case_insensitive_paths:
+        scoring_parameters["case_insensitive_paths"] = case_insensitive_paths
     return {
         "id": item_id,
         "subcategory": subcategory,
@@ -182,7 +188,7 @@ def _schema_fixture(
         "expected": {"value": expected},
         "scoring": {
             "method": "json_exact",
-            "parameters": {"allow_diagnostic_normalization": True},
+            "parameters": scoring_parameters,
         },
         "provenance": {
             "kind": "hand_authored",
@@ -197,6 +203,47 @@ def _schema_fixture(
             *(tags or []),
         ],
     }
+
+
+CASE_INSENSITIVE_VALUE_KEYS = {
+    "assignee",
+    "carrier",
+    "category",
+    "city",
+    "country",
+    "currency",
+    "department",
+    "destination",
+    "guest",
+    "name",
+    "origin",
+    "owner",
+    "priority",
+    "region",
+    "role",
+    "severity",
+    "state",
+    "status",
+    "team",
+    "title",
+    "vendor",
+}
+
+
+def _case_insensitive_paths(value: Any, path: str = "$") -> list[str]:
+    """Declare human-label leaves; identifiers and machine values stay exact."""
+
+    paths: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}"
+            if isinstance(child, str) and key in CASE_INSENSITIVE_VALUE_KEYS:
+                paths.append(child_path)
+            paths.extend(_case_insensitive_paths(child, child_path))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            paths.extend(_case_insensitive_paths(child, f"{path}[{index}]"))
+    return paths
 
 
 SCHEMA_ITEMS = [

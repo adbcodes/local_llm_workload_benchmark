@@ -21,10 +21,11 @@ def test_applied_reasoning_has_fresh_headline_dataset() -> None:
     assert len(items) == 48
     assert all(
         item.prompt.endswith(
-            "End with exactly one final line in this format: FINAL: <answer>"
+            "Invalid final line: FINAL: 42 kg (20 + 22)"
         )
         for item in items
     )
+    assert all("Valid final line: FINAL: 42 kg" in item.prompt for item in items)
     assert Counter(item.subcategory for item in items) == {
         "arithmetic_percentages": 6,
         "ratios_rates_work": 6,

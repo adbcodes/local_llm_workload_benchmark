@@ -415,7 +415,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -823,7 +823,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -1233,7 +1233,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -1625,7 +1625,8 @@ items:
 
     ANSWER REQUEST
 
-    On what date does the signed incident closure say service was restored? Return an ISO date.'
+    On what date does the signed incident closure say service was restored? Return the ISO date in YYYY-MM-DD
+    format, for example 2027-03-18.'
   response_contract:
     type: date
     format: null
@@ -2023,7 +2024,8 @@ items:
 
     ANSWER REQUEST
 
-    On what date does the signed incident closure say service was restored? Return an ISO date.'
+    On what date does the signed incident closure say service was restored? Return the ISO date in YYYY-MM-DD
+    format, for example 2027-03-18.'
   response_contract:
     type: date
     format: null
@@ -2423,7 +2425,8 @@ items:
 
     ANSWER REQUEST
 
-    On what date does the signed incident closure say service was restored? Return an ISO date.'
+    On what date does the signed incident closure say service was restored? Return the ISO date in YYYY-MM-DD
+    format, for example 2027-03-18.'
   response_contract:
     type: date
     format: null
@@ -7507,7 +7510,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -8165,7 +8168,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -8825,7 +8828,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -9595,7 +9598,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -10363,7 +10366,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -11133,7 +11136,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -16355,7 +16358,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -17106,7 +17109,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -17859,7 +17862,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -23700,7 +23703,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -25254,7 +25257,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft
@@ -26810,7 +26813,7 @@ items:
     method: exact_match
     parameters:
       strip: true
-      case_sensitive: false
+      case_sensitive: true
   provenance:
     kind: synthetic
     review_status: draft

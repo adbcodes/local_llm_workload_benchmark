@@ -154,9 +154,19 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert all(record["schema_version"] == 4 for record in records)
     assert all(record["evaluation"]["passed"] for record in records)
     assert all(record["evaluation"]["type"] == "deterministic" for record in records)
+    revised_versions = {
+        "date_value": 2,
+        "json_exact": 2,
+        "constraint_rules": 2,
+        "tool_call": 2,
+    }
     assert all(
         record["evaluation"]["version"]
-        == (2 if record["benchmark"] == "applied_reasoning" else 1)
+        == (
+            2
+            if record["benchmark"] == "applied_reasoning"
+            else revised_versions.get(record["scoring_method"], 1)
+        )
         for record in records
     )
     assert all(record["integration_outcome"] == "scored_cleanly" for record in records)

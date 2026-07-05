@@ -61,6 +61,8 @@ accepted_answer_contracts:
       - unicode_normalization
       - parse_declared_date_form
       - convert_to_iso_date
+      - extract_one_iso_date_from_a_timestamp_for_semantic_scoring_only
+    protocol_rule: A timestamp or prose wrapper fails format when the prompt requests YYYY-MM-DD only.
     rejection_rule: Reject ambiguous numeric dates rather than guessing month and day.
   json:
     accepted_forms:
@@ -70,11 +72,13 @@ accepted_answer_contracts:
       - strip_one_markdown_fence_when_permitted
       - parse_json
       - compare_typed_values
+      - casefold_only_generator_declared_human_label_paths_for_the_normalized_leaf_diagnostic
     rejection_rule: Reject invalid JSON and multiple candidate JSON values.
   code:
     accepted_forms:
       - raw code
       - one fenced code block under content cleanup
+      - one unambiguous fenced code block surrounded by prose under content cleanup
     normalization:
       - strip_one_markdown_fence_when_permitted
       - preserve_code_contents

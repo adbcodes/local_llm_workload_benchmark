@@ -19,11 +19,12 @@ methods:
     use_for: calendar and normalized date answers
     expected_value: YYYY-MM-DD
     accepted_answer_contracts: [date]
+    semantic_recovery: A unique YYYY-MM-DD date inside a timestamp is usable while the timestamp remains a format violation.
   json_exact:
     use_for: structured extraction and raw JSON
     expected_value: object or array
     accepted_answer_contracts: [json]
-    reports: [protocol_compliance, leaf_accuracy, missing_paths, extra_paths]
+    reports: [protocol_compliance, leaf_accuracy, normalized_leaf_accuracy, missing_paths, extra_paths]
   set_match:
     use_for: unordered row IDs or multiple labels
     expected_value: list of strings
@@ -44,7 +45,8 @@ methods:
     accepted_answer_contracts: [scalar_text]
     content_checkers:
       json_records: exact record multiset with object-key order and array-record order ignored
-    reports: [content_score, per_rule_checks, rule_compliance]
+    semantic_rule: Natural-language facts and tone are adjudicated separately; mechanical rules remain deterministic.
+    reports: [content_score, per_rule_checks, rule_compliance, semantic_requirements]
   executable_python:
     use_for: implementation and repair
     expected_value: {entry_point: function_name, tests: []}
@@ -56,10 +58,10 @@ methods:
       tool_required: {tool_call: tool_name, arguments: {argument: value}}
       no_tool: {tool_call: null, arguments: {}, answer: direct_answer}
     parameters:
-      direct_answer_patterns: optional item-specific regex requirements for semantically equivalent no-tool explanations
+      direct_answer_patterns: diagnostic item-specific patterns for no-tool explanations; the semantic judge is authoritative for meaning
     argument_rule: Argument names, JSON types, values, nested object keys, and list order must match exactly.
     accepted_answer_contracts: [tool_call]
-    reports: [parseable, tool_choice_accuracy, argument_accuracy, direct_answer_accuracy, format_compliant]
+    reports: [parseable, tool_choice_accuracy, argument_accuracy, stop_continue_accuracy, explanation_accuracy, format_compliant]
   tool_trace:
     use_for: tool selection, arguments, order, and final fake-environment state
     expected_value:
@@ -78,7 +80,7 @@ methods:
     accepted_answer_contracts: [confidence]
     reports: [answer_correct, confidence, brier_component]
   llm_judge:
-    use_for: fact-safe summaries and reviewed communication criteria
+    use_for: fact-safe summaries plus semantic instruction and tool-explanation adjudication
     expected_value: human-written reference answer
     accepted_answer_contracts: [scalar_text]
     reports: [faithfulness, coverage, relevance, clarity, concision, judge_usage]

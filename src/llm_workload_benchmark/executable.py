@@ -21,12 +21,11 @@ class ExecutableEvaluationError(RuntimeError):
     """Raised when an executable task or its restricted runner is invalid."""
 
 
-EXECUTABLE_EVALUATOR_VERSION = 2
+EXECUTABLE_EVALUATOR_VERSION = 3
 _BLOCKED_NODES = (
     ast.AsyncFunctionDef,
     ast.Await,
     ast.ClassDef,
-    ast.Delete,
     ast.Global,
     ast.Import,
     ast.ImportFrom,

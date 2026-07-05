@@ -134,6 +134,8 @@ def parse_answer(
             )
         elif kind == "date":
             value, applied = _parse_date(extracted, date_formats)
+            if "extract_iso_date_from_surrounding_text" in applied:
+                violations.append("date_not_exact_format")
         elif kind == "set":
             value, applied = _parse_set(extracted, separator)
         elif kind == "confidence":
@@ -336,6 +338,15 @@ def _parse_date(value: str, formats: tuple[str, ...]) -> tuple[str, list[str]]:
             matches.add(datetime.strptime(without_ordinal, date_format).date().isoformat())
         except ValueError:
             continue
+    if not matches and "%Y-%m-%d" in formats:
+        iso_dates = set(re.findall(r"(?<!\d)\d{4}-\d{2}-\d{2}(?!\d)", without_ordinal))
+        for iso_date in iso_dates:
+            try:
+                matches.add(datetime.strptime(iso_date, "%Y-%m-%d").date().isoformat())
+            except ValueError:
+                continue
+        if len(matches) == 1:
+            steps.append("extract_iso_date_from_surrounding_text")
     if len(matches) != 1:
         raise ValueError("date is unsupported or ambiguous")
     return matches.pop(), [*steps, "parse_declared_date_format", "normalize_date_iso8601"]
@@ -421,12 +432,15 @@ def _parse_json_value(
 
 def _strip_fence(value: str, kind: AnswerKind) -> tuple[str, str | None]:
     language = "python|py" if kind == "code" else "text|txt"
-    match = re.fullmatch(
-        rf"```(?:{language})?\s*(.*?)\s*```",
-        value.strip(),
-        flags=re.DOTALL | re.IGNORECASE,
-    )
-    return (match.group(1).strip(), "markdown_fence") if match else (value, None)
+    pattern = rf"```(?:{language})?\s*(.*?)\s*```"
+    match = re.fullmatch(pattern, value.strip(), flags=re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip(), "markdown_fence"
+    if kind == "code":
+        matches = list(re.finditer(pattern, value, flags=re.DOTALL | re.IGNORECASE))
+        if len(matches) == 1:
+            return matches[0].group(1).strip(), "markdown_fence_with_surrounding_text"
+    return value, None
 
 
 def _strip_scalar_markdown(value: str) -> str:

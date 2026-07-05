@@ -1,6 +1,8 @@
 schema_version: 1
 stage: stage1_deterministic_matrix
-frozen_on: 2026-07-31
+frozen_on: 2026-08-01
+status: calibration_reopened
+model_cohort_status: replacement_pending
 
 suite:
   path: data/suites/final_six.yaml
@@ -10,7 +12,7 @@ suite:
     - id: applied_reasoning
       path: data/applied_reasoning/items.jsonl
       questions: 48
-      sha256: 32893f30ba37119e6a5fd162aed537015a449d3695f3441c26bb7c49fc7b8e03
+      sha256: ddf6ce38efdb32a271c670cd6de2998ff630e9f954cd9d9aa36523e86aa5921b
     - id: code_debug_repair
       path: data/code_debug_repair/items.jsonl
       questions: 80
@@ -18,15 +20,15 @@ suite:
     - id: messy_text_to_schema
       path: data/messy_text_to_schema/items.jsonl
       questions: 48
-      sha256: 7b4735c3c358ad969c7dfd28958402b15bd44306710e959bb8161077a768c7b9
+      sha256: 41326fa22a3e3a11e48c9345a5bae49a122c973b94d3874adf9a2dd0768cc757
     - id: long_text_retrieval
       path: data/long_text_retrieval/items.jsonl
       questions: 48
-      sha256: 25c2ddc4f964b2788477e7186469623e6de2ba55602db7aff0e01d095531b159
+      sha256: d6786d124cb5ad74ca0b6eacd233c4b634f502d3e068885fdcda54f65af264e2
     - id: constraint_load_curve
       path: data/constraint_load_curve/items.jsonl
       questions: 48
-      sha256: d6839e08f94c70f613a09dedd8a7e431377b567f8228264b27e06c1409e583f6
+      sha256: ef9aab94a99ce129f7dc4efe0c2a6bd17082b75ea249128596570ff2af836143
     - id: tool_use
       path: data/tool_use/items.jsonl
       questions: 48
@@ -35,18 +37,19 @@ suite:
 evaluators:
   implementation_files:
     - path: src/llm_workload_benchmark/dataset.py
-      sha256: a46a18fa13fd88922da0191b8162ceff243c22acfd15a6c10f67f7848912e467
+      sha256: 028e6f412bf3136800378d4126f59888995d095e93e35abee77d4102b72780f1
     - path: src/llm_workload_benchmark/executable.py
-      sha256: dcd8ddc461d7f4bdfd8fd16475283e47149c5ab693b715866da45bd626823d63
+      sha256: 75935b055ab1376321ef76897431ca5fb8804ea3ea69f8601422577e3e6a4ef6
     - path: src/llm_workload_benchmark/answer_parser.py
-      sha256: aa0a064be2c6d66a2f4f0cce613c7427d945107798c14f0ac18deee4850fe8fd
+      sha256: db25f351d560c9e1bbe00c46b725a87e82a972a55704e5ef9d2f4062ac81f264
   versions:
     numeric_tolerance: 2
-    restricted_python_tests: 2
-    json_exact: 1
+    date_value: 2
+    restricted_python_tests: 3
+    json_exact: 2
     exact_match: 1
-    constraint_rules: 1
-    tool_call: 1
+    constraint_rules: 2
+    tool_call: 2
 
 execution:
   total_generations: 6400

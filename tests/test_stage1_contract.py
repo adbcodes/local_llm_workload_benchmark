@@ -42,11 +42,12 @@ def test_stage1_dataset_and_evaluator_contract_is_frozen() -> None:
 
     assert contract["evaluators"]["versions"] == {
         "numeric_tolerance": 2,
-        "restricted_python_tests": 2,
-        "json_exact": 1,
+        "date_value": 2,
+        "restricted_python_tests": 3,
+        "json_exact": 2,
         "exact_match": 1,
-        "constraint_rules": 1,
-        "tool_call": 1,
+        "constraint_rules": 2,
+        "tool_call": 2,
     }
 
 

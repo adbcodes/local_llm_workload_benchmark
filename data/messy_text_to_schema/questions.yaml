@@ -29,6 +29,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.vendor
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -65,6 +68,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.name
+      - $.city
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -102,6 +108,10 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.carrier
+      - $.origin
+      - $.destination
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -141,6 +151,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.guest
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -179,6 +191,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.name
+      - $.category
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -218,6 +233,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.title
+      - $.city
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -258,6 +276,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.status
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -300,6 +320,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.role
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -338,6 +360,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.title
+      - $.city
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -379,6 +404,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.vendor
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -459,6 +487,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.name
+      - $.role
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -501,6 +532,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.origin
+      - $.destination
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -544,6 +578,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.owner
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -585,6 +621,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -628,6 +666,10 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.city
+      - $.state
+      - $.country
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -709,6 +751,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -750,6 +794,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.owner
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -796,6 +842,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.status
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -840,6 +888,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.severity
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -888,6 +938,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.owner
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -936,6 +988,10 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.items[0].name
+      - $.items[1].name
+      - $.items[2].name
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -983,6 +1039,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1040,6 +1098,11 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.owner
+      - $.items[0].category
+      - $.items[1].category
+      - $.items[2].category
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1092,6 +1155,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.origin
+      - $.destination
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1146,6 +1212,10 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.vendor
+      - $.items[0].name
+      - $.items[1].name
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1206,6 +1276,18 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.owner
+      - $.workstreams[0].name
+      - $.workstreams[0].status
+      - $.workstreams[0].owner
+      - $.workstreams[1].name
+      - $.workstreams[1].status
+      - $.workstreams[1].owner
+      - $.workstreams[2].name
+      - $.workstreams[2].status
+      - $.workstreams[2].owner
+      - $.blocker.name
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1310,6 +1392,13 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $[0].name
+      - $[0].role
+      - $[1].name
+      - $[1].role
+      - $[2].name
+      - $[2].role
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1354,6 +1443,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1571,6 +1662,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
+      - $.status
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1661,6 +1755,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
+      - $.status
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1751,6 +1848,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.owner
+      - $.status
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1803,6 +1903,12 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.vendor
+      - $.currency
+      - $.milestones[0].name
+      - $.milestones[1].name
+      - $.owner
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1852,6 +1958,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.origin
+      - $.destination
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1912,6 +2021,13 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.staff[0].name
+      - $.staff[0].role
+      - $.staff[1].name
+      - $.staff[1].role
+      - $.staff[2].name
+      - $.staff[2].role
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -1969,6 +2085,8 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -2032,6 +2150,9 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.vendor
+      - $.currency
   provenance:
     kind: hand_authored
     review_status: human_checked
@@ -2140,6 +2261,10 @@ items:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
+      - $.quotes[0].vendor
+      - $.quotes[1].vendor
   provenance:
     kind: hand_authored
     review_status: human_checked
