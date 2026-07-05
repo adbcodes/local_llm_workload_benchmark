@@ -3,18 +3,22 @@ from __future__ import annotations
 import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from llm_workload_benchmark.config import BenchmarkConfig, JudgeConfig
-from llm_workload_benchmark.dataset import DatasetItem, load_suite
+from llm_workload_benchmark.dataset import DatasetError, DatasetItem, load_suite, score_answer
 from llm_workload_benchmark.judge import (
+    BLIND_EXTRACTION_RUBRIC_VERSION,
+    BLIND_EXTRACTION_SYSTEM_PROMPT,
     JudgeBackend,
     JudgeError,
     SEMANTIC_REQUIREMENTS_RUBRIC_VERSION,
     SEMANTIC_REQUIREMENTS_SYSTEM_PROMPT,
     create_judge_backend,
     evaluate_semantic_requirements,
+    extract_claimed_answer,
     semantic_requirements_for_item,
 )
 
@@ -25,6 +29,32 @@ class AdjudicationError(RuntimeError):
 
 JudgeBackendFactory = Callable[[JudgeConfig], JudgeBackend]
 ProgressCallback = Callable[[int, int, str], None]
+
+RouteKind = Literal["semantic_requirements", "blind_extraction"]
+_BLIND_EXTRACTION_METHODS = {
+    "numeric_tolerance",
+    "rational_value",
+    "date_value",
+    "exact_match",
+    "json_exact",
+    "set_match",
+}
+_UNKNOWN_PARSE_REASONS = {
+    "invalid_json",
+    "invalid_option_answer",
+    "missing_or_ambiguous_date_answer",
+    "missing_or_ambiguous_exact_answer",
+    "missing_or_ambiguous_numeric_answer",
+    "missing_or_ambiguous_rational_answer",
+    "not_numeric",
+}
+_ROUTING_VERSION = 1
+
+
+@dataclass(frozen=True)
+class AdjudicationRoute:
+    kind: RouteKind
+    reason: str
 
 
 def adjudicate_experiment(
@@ -70,7 +100,7 @@ def adjudicate_experiment(
         and isinstance(record.get("adjudication_key"), str)
     }
 
-    queue: list[tuple[dict[str, Any], DatasetItem]] = []
+    queue: list[tuple[dict[str, Any], DatasetItem, AdjudicationRoute]] = []
     for model in index.get("models", []):
         if not isinstance(model, dict) or model.get("status") != "completed":
             continue
@@ -78,34 +108,57 @@ def adjudicate_experiment(
         for record in _read_jsonl(records_path):
             item = items.get((str(record.get("benchmark")), str(record.get("item_id"))))
             answer = record.get("evaluated_response")
-            if (
-                item is None
-                or record.get("status") != "completed"
-                or not isinstance(answer, str)
-                or not answer.strip()
-                or not semantic_requirements_for_item(item)
-            ):
+            if item is None or record.get("status") != "completed":
                 continue
-            key = _adjudication_key(record, answer, contract_hash)
+            if not isinstance(answer, str) or not answer.strip():
+                continue
+            route = adjudication_route(record, item)
+            if route is None:
+                continue
+            key = _adjudication_key(record, item, route, answer, contract_hash)
             if key not in completed_keys:
-                queue.append(({**record, "adjudication_key": key}, item))
+                queue.append(({**record, "adjudication_key": key}, item, route))
 
     backend = judge_backend_factory(config.judge)
 
-    def judge_one(entry: tuple[dict[str, Any], DatasetItem]) -> dict[str, Any]:
-        record, item = entry
+    def judge_one(
+        entry: tuple[dict[str, Any], DatasetItem, AdjudicationRoute]
+    ) -> dict[str, Any]:
+        record, item, route = entry
         answer = str(record["evaluated_response"])
         try:
-            judgment = evaluate_semantic_requirements(
+            seed = int(record.get("seed", config.benchmark.seed))
+            deterministic_rescore = None
+            if route.kind == "semantic_requirements":
+                judgment = evaluate_semantic_requirements(
+                    item,
+                    answer,
+                    backend=backend,
+                    config=config.judge,
+                    seed=seed,
+                )
+            else:
+                judgment = extract_claimed_answer(
+                    item,
+                    answer,
+                    backend=backend,
+                    config=config.judge,
+                    seed=seed,
+                )
+                extracted_answer = judgment.details["extracted_answer"]
+                if judgment.details["status"] == "extracted":
+                    deterministic_rescore = score_answer(
+                        item, str(extracted_answer)
+                    ).model_dump(mode="json")
+            return _sidecar_record(
+                record,
                 item,
-                answer,
-                backend=backend,
-                config=config.judge,
-                seed=int(record.get("seed", config.benchmark.seed)),
+                route,
+                judgment.model_dump(mode="json"),
+                deterministic_rescore=deterministic_rescore,
             )
-            return _sidecar_record(record, item, judgment.model_dump(mode="json"))
-        except JudgeError as error:
-            return _sidecar_record(record, item, None, error=str(error))
+        except (DatasetError, JudgeError) as error:
+            return _sidecar_record(record, item, route, None, error=str(error))
 
     total = len(queue)
     if workers == 1:
@@ -125,7 +178,7 @@ def adjudicate_experiment(
 
     all_records = _read_jsonl(results_path) if results_path.exists() else []
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_experiment": str(experiment),
         "suite": str(suite_path),
         "judge_contract_sha256": contract_hash,
@@ -133,21 +186,77 @@ def adjudicate_experiment(
         "records": len(all_records),
         "completed": sum(record.get("status") == "completed" for record in all_records),
         "judge_errors": sum(record.get("status") == "judge_error" for record in all_records),
+        "routes": {
+            route: sum(record.get("judge_route") == route for record in all_records)
+            for route in ("semantic_requirements", "blind_extraction")
+        },
     }
     _write_json(output / "manifest.json", manifest)
     return output
 
 
+def adjudication_route(
+    record: dict[str, Any], item: DatasetItem
+) -> AdjudicationRoute | None:
+    """Select a judge route only when deterministic evidence is inconclusive."""
+
+    if semantic_requirements_for_item(item):
+        return AdjudicationRoute(
+            kind="semantic_requirements",
+            reason="meaning_requires_semantic_evaluation",
+        )
+
+    method = item.scoring.method
+    if method not in _BLIND_EXTRACTION_METHODS:
+        return None
+    evaluation = record.get("evaluation")
+    if not isinstance(evaluation, dict) or evaluation.get("passed") is True:
+        return None
+
+    semantic_outcome = evaluation.get("semantic_outcome")
+    details = evaluation.get("details")
+    details = details if isinstance(details, dict) else {}
+    reason = details.get("reason")
+
+    if semantic_outcome == "not_scored":
+        return AdjudicationRoute(
+            kind="blind_extraction",
+            reason="deterministic_semantics_not_scored",
+        )
+    if isinstance(reason, str) and reason in _UNKNOWN_PARSE_REASONS:
+        return AdjudicationRoute(
+            kind="blind_extraction",
+            reason=f"inconclusive_parser:{reason}",
+        )
+    if method == "exact_match":
+        return AdjudicationRoute(
+            kind="blind_extraction",
+            reason="exact_string_mismatch_does_not_establish_claimed_meaning",
+        )
+    return None
+
+
 def _sidecar_record(
     record: dict[str, Any],
     item: DatasetItem,
+    route: AdjudicationRoute,
     judgment: dict[str, Any] | None,
     *,
+    deterministic_rescore: dict[str, Any] | None = None,
     error: str | None = None,
 ) -> dict[str, Any]:
-    derived = _derive_outcomes(record, judgment) if judgment is not None else None
+    derived = (
+        _derive_outcomes(
+            record,
+            judgment,
+            route_kind=route.kind,
+            deterministic_rescore=deterministic_rescore,
+        )
+        if judgment is not None
+        else None
+    )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "status": "completed" if judgment is not None else "judge_error",
         "adjudication_key": record["adjudication_key"],
         "model_id": record.get("model_id"),
@@ -158,15 +267,28 @@ def _sidecar_record(
             str(record["evaluated_response"]).encode("utf-8")
         ).hexdigest(),
         "deterministic_evaluation": record.get("evaluation"),
+        "judge_route": route.kind,
+        "route_reason": route.reason,
         "judge_evaluation": judgment,
+        "deterministic_rescore": deterministic_rescore,
         "derived": derived,
         "error": error,
     }
 
 
 def _derive_outcomes(
-    record: dict[str, Any], judgment: dict[str, Any]
+    record: dict[str, Any],
+    judgment: dict[str, Any],
+    *,
+    route_kind: RouteKind | None = None,
+    deterministic_rescore: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    route_kind = route_kind or "semantic_requirements"
+    if route_kind == "blind_extraction":
+        return _derive_extraction_outcomes(
+            record, judgment, deterministic_rescore=deterministic_rescore
+        )
+
     judge_details = judgment["details"]
     assessments = {
         assessment["id"]: assessment for assessment in judge_details["requirements"]
@@ -192,8 +314,10 @@ def _derive_outcomes(
         mechanical_rules_correct = bool(details.get("checks")) and all(
             details["checks"].values()
         )
-        semantic_correct = core_correct
-        instruction_compliant = semantic_rules_correct and mechanical_rules_correct
+        semantic_correct: bool | None = core_correct
+        instruction_compliant: bool | None = (
+            semantic_rules_correct and mechanical_rules_correct
+        )
         format_correct = mechanical_rules_correct
     else:
         explanation_correct = (
@@ -207,9 +331,20 @@ def _derive_outcomes(
         instruction_compliant = semantic_correct
         format_correct = details.get("format_compliant") is True
 
-    strict_pass = semantic_correct and instruction_compliant and format_correct
-    loose_pass = semantic_correct
+    if judge_ambiguous:
+        semantic_correct = None
+        semantic_status = "unknown"
+        instruction_compliant = None
+    else:
+        semantic_status = "correct" if semantic_correct else "incorrect"
+    strict_pass = (
+        semantic_correct is True
+        and instruction_compliant is True
+        and format_correct
+    )
+    loose_pass = semantic_correct is True
     return {
+        "semantic_status": semantic_status,
         "semantic_correct": semantic_correct,
         "instruction_compliant": instruction_compliant,
         "format_correct": format_correct,
@@ -220,16 +355,75 @@ def _derive_outcomes(
     }
 
 
+def _derive_extraction_outcomes(
+    record: dict[str, Any],
+    judgment: dict[str, Any],
+    *,
+    deterministic_rescore: dict[str, Any] | None,
+) -> dict[str, Any]:
+    extraction_status = judgment["details"]["status"]
+    if extraction_status == "extracted" and deterministic_rescore is not None:
+        semantic_correct = deterministic_rescore.get("passed") is True
+        semantic_status = "correct" if semantic_correct else "incorrect"
+    elif extraction_status == "no_answer":
+        semantic_correct = False
+        semantic_status = "incorrect"
+    else:
+        semantic_correct = None
+        semantic_status = "unknown"
+
+    deterministic = record.get("evaluation")
+    deterministic = deterministic if isinstance(deterministic, dict) else {}
+    protocol_outcome = deterministic.get("protocol_outcome")
+    details = deterministic.get("details")
+    details = details if isinstance(details, dict) else {}
+    format_correct = (
+        protocol_outcome == "compliant"
+        if protocol_outcome is not None
+        else details.get("protocol_compliant") is not False
+    )
+    if extraction_status == "extracted" and record.get("scoring_method") not in {
+        "json_exact",
+        "set_match",
+    }:
+        original = str(record.get("evaluated_response") or "").strip()
+        extracted = str(judgment["details"]["extracted_answer"]).strip()
+        format_correct = format_correct and original == extracted
+    loose_pass = semantic_correct is True
+    strict_pass = loose_pass and format_correct
+    return {
+        "semantic_status": semantic_status,
+        "semantic_correct": semantic_correct,
+        "instruction_compliant": None,
+        "format_correct": format_correct,
+        "strict_pass": strict_pass,
+        "loose_pass": loose_pass,
+        "format_tax": bool(loose_pass and not strict_pass),
+        "extraction_status": extraction_status,
+    }
+
+
 def _adjudication_key(
-    record: dict[str, Any], answer: str, contract_hash: str
+    record: dict[str, Any],
+    item: DatasetItem,
+    route: AdjudicationRoute,
+    answer: str,
+    contract_hash: str,
 ) -> str:
+    item_contract = item.model_dump(mode="json")
     payload = {
         "model_id": record.get("model_id"),
         "benchmark": record.get("benchmark"),
         "item_id": record.get("item_id"),
         "repetition": record.get("repetition"),
+        "route": route.kind,
         "response_sha256": hashlib.sha256(answer.encode("utf-8")).hexdigest(),
         "judge_contract_sha256": contract_hash,
+        "item_contract_sha256": hashlib.sha256(
+            json.dumps(item_contract, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        ).hexdigest(),
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -239,8 +433,17 @@ def _adjudication_key(
 def _judge_contract_hash(config: JudgeConfig) -> str:
     payload = {
         "judge": config.model_dump(mode="json", exclude={"cache_path"}),
-        "rubric_version": SEMANTIC_REQUIREMENTS_RUBRIC_VERSION,
-        "system_prompt": SEMANTIC_REQUIREMENTS_SYSTEM_PROMPT,
+        "routing_version": _ROUTING_VERSION,
+        "rubrics": {
+            "semantic_requirements": {
+                "version": SEMANTIC_REQUIREMENTS_RUBRIC_VERSION,
+                "system_prompt": SEMANTIC_REQUIREMENTS_SYSTEM_PROMPT,
+            },
+            "blind_extraction": {
+                "version": BLIND_EXTRACTION_RUBRIC_VERSION,
+                "system_prompt": BLIND_EXTRACTION_SYSTEM_PROMPT,
+            },
+        },
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
