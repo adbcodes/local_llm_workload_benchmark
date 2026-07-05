@@ -31,7 +31,7 @@ def _decision() -> SummaryJudgeDecision:
 class FakeJudgeBackend:
     def evaluate(self, **arguments) -> JudgeCallResult:
         return JudgeCallResult(
-            decision=_decision(),
+            decision=_decision().model_dump(mode="json"),
             response_id="fake-judge-response",
             model="gpt-oss-120b",
             system_fingerprint="fake-fingerprint",

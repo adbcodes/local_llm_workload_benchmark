@@ -14,9 +14,12 @@ from llm_workload_benchmark.judge import (
     JudgeCallResult,
     JudgeError,
     SummaryJudgeDecision,
+    SemanticJudgeDecision,
     _rate_limit_retry_after_seconds,
     evaluate_summary,
     evaluate_summary_panel,
+    evaluate_semantic_requirements,
+    semantic_requirements_for_item,
 )
 from llm_workload_benchmark.runner import (
     EvaluationError,
@@ -51,7 +54,7 @@ class FakeJudgeBackend:
     def evaluate(self, **arguments) -> JudgeCallResult:
         self.calls.append(arguments)
         return JudgeCallResult(
-            decision=self.decision,
+            decision=self.decision.model_dump(mode="json"),
             response_id="judge-response-1",
             model="openai/gpt-oss-120b",
             system_fingerprint="groq-test-fingerprint",
@@ -314,6 +317,84 @@ def test_pointwise_judge_builds_anonymous_prompt_and_computes_score() -> None:
         "missing_required_facts",
         "overall_reason",
     }
+
+
+def test_semantic_judge_detects_negated_instruction_fact() -> None:
+    item = {
+        candidate.id: candidate
+        for candidate in load_suite(Path("data/suites/instruction.yaml")).items[
+            "constraint_load_curve"
+        ]
+    }["constraint_api_rate_limiting_001"]
+    requirements = semantic_requirements_for_item(item)
+    requirement_id = requirements[0]["id"]
+    decision = SemanticJudgeDecision.model_validate(
+        {
+            "requirements": [
+                {
+                    "id": requirement_id,
+                    "satisfied": False,
+                    "contradicted": True,
+                    "reason": "The candidate states the opposite.",
+                }
+            ],
+            "ambiguous": False,
+            "overall_correct": False,
+            "overall_reason": "The required fact is contradicted.",
+        }
+    )
+    result = evaluate_semantic_requirements(
+        item,
+        "Rate limiting does not prevent overload.",
+        backend=FakeJudgeBackend(decision),
+        config=JudgeConfig(),
+        seed=42,
+    )
+
+    assert not result.passed
+    assert result.score == 0
+    assert result.details["requirements"][0]["contradicted"] is True
+
+
+def test_tool_semantic_judge_receives_only_the_direct_answer_text() -> None:
+    item = {
+        candidate.id: candidate
+        for candidate in load_suite(Path("data/suites/final_six.yaml")).items["tool_use"]
+    }["tool_use_027"]
+    requirement = semantic_requirements_for_item(item)[0]
+    decision = SemanticJudgeDecision.model_validate(
+        {
+            "requirements": [
+                {
+                    "id": requirement["id"],
+                    "satisfied": True,
+                    "contradicted": False,
+                    "reason": "The answer explains why no event was created.",
+                }
+            ],
+            "ambiguous": False,
+            "overall_correct": True,
+            "overall_reason": "The explanation matches the observation.",
+        }
+    )
+    backend = FakeJudgeBackend(decision)
+    candidate = {
+        "tool_call": None,
+        "arguments": {},
+        "answer": "Rain is expected, so I did not create the event.",
+    }
+
+    result = evaluate_semantic_requirements(
+        item,
+        json.dumps(candidate),
+        backend=backend,
+        config=JudgeConfig(),
+        seed=42,
+    )
+
+    assert result.passed
+    prompt = json.loads(backend.calls[0]["user_prompt"])
+    assert prompt["candidate"] == candidate["answer"]
 
 
 def test_pointwise_judge_enforces_mechanical_gate_and_critical_error() -> None:

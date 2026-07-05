@@ -12,6 +12,10 @@ from llm_workload_benchmark.artifacts import (
     ArtifactError,
     export_experiment_artifacts,
 )
+from llm_workload_benchmark.adjudication import (
+    AdjudicationError,
+    adjudicate_experiment,
+)
 from llm_workload_benchmark.authoring import build_authoring_suite
 from llm_workload_benchmark.catalog import CatalogError, validate_catalog
 from llm_workload_benchmark.config import ConfigError, load_config
@@ -317,6 +321,56 @@ def rejudge_command(
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(f"Rejudged experiment saved to {target}")
+
+
+@app.command("adjudicate")
+def adjudicate_command(
+    experiment: Path = typer.Option(
+        ...,
+        "--experiment",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+        help="Completed inference experiment whose semantic requirements should be judged.",
+    ),
+    config_path: Path = typer.Option(
+        ...,
+        "--config",
+        "-c",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Matching workload config containing one judge.",
+    ),
+    workers: int = typer.Option(
+        1,
+        "--workers",
+        min=1,
+        max=16,
+        help="Bounded concurrent judge calls after inference is complete.",
+    ),
+) -> None:
+    """Judge prose meaning into immutable sidecars without rerunning inference."""
+
+    def show_progress(completed: int, total: int, model_id: str) -> None:
+        typer.echo(f"Adjudicating {completed}/{total}: {model_id}")
+
+    try:
+        config = load_config(config_path)
+        output = adjudicate_experiment(
+            experiment,
+            config,
+            workers=workers,
+            progress_callback=show_progress,
+        )
+    except (ConfigError, DatasetError, AdjudicationError, OSError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Adjudication sidecars saved to {output}")
 
 
 def _build_configured_dataset(workload_path: Path) -> None:
