@@ -64,7 +64,7 @@ execution:
   matrices:
     - id: five_workloads
       config_path: configs/final_default_matrix.yaml
-      config_sha256: 6ca8eea2f378794d57b786597dcf88fd353b7eaa87f7fa2cfb69a275deeb35d1
+      config_sha256: 1bc3c2a2fc18f9996cf484fab7a7c8fa5f5fc94a10fea118bc6db27b484ecbeb
       suite_path: data/suites/final_five.yaml
       suite_sha256: eb234d52309b16444496c01af344be74ff6c0fbd70b480f0bdcf7425ac4c3782
       question_count: 272
@@ -72,7 +72,7 @@ execution:
       command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_default_matrix.yaml
     - id: long_text_retrieval
       config_path: configs/final_retrieval_matrix.yaml
-      config_sha256: fdc3c7d81dad03827cd1dd358823ea33c67eccea80713f7e1008a793f7fecbb9
+      config_sha256: a8f33a34fa8a5c4fdf2b19f49a773df7fe6c346bf432b78e8477cbaa1924a957
       suite_path: data/suites/final_retrieval.yaml
       suite_sha256: 45da0192ac240f991ad4e0a4617aa9eb0a22aaa43a1dfeabf30c9ee6d5f66636
       question_count: 48
@@ -92,10 +92,10 @@ models:
   - {id: mistral-7b-v0.3-q6, quantization: Q6_K, path: models/Mistral-7B-Instruct-v0.3-Q6_K.gguf, bytes: 5947248864, sha256: 757d75df89821a94841f341f3270b0709d36891dd8fbc41dfd059d213b54c3f5}
   - {id: mistral-7b-v0.3-q4, quantization: Q4_K_M, path: models/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf, bytes: 4372812000, sha256: 1270d22c0fbb3d092fb725d4d96c457b7b687a5f5a715abe1e818da303e562b6}
   - {id: mistral-7b-v0.3-q3, quantization: Q3_K_M, path: models/Mistral-7B-Instruct-v0.3-Q3_K_M.gguf, bytes: 3522941152, sha256: 145b11df092f04bbecb9fd99e83d1f3d8a6d1e53805682bfba1fe314f306e1d5}
-  - {id: gemma-3-12b-q8, quantization: Q8_0, path: models/google_gemma-3-12b-it-Q8_0.gguf, bytes: 12509949984, sha256: da78c6801f4fae0061780cdd0c12cf7b1deb4459587dca1c2d3c1c11528b60e1}
-  - {id: gemma-3-12b-q6, quantization: Q6_K, path: models/google_gemma-3-12b-it-Q6_K.gguf, bytes: 9660608544, sha256: a1385c0fd73b8fcb560bf55f9e1870346292a096476a2b9372aa04bd0aeae1d0}
-  - {id: gemma-3-12b-q4, quantization: Q4_K_M, path: models/google_gemma-3-12b-it-Q4_K_M.gguf, bytes: 7300575264, sha256: fc57f67efa46d711c346e587cbef7d049e95f3df8db2eb2271153343ef0acc7b}
-  - {id: gemma-3-12b-q3, quantization: Q3_K_M, path: models/google_gemma-3-12b-it-Q3_K_M.gguf, bytes: 6008614944, sha256: b566ae4850815706bbaa9105efa0e722421544aa41999424924d61f915ea868e}
+  - {id: granite-3.3-8b-q8, quantization: Q8_0, path: models/ibm-granite_granite-3.3-8b-instruct-Q8_0.gguf, bytes: 8684265280, sha256: 7946ace00c51b9b51a3fd9a03f2ea96dffba827e3ddab75e64dccd5fe13b08c9}
+  - {id: granite-3.3-8b-q6, quantization: Q6_K, path: models/ibm-granite_granite-3.3-8b-instruct-Q6_K.gguf, bytes: 6705464352, sha256: be93734464ab9001ec847480fbab4d833ca338b94895bd30921bdc8b9f81e3fc}
+  - {id: granite-3.3-8b-q4, quantization: Q4_K_M, path: models/ibm-granite_granite-3.3-8b-instruct-Q4_K_M.gguf, bytes: 4942873632, sha256: 758fb00abcec89df5cf02932165daf72f0d0b74db5019dbe9f2b3defb1e9295e}
+  - {id: granite-3.3-8b-q3, quantization: Q3_K_M, path: models/ibm-granite_granite-3.3-8b-instruct-Q3_K_M.gguf, bytes: 3996599328, sha256: 306800ddef522d8128b2dec43959bdfe3f2aeb77b3d13f2641dbc0ced8db29b2}
   - {id: qwen2.5-coder-7b-q8, quantization: Q8_0, path: models/qwen2.5-coder-7b-instruct-q8_0.gguf, bytes: 8098525184, sha256: b36a4e1c3ddf2ba6fd5501b926128e5fc6430881caaff07e9629bd18f06f685f}
   - {id: qwen2.5-coder-7b-q6, quantization: Q6_K, path: models/qwen2.5-coder-7b-instruct-q6_k.gguf, bytes: 6254198784, sha256: 46291ddea1bfb608fe63d9a1907eea6918bda87a7626593edc4bf97c5fd73f9d}
   - {id: qwen2.5-coder-7b-q4, quantization: Q4_K_M, path: models/qwen2.5-coder-7b-instruct-q4_k_m.gguf, bytes: 4683073536, sha256: 509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c}
@@ -104,6 +104,6 @@ models:
 preflight_smoke:
   status: pending
   config_path: configs/smoke_matrix.yaml
-  config_sha256: 7740d4971592fab29ba71e6e4986debd3c9a0f9adeac3c42c2051b6d8bc1fd23
+  config_sha256: 383e241450e82bd482eaa58531d9b60db62b47039ab8549dd452d6f2cff27342
   command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/smoke_matrix.yaml --skip-human-eval
   quantizations: [Q3_K_M, Q4_K_M, Q6_K, Q8_0]

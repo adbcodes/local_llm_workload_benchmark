@@ -9,19 +9,19 @@ from statistics import median
 from typing import Any
 
 
-FAMILY_ORDER = ["llama3.1", "qwen3", "mistral", "gemma3", "qwen2.5-coder"]
+FAMILY_ORDER = ["llama3.1", "qwen3", "mistral", "granite", "qwen2.5-coder"]
 FAMILY_LABELS = {
     "llama3.1": "Llama 3.1 8B",
     "qwen3": "Qwen3 8B",
     "mistral": "Mistral 7B v0.3",
-    "gemma3": "Gemma 3 12B",
+    "granite": "Granite 3.3 8B",
     "qwen2.5-coder": "Qwen2.5-Coder 7B",
 }
 FAMILY_COLORS = {
     "llama3.1": "#F57C00",
     "qwen3": "#2E7D32",
     "mistral": "#7B1FA2",
-    "gemma3": "#D32F2F",
+    "granite": "#D32F2F",
     "qwen2.5-coder": "#1565C0",
 }
 QUANT_ORDER = ["Q8", "Q6", "Q4", "Q3"]

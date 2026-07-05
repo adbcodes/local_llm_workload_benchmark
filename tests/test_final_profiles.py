@@ -27,7 +27,7 @@ def test_final_quantization_profiles_are_independent_and_complete() -> None:
             "llama-3.1-8b",
             "qwen3-8b",
             "mistral-7b-v0.3",
-            "gemma-3-12b",
+            "granite-3.3-8b",
             "qwen2.5-coder-7b",
         )
         for quantization in ("Q8_0", "Q6_K", "Q4_K_M", "Q3_K_M")

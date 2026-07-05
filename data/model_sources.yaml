@@ -32,16 +32,16 @@ families:
       - {quantization: Q6_K, remote_filename: Mistral-7B-Instruct-v0.3-Q6_K.gguf, local_path: models/Mistral-7B-Instruct-v0.3-Q6_K.gguf, bytes: 5947248864, sha256: 757d75df89821a94841f341f3270b0709d36891dd8fbc41dfd059d213b54c3f5}
       - {quantization: Q4_K_M, remote_filename: Mistral-7B-Instruct-v0.3-Q4_K_M.gguf, local_path: models/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf, bytes: 4372812000, sha256: 1270d22c0fbb3d092fb725d4d96c457b7b687a5f5a715abe1e818da303e562b6}
       - {quantization: Q3_K_M, remote_filename: Mistral-7B-Instruct-v0.3-Q3_K_M.gguf, local_path: models/Mistral-7B-Instruct-v0.3-Q3_K_M.gguf, bytes: 3522941152, sha256: 145b11df092f04bbecb9fd99e83d1f3d8a6d1e53805682bfba1fe314f306e1d5}
-  gemma3:
-    architecture: gemma-3-12b
-    upstream_model: https://huggingface.co/google/gemma-3-12b-it
-    gguf_repository: https://huggingface.co/bartowski/google_gemma-3-12b-it-GGUF
-    gguf_revision: 648e3a36a77c8a9f12d86e741f9dcb9089c769c4
+  granite:
+    architecture: granite-3.3-8b
+    upstream_model: https://huggingface.co/ibm-granite/granite-3.3-8b-instruct
+    gguf_repository: https://huggingface.co/bartowski/ibm-granite_granite-3.3-8b-instruct-GGUF
+    gguf_revision: 000bcc0448c24671ca97c24b2daa6dd693abc625
     files:
-      - {quantization: Q8_0, remote_filename: google_gemma-3-12b-it-Q8_0.gguf, local_path: models/google_gemma-3-12b-it-Q8_0.gguf, bytes: 12509949984, sha256: da78c6801f4fae0061780cdd0c12cf7b1deb4459587dca1c2d3c1c11528b60e1}
-      - {quantization: Q6_K, remote_filename: google_gemma-3-12b-it-Q6_K.gguf, local_path: models/google_gemma-3-12b-it-Q6_K.gguf, bytes: 9660608544, sha256: a1385c0fd73b8fcb560bf55f9e1870346292a096476a2b9372aa04bd0aeae1d0}
-      - {quantization: Q4_K_M, remote_filename: google_gemma-3-12b-it-Q4_K_M.gguf, local_path: models/google_gemma-3-12b-it-Q4_K_M.gguf, bytes: 7300575264, sha256: fc57f67efa46d711c346e587cbef7d049e95f3df8db2eb2271153343ef0acc7b}
-      - {quantization: Q3_K_M, remote_filename: google_gemma-3-12b-it-Q3_K_M.gguf, local_path: models/google_gemma-3-12b-it-Q3_K_M.gguf, bytes: 6008614944, sha256: b566ae4850815706bbaa9105efa0e722421544aa41999424924d61f915ea868e}
+      - {quantization: Q8_0, remote_filename: ibm-granite_granite-3.3-8b-instruct-Q8_0.gguf, local_path: models/ibm-granite_granite-3.3-8b-instruct-Q8_0.gguf, bytes: 8684265280, sha256: 7946ace00c51b9b51a3fd9a03f2ea96dffba827e3ddab75e64dccd5fe13b08c9}
+      - {quantization: Q6_K, remote_filename: ibm-granite_granite-3.3-8b-instruct-Q6_K.gguf, local_path: models/ibm-granite_granite-3.3-8b-instruct-Q6_K.gguf, bytes: 6705464352, sha256: be93734464ab9001ec847480fbab4d833ca338b94895bd30921bdc8b9f81e3fc}
+      - {quantization: Q4_K_M, remote_filename: ibm-granite_granite-3.3-8b-instruct-Q4_K_M.gguf, local_path: models/ibm-granite_granite-3.3-8b-instruct-Q4_K_M.gguf, bytes: 4942873632, sha256: 758fb00abcec89df5cf02932165daf72f0d0b74db5019dbe9f2b3defb1e9295e}
+      - {quantization: Q3_K_M, remote_filename: ibm-granite_granite-3.3-8b-instruct-Q3_K_M.gguf, local_path: models/ibm-granite_granite-3.3-8b-instruct-Q3_K_M.gguf, bytes: 3996599328, sha256: 306800ddef522d8128b2dec43959bdfe3f2aeb77b3d13f2641dbc0ced8db29b2}
   qwen2.5-coder:
     architecture: qwen2.5-coder-7b
     upstream_model: https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct

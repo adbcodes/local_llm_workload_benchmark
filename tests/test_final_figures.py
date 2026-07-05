@@ -9,7 +9,7 @@ from llm_workload_benchmark.final_figures import (
     quantization_tool_arguments,
 )
 
-FAMILIES = ("llama3.1", "qwen3", "mistral", "gemma3", "qwen2.5-coder")
+FAMILIES = ("llama3.1", "qwen3", "mistral", "granite", "qwen2.5-coder")
 
 
 def _item(

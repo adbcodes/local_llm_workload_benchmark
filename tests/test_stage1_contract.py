@@ -111,6 +111,6 @@ def test_stage1_smoke_contract_spans_families_and_quantizations() -> None:
         "llama-3.1-8b-q3",
         "qwen3-8b-q8",
         "mistral-7b-v0.3-q6",
-        "gemma-3-12b-q4",
+        "granite-3.3-8b-q4",
         "qwen2.5-coder-7b-q4",
     }

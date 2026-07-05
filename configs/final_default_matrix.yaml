@@ -48,16 +48,16 @@ models:
   - {<<: *mistral7, id: mistral-7b-v0.3-q6, model_path: models/Mistral-7B-Instruct-v0.3-Q6_K.gguf, quantization: Q6_K}
   - {<<: *mistral7, id: mistral-7b-v0.3-q4, model_path: models/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf, quantization: Q4_K_M}
   - {<<: *mistral7, id: mistral-7b-v0.3-q3, model_path: models/Mistral-7B-Instruct-v0.3-Q3_K_M.gguf, quantization: Q3_K_M}
-  - &gemma3
+  - &granite
     <<: *llama31
-    id: gemma-3-12b-q8
-    model_path: models/google_gemma-3-12b-it-Q8_0.gguf
+    id: granite-3.3-8b-q8
+    model_path: models/ibm-granite_granite-3.3-8b-instruct-Q8_0.gguf
     quantization: Q8_0
-    architecture: gemma-3-12b
-    family: gemma3
-  - {<<: *gemma3, id: gemma-3-12b-q6, model_path: models/google_gemma-3-12b-it-Q6_K.gguf, quantization: Q6_K}
-  - {<<: *gemma3, id: gemma-3-12b-q4, model_path: models/google_gemma-3-12b-it-Q4_K_M.gguf, quantization: Q4_K_M}
-  - {<<: *gemma3, id: gemma-3-12b-q3, model_path: models/google_gemma-3-12b-it-Q3_K_M.gguf, quantization: Q3_K_M}
+    architecture: granite-3.3-8b
+    family: granite
+  - {<<: *granite, id: granite-3.3-8b-q6, model_path: models/ibm-granite_granite-3.3-8b-instruct-Q6_K.gguf, quantization: Q6_K}
+  - {<<: *granite, id: granite-3.3-8b-q4, model_path: models/ibm-granite_granite-3.3-8b-instruct-Q4_K_M.gguf, quantization: Q4_K_M}
+  - {<<: *granite, id: granite-3.3-8b-q3, model_path: models/ibm-granite_granite-3.3-8b-instruct-Q3_K_M.gguf, quantization: Q3_K_M}
   - &qwen25coder
     <<: *llama31
     id: qwen2.5-coder-7b-q8
