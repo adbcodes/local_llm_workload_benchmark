@@ -30,7 +30,7 @@ class AdjudicationError(RuntimeError):
 JudgeBackendFactory = Callable[[JudgeConfig], JudgeBackend]
 ProgressCallback = Callable[[int, int, str], None]
 
-RouteKind = Literal["semantic_requirements", "blind_extraction"]
+RouteKind = Literal["semantic_requirements", "blind_extraction", "unresolved"]
 _BLIND_EXTRACTION_METHODS = {
     "numeric_tolerance",
     "rational_value",
@@ -48,7 +48,7 @@ _UNKNOWN_PARSE_REASONS = {
     "missing_or_ambiguous_rational_answer",
     "not_numeric",
 }
-_ROUTING_VERSION = 1
+_ROUTING_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -96,7 +96,7 @@ def adjudicate_experiment(
     completed_keys = {
         record["adjudication_key"]
         for record in existing
-        if record.get("status") == "completed"
+        if record.get("status") in {"completed", "unresolved"}
         and isinstance(record.get("adjudication_key"), str)
     }
 
@@ -112,20 +112,32 @@ def adjudicate_experiment(
                 continue
             if not isinstance(answer, str) or not answer.strip():
                 continue
-            route = adjudication_route(record, item)
+            route = safe_adjudication_route(
+                record,
+                item,
+                answer,
+                max_candidate_characters=config.judge.max_candidate_characters,
+            )
             if route is None:
                 continue
             key = _adjudication_key(record, item, route, answer, contract_hash)
             if key not in completed_keys:
                 queue.append(({**record, "adjudication_key": key}, item, route))
 
-    backend = judge_backend_factory(config.judge)
+    backend = (
+        judge_backend_factory(config.judge)
+        if any(route.kind != "unresolved" for _, _, route in queue)
+        else None
+    )
 
     def judge_one(
         entry: tuple[dict[str, Any], DatasetItem, AdjudicationRoute]
     ) -> dict[str, Any]:
         record, item, route = entry
         answer = str(record["evaluated_response"])
+        if route.kind == "unresolved":
+            return _unresolved_sidecar(record, item, route)
+        assert backend is not None
         try:
             seed = int(record.get("seed", config.benchmark.seed))
             deterministic_rescore = None
@@ -185,10 +197,11 @@ def adjudicate_experiment(
         "judge": config.judge.model_dump(mode="json", exclude={"cache_path"}),
         "records": len(all_records),
         "completed": sum(record.get("status") == "completed" for record in all_records),
+        "unresolved": sum(record.get("status") == "unresolved" for record in all_records),
         "judge_errors": sum(record.get("status") == "judge_error" for record in all_records),
         "routes": {
             route: sum(record.get("judge_route") == route for record in all_records)
-            for route in ("semantic_requirements", "blind_extraction")
+            for route in ("semantic_requirements", "blind_extraction", "unresolved")
         },
     }
     _write_json(output / "manifest.json", manifest)
@@ -200,7 +213,27 @@ def adjudication_route(
 ) -> AdjudicationRoute | None:
     """Select a judge route only when deterministic evidence is inconclusive."""
 
-    if semantic_requirements_for_item(item):
+    evaluation = record.get("evaluation")
+    evaluation = evaluation if isinstance(evaluation, dict) else {}
+    if (
+        record.get("finish_reason") == "length"
+        and evaluation.get("semantic_outcome") == "not_scored"
+    ):
+        return AdjudicationRoute(
+            kind="unresolved",
+            reason="output_truncated_without_complete_answer",
+        )
+
+    requirements = semantic_requirements_for_item(item)
+    if requirements:
+        details = evaluation.get("details")
+        details = details if isinstance(details, dict) else {}
+        if (
+            item.scoring.method == "tool_call"
+            and details.get("no_tool_expected") is True
+            and isinstance(details.get("actual_tool"), str)
+        ):
+            return None
         return AdjudicationRoute(
             kind="semantic_requirements",
             reason="meaning_requires_semantic_evaluation",
@@ -209,8 +242,7 @@ def adjudication_route(
     method = item.scoring.method
     if method not in _BLIND_EXTRACTION_METHODS:
         return None
-    evaluation = record.get("evaluation")
-    if not isinstance(evaluation, dict) or evaluation.get("passed") is True:
+    if not evaluation or evaluation.get("passed") is True:
         return None
 
     semantic_outcome = evaluation.get("semantic_outcome")
@@ -234,6 +266,63 @@ def adjudication_route(
             reason="exact_string_mismatch_does_not_establish_claimed_meaning",
         )
     return None
+
+
+def safe_adjudication_route(
+    record: dict[str, Any],
+    item: DatasetItem,
+    answer: str,
+    *,
+    max_candidate_characters: int,
+) -> AdjudicationRoute | None:
+    """Apply non-LLM safety limits after ordinary eligibility routing."""
+
+    route = adjudication_route(record, item)
+    if (
+        route is not None
+        and route.kind != "unresolved"
+        and len(answer) > max_candidate_characters
+    ):
+        return AdjudicationRoute(
+            kind="unresolved",
+            reason="candidate_exceeds_judge_character_limit",
+        )
+    return route
+
+
+def _unresolved_sidecar(
+    record: dict[str, Any],
+    item: DatasetItem,
+    route: AdjudicationRoute,
+) -> dict[str, Any]:
+    return {
+        "schema_version": 2,
+        "status": "unresolved",
+        "adjudication_key": record["adjudication_key"],
+        "model_id": record.get("model_id"),
+        "benchmark": item.benchmark,
+        "item_id": item.id,
+        "repetition": record.get("repetition"),
+        "response_sha256": hashlib.sha256(
+            str(record["evaluated_response"]).encode("utf-8")
+        ).hexdigest(),
+        "deterministic_evaluation": record.get("evaluation"),
+        "judge_route": route.kind,
+        "route_reason": route.reason,
+        "judge_evaluation": None,
+        "deterministic_rescore": None,
+        "derived": {
+            "semantic_status": "unknown",
+            "semantic_correct": None,
+            "instruction_compliant": None,
+            "format_correct": False,
+            "strict_pass": False,
+            "loose_pass": False,
+            "format_tax": False,
+            "unresolved_reason": route.reason,
+        },
+        "error": None,
+    }
 
 
 def _sidecar_record(

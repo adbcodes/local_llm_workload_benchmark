@@ -6,7 +6,12 @@ from types import SimpleNamespace
 import pytest
 
 from llm_workload_benchmark.config import JudgeConfig, load_config
-from llm_workload_benchmark.dataset import DatasetError, load_suite, score_answer
+from llm_workload_benchmark.dataset import (
+    DatasetError,
+    DatasetItem,
+    load_suite,
+    score_answer,
+)
 from llm_workload_benchmark.judge import (
     CachedJudgeBackend,
     CerebrasJudgeBackend,
@@ -15,6 +20,8 @@ from llm_workload_benchmark.judge import (
     JudgeError,
     SummaryJudgeDecision,
     SemanticJudgeDecision,
+    _blind_extraction_instructions,
+    _is_rate_limit_error,
     _rate_limit_retry_after_seconds,
     evaluate_summary,
     evaluate_summary_panel,
@@ -194,6 +201,66 @@ def test_groq_judge_parses_long_reset_and_respects_wait_cap() -> None:
             seed=42,
         )
     assert not sleeps
+
+
+def test_rate_limit_detection_accepts_cerebras_rpm_message_without_status() -> None:
+    error = RuntimeError("Requests per minute limit exceeded - too many requests sent.")
+
+    assert _is_rate_limit_error(error)
+    assert _rate_limit_retry_after_seconds(error) is None
+
+
+def test_blind_extraction_instructions_are_type_specific() -> None:
+    suite = load_suite(Path("data/suites/final_six.yaml"))
+    date_item = next(
+        item
+        for items in suite.items.values()
+        for item in items
+        if item.scoring.method == "date_value"
+    )
+    json_item = suite.items["messy_text_to_schema"][0]
+    set_item = DatasetItem.model_validate(
+        {
+            "id": "set_instruction_test",
+            "benchmark": "judge_test",
+            "subcategory": "set",
+            "difficulty": "easy",
+            "split": "dev",
+            "prompt": "Return the matching labels.",
+            "response_contract": {
+                "type": "text",
+                "format": "comma_separated_labels",
+            },
+            "expected": {"value": ["north", "west"]},
+            "scoring": {
+                "method": "set_match",
+                "parameters": {"separator": ",", "case_sensitive": False},
+            },
+            "provenance": {
+                "kind": "hand_authored",
+                "review_status": "human_checked",
+            },
+        }
+    )
+
+    date_format = _blind_extraction_instructions(date_item)[
+        "extracted_answer_format"
+    ]
+    json_format = _blind_extraction_instructions(json_item)[
+        "extracted_answer_format"
+    ]
+    set_format = _blind_extraction_instructions(set_item)[
+        "extracted_answer_format"
+    ]
+
+    assert "YYYY-MM-DD" in date_format
+    assert "ISO 8601" in date_format
+    assert "valid compact JSON" in json_format
+    assert "no Markdown fence or prose" in json_format
+    assert "distinct claimed set member once" in set_format
+    date_instructions = _blind_extraction_instructions(date_item)
+    assert date_instructions["valid_extracted_answer_example"] == "2026-07-05"
+    assert "05/07/2026" in date_instructions["invalid_extracted_answer_examples"]
 
 
 def test_cerebras_judge_sends_supported_structured_output_parameters() -> None:
@@ -395,6 +462,13 @@ def test_tool_semantic_judge_receives_only_the_direct_answer_text() -> None:
     assert result.passed
     prompt = json.loads(backend.calls[0]["user_prompt"])
     assert prompt["candidate"] == candidate["answer"]
+    assert "reference_answer" not in prompt
+    assert set(prompt) == {
+        "task",
+        "conversation",
+        "semantic_requirements",
+        "candidate",
+    }
 
 
 def test_pointwise_judge_enforces_mechanical_gate_and_critical_error() -> None:

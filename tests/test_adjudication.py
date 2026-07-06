@@ -5,6 +5,7 @@ from llm_workload_benchmark.adjudication import (
     _derive_outcomes,
     adjudicate_experiment,
     adjudication_route,
+    safe_adjudication_route,
 )
 from llm_workload_benchmark.config import BenchmarkConfig
 from llm_workload_benchmark.dataset import load_suite, score_answer
@@ -263,6 +264,55 @@ def test_routing_keeps_authoritative_failures_out_of_judging() -> None:
     assert adjudication_route(code_record, code_item) is None
 
 
+def test_routing_records_unfinished_and_oversized_answers_as_unresolved() -> None:
+    item = load_suite(Path("data/suites/reasoning.yaml")).items[
+        "applied_reasoning"
+    ][0]
+    truncated = _finalized_record(item, "I am still calculating 100 +")
+    truncated["finish_reason"] = "length"
+
+    route = adjudication_route(truncated, item)
+
+    assert route is not None
+    assert route.kind == "unresolved"
+    assert route.reason == "output_truncated_without_complete_answer"
+
+    unknown = _finalized_record(item, "The answer is written out in words.")
+    route = safe_adjudication_route(
+        unknown,
+        item,
+        "x" * 12_001,
+        max_candidate_characters=12_000,
+    )
+    assert route is not None
+    assert route.kind == "unresolved"
+    assert route.reason == "candidate_exceeds_judge_character_limit"
+
+
+def test_no_tool_item_with_an_actual_tool_call_bypasses_semantic_judge() -> None:
+    item = {
+        candidate.id: candidate
+        for candidate in load_suite(Path("data/suites/final_six.yaml")).items[
+            "tool_use"
+        ]
+    }["tool_use_023"]
+    answer = json.dumps(
+        {
+            "tool_call": "cancel_order",
+            "arguments": {
+                "order_id": "O-991",
+                "reason": "duplicate order",
+                "confirmed": False,
+            },
+        }
+    )
+    record = _finalized_record(item, answer)
+
+    assert record["evaluation"]["details"]["no_tool_expected"] is True
+    assert record["evaluation"]["details"]["actual_tool"] == "cancel_order"
+    assert adjudication_route(record, item) is None
+
+
 def test_blind_extraction_is_rescored_without_exposing_task_or_gold(
     tmp_path: Path,
 ) -> None:
@@ -342,8 +392,12 @@ def test_blind_extraction_is_rescored_without_exposing_task_or_gold(
         "response_contract",
         "scoring_method",
         "normalization_hints",
+        "extraction_instructions",
         "candidate",
     }
+    assert "no quotation marks" in judge_payload["extraction_instructions"][
+        "extracted_answer_format"
+    ]
     assert item.prompt not in str(backend.calls[0]["user_prompt"])
     assert "reference_answer" not in judge_payload
 
