@@ -1,0 +1,17 @@
+schema_version: 1
+dataset_path: data/judge_evaluation/cases.yaml
+output_root: runs/judge-evaluation
+seed: 42
+judge:
+  provider: cerebras
+  model: gpt-oss-120b
+  family: openai
+  reasoning_effort: medium
+  max_completion_tokens: 4096
+  timeout_seconds: 60
+  max_retries: 3
+  rate_limit_cooldown_retries: 1
+  rate_limit_fallback_wait_seconds: 60
+  rate_limit_max_wait_seconds: 3600
+  max_candidate_characters: 12000
+  cache_path: runs/judge-evaluation/cache.jsonl

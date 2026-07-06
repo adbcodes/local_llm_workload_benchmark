@@ -28,6 +28,7 @@ llama-cpp = [
 
 [project.scripts]
 llm-benchmark = "llm_workload_benchmark.cli:app"
+llm-judge-evaluation = "llm_workload_benchmark.judge_evaluation_cli:app"
 
 [dependency-groups]
 dev = [
