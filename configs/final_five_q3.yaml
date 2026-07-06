@@ -1,0 +1,51 @@
+schema_version: 1
+benchmark:
+  name: final-five-workload-quantization-matrix-q3-calibration
+  description: Five non-retrieval workloads across five model families and four quantizations.
+  workload_path: data/suites/final_five.yaml
+  output_root: runs
+  repetitions: 1
+  seed: 42
+models:
+  - &llama31
+    id: llama-3.1-8b-q3
+    backend: llama_cpp
+    model_path: models/Meta-Llama-3.1-8B-Instruct-Q3_K_M.gguf
+    quantization: Q3_K_M
+    architecture: llama-3.1-8b
+    family: llama3.1
+    context_window: 16384
+    gpu_layers: -1
+    batch_size: 512
+    flash_attention: true
+    generation: &default_generation
+      {max_output_tokens: 4096, temperature: 0.0, top_p: 1.0, top_k: 40,
+       repeat_penalty: 1.0, constrained_decoding: none}
+  - &qwen3
+    <<: *llama31
+    id: qwen3-8b-q3
+    model_path: models/Qwen3-8B-Q3_K_M.gguf
+    architecture: qwen3-8b
+    family: qwen3
+    response_cleanup: strip_think
+    system_prompt: |-
+      /no_think
+      Follow the user's instructions precisely. Return only the requested answer without commentary.
+  - &mistral7
+    <<: *llama31
+    id: mistral-7b-v0.3-q3
+    model_path: models/Mistral-7B-Instruct-v0.3-Q3_K_M.gguf
+    architecture: mistral-7b-v0.3
+    family: mistral
+  - &granite
+    <<: *llama31
+    id: granite-3.3-8b-q3
+    model_path: models/ibm-granite_granite-3.3-8b-instruct-Q3_K_M.gguf
+    architecture: granite-3.3-8b
+    family: granite
+  - &qwen25coder
+    <<: *llama31
+    id: qwen2.5-coder-7b-q3
+    model_path: models/qwen2.5-coder-7b-instruct-q3_k_m.gguf
+    architecture: qwen2.5-coder-7b
+    family: qwen2.5-coder
