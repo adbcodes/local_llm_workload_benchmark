@@ -70,6 +70,9 @@ def test_number_parser_rejects_surrounding_explanation() -> None:
         ("30$", "$", (), 30),
         ("45km", "km", ("kilometres",), 45),
         ("45 kilometres", "km", ("kilometres",), 45),
+        ("78 kg", "kg", ("kilogram", "kilograms"), 78),
+        ("1050 rupees", "rupees", ("rupee", "₹", "INR"), 1050),
+        ("₹1050", "rupees", ("rupee", "₹", "INR"), 1050),
     ],
 )
 def test_number_parser_handles_generic_wrappers_and_declared_units(

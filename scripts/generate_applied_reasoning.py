@@ -14,6 +14,7 @@ import yaml
 GENERATOR = "applied_reasoning"
 GENERATOR_VERSION = "applied_reasoning_v3"
 DEFAULT_SEED = 20260731
+RUPEE_ALIASES = ("rupee", "₹", "INR")
 FINAL_ANSWER_INSTRUCTION = (
     "You may show concise working before the final line. End with exactly one final "
     "line containing only FINAL: followed by the answer and requested unit, if any. "
@@ -140,6 +141,8 @@ def _arithmetic() -> list[Scenario]:
             "shipping. Do not round intermediate values. What is the amount charged "
             "in rupees?",
             1803.9,
+            answer_unit="rupees",
+            unit_aliases=RUPEE_ALIASES,
             tags=("billing_reconciliation", "sequential_operations"),
         ),
         Scenario(
@@ -150,6 +153,8 @@ def _arithmetic() -> list[Scenario]:
             "not discount viewer seats. A ₹600 credit memo is then applied. There is "
             "no tax. What amount is due in rupees?",
             invoice_due.numerator,
+            answer_unit="rupees",
+            unit_aliases=RUPEE_ALIASES,
             tags=("billing_reconciliation", "selective_discount", "credit_memo"),
         ),
         Scenario(
@@ -160,6 +165,8 @@ def _arithmetic() -> list[Scenario]:
             "replica needs 27 GB. What is the maximum number of whole replicas that "
             "can be added without exceeding usable memory?",
             int((usable_memory - 510) // 27),
+            answer_unit="replicas",
+            unit_aliases=("replica",),
             tags=("capacity", "reserved_headroom", "integer_limit"),
         ),
         Scenario(
@@ -184,6 +191,8 @@ def _arithmetic() -> list[Scenario]:
             "and each new tenant needs 3.4 TB. What is the maximum number of whole "
             "new tenants the pool can accept?",
             int((usable_storage - 116) // Fraction(34, 10)),
+            answer_unit="tenants",
+            unit_aliases=("tenant",),
             tags=("capacity", "storage_overhead", "reserved_headroom"),
         ),
     ]
@@ -210,6 +219,8 @@ def _ratios() -> list[Scenario]:
             "Two food banks split 143 supply boxes in the ratio 5:8. How many boxes "
             "does the bank receiving the smaller share get?",
             55,
+            answer_unit="boxes",
+            unit_aliases=("box",),
             tags=("sanity", "ratio", "practical_context"),
         ),
         Scenario(
@@ -230,6 +241,13 @@ def _ratios() -> list[Scenario]:
             "while green is intentionally limited to 75% of its capacity. What is "
             "the combined live capacity in requests per minute?",
             1170,
+            answer_unit="requests per minute",
+            unit_aliases=(
+                "request per minute",
+                "requests/minute",
+                "request/minute",
+                "rpm",
+            ),
             tags=("capacity", "percentage_limits", "migration"),
         ),
         Scenario(
@@ -239,6 +257,8 @@ def _ratios() -> list[Scenario]:
             "The link sustains 75 MB/s for the first 2 hours and 120 MB/s afterward. "
             "Ignore protocol overhead. How many minutes does the entire copy take?",
             295,
+            answer_unit="minutes",
+            unit_aliases=("minute", "min", "mins"),
             tags=("data_migration", "rate_change", "unit_conversion"),
         ),
         Scenario(
@@ -278,6 +298,8 @@ def _algebra() -> list[Scenario]:
             "Seven identical storage crates plus a ₹9 handling refund produce a net "
             "charge of ₹82. What was the charge per crate in rupees?",
             13,
+            answer_unit="rupees",
+            unit_aliases=RUPEE_ALIASES,
             tags=("sanity", "linear_equation", "practical_context"),
         ),
         Scenario(
@@ -286,6 +308,8 @@ def _algebra() -> list[Scenario]:
             "A venue sold 18 tickets. Adult tickets cost ₹320, child tickets ₹180, "
             "and total sales were ₹4360. How many adult tickets were sold?",
             8,
+            answer_unit="tickets",
+            unit_aliases=("ticket",),
             tags=("reconciliation", "two_rate_mix"),
         ),
         Scenario(
@@ -295,6 +319,8 @@ def _algebra() -> list[Scenario]:
             "of analyst seats at ₹460 each, and a ₹350 credit. The pre-tax amount "
             "after the credit is ₹6790. How many analyst seats were billed?",
             7,
+            answer_unit="seats",
+            unit_aliases=("seat",),
             tags=("billing_reconciliation", "missing_quantity"),
         ),
         Scenario(
@@ -304,6 +330,8 @@ def _algebra() -> list[Scenario]:
             "The payment processor withholds 2% of the gross charge and deposits "
             "₹47040. What was the price of each license in rupees?",
             1200,
+            answer_unit="rupees",
+            unit_aliases=RUPEE_ALIASES,
             tags=("billing_reconciliation", "reverse_percentage"),
         ),
         Scenario(
@@ -314,6 +342,8 @@ def _algebra() -> list[Scenario]:
             "of 12% applies to hourly charges under either plan but not to the "
             "up-front fee. At how many instance-hours are the total costs equal?",
             500,
+            answer_unit="instance-hours",
+            unit_aliases=("instance-hour", "instance hours", "instance hour"),
             tags=("billing_reconciliation", "break_even", "discount_scope"),
         ),
         Scenario(
@@ -324,6 +354,8 @@ def _algebra() -> list[Scenario]:
             "the entire pre-tax subtotal, then 18% tax is added. The final invoice is "
             f"₹{float(final_invoice):.2f}. How many overage units were billed?",
             350,
+            answer_unit="overage units",
+            unit_aliases=("overage unit", "units", "unit"),
             tags=("billing_reconciliation", "reverse_multi_step", "unknown_usage"),
         ),
     ]
@@ -339,6 +371,8 @@ def _number_properties() -> list[Scenario]:
             "One maintenance check repeats every 18 days and another every 24 days. "
             "If both happen today, after how many days will they next happen together?",
             72,
+            answer_unit="days",
+            unit_aliases=("day",),
             tags=("sanity", "maintenance_windows", "lcm"),
         ),
         Scenario(
@@ -348,6 +382,8 @@ def _number_properties() -> list[Scenario]:
             "except IDs also divisible by 12 route to reconciliation instead. How "
             "many IDs route to shard A?",
             42,
+            answer_unit="IDs",
+            unit_aliases=("ID",),
             tags=("filtering", "inclusion_exclusion", "routing"),
         ),
         Scenario(
@@ -357,6 +393,8 @@ def _number_properties() -> list[Scenario]:
             "at 10 seconds. A request fails five times and succeeds on the sixth "
             "attempt. How many total seconds are spent waiting between attempts?",
             34,
+            answer_unit="seconds",
+            unit_aliases=("second", "sec", "secs"),
             tags=("retry_backoff", "cap", "sequence"),
         ),
         Scenario(
@@ -378,6 +416,8 @@ def _number_properties() -> list[Scenario]:
             "client waits 1, 2, 4, and 8 seconds respectively. From the start of "
             "attempt 1, how many seconds elapse until success?",
             66,
+            answer_unit="seconds",
+            unit_aliases=("second", "sec", "secs"),
             tags=("retry_backoff", "timeouts", "elapsed_time"),
         ),
         Scenario(
@@ -387,6 +427,8 @@ def _number_properties() -> list[Scenario]:
             "starts 6 minutes after midnight and then every 24 minutes. How many "
             "minutes after midnight is their first simultaneous start?",
             54,
+            answer_unit="minutes",
+            unit_aliases=("minute", "min", "mins"),
             tags=("maintenance_windows", "offset_recurrence", "congruence"),
         ),
     ]

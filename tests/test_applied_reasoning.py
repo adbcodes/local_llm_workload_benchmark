@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 from llm_workload_benchmark.config import load_config
-from llm_workload_benchmark.dataset import load_suite
+from llm_workload_benchmark.dataset import load_suite, score_answer
 
 
 SUITE_PATH = Path("data/suites/reasoning.yaml")
@@ -73,6 +73,25 @@ def test_applied_reasoning_yaml_is_the_curated_authoring_source() -> None:
         item["provenance"]["review_status"] == "human_checked"
         for item in document["items"]
     )
+
+
+def test_numeric_questions_accept_their_requested_units() -> None:
+    items = [
+        item
+        for item in load_suite(SUITE_PATH).items["applied_reasoning"]
+        if item.scoring.method == "numeric_tolerance"
+    ]
+
+    assert len(items) == 19
+    for item in items:
+        answer_unit = item.scoring.parameters.get("answer_unit")
+        assert isinstance(answer_unit, str), item.id
+        answer = f"FINAL: {item.expected['value']} {answer_unit}"
+        assert score_answer(item, answer).passed, item.id
+        assert not score_answer(
+            item,
+            f"FINAL: {item.expected['value']} furlongs",
+        ).passed, item.id
 
 
 def test_every_applied_reasoning_gold_matches_independent_ledger() -> None:

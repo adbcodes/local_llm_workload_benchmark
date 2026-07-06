@@ -60,6 +60,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: rupees
+      unit_aliases:
+      - rupee
+      - ₹
+      - INR
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -88,6 +93,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: rupees
+      unit_aliases:
+      - rupee
+      - ₹
+      - INR
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -117,6 +127,9 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: replicas
+      unit_aliases:
+      - replica
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -177,6 +190,9 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: tenants
+      unit_aliases:
+      - tenant
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -205,6 +221,9 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: boxes
+      unit_aliases:
+      - box
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -261,6 +280,12 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: requests per minute
+      unit_aliases:
+      - request per minute
+      - requests/minute
+      - request/minute
+      - rpm
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -290,6 +315,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: minutes
+      unit_aliases:
+      - minute
+      - min
+      - mins
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -377,6 +407,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: rupees
+      unit_aliases:
+      - rupee
+      - ₹
+      - INR
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -405,6 +440,9 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: tickets
+      unit_aliases:
+      - ticket
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -433,6 +471,9 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: seats
+      unit_aliases:
+      - seat
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -460,6 +501,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: rupees
+      unit_aliases:
+      - rupee
+      - ₹
+      - INR
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -488,6 +534,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: instance-hours
+      unit_aliases:
+      - instance-hour
+      - instance hours
+      - instance hour
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -517,6 +568,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: overage units
+      unit_aliases:
+      - overage unit
+      - units
+      - unit
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -545,6 +601,9 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: days
+      unit_aliases:
+      - day
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -573,6 +632,9 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: IDs
+      unit_aliases:
+      - ID
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -602,6 +664,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: seconds
+      unit_aliases:
+      - second
+      - sec
+      - secs
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -660,6 +727,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: seconds
+      unit_aliases:
+      - second
+      - sec
+      - secs
   provenance:
     kind: synthetic
     review_status: human_checked
@@ -688,6 +760,11 @@ items:
     parameters:
       absolute_tolerance: 1.0e-09
       allow_surrounding_text: true
+      answer_unit: minutes
+      unit_aliases:
+      - minute
+      - min
+      - mins
   provenance:
     kind: synthetic
     review_status: human_checked
