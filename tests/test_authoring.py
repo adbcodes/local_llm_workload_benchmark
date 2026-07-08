@@ -15,7 +15,7 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
 ) -> None:
     data_root = tmp_path / "data"
     shutil.copytree(SOURCE_ROOT, data_root)
-    suite_path = data_root / "suites" / "final_six.yaml"
+    suite_path = data_root / "suites" / "final_deterministic.yaml"
 
     first = build_authoring_suite(suite_path)
     assert not first.written
@@ -59,7 +59,7 @@ def test_suite_filters_select_smoke_items_across_benchmarks() -> None:
 
 
 def test_deterministic_suite_excludes_external_judge_items() -> None:
-    suite = load_suite(SOURCE_ROOT / "suites" / "final_six.yaml")
+    suite = load_suite(SOURCE_ROOT / "suites" / "final_deterministic.yaml")
 
     assert sum(len(items) for items in suite.items.values()) == 360
     assert all(

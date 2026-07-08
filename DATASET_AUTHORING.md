@@ -20,8 +20,8 @@ subcategory shards as needed.
 ## Build and validate
 
 ```bash
-uv run llm-benchmark dataset build --suite data/suites/final_six.yaml
-uv run llm-benchmark dataset build --suite data/suites/judged.yaml
+uv run llm-benchmark dataset build --suite data/suites/final_deterministic.yaml
+uv run llm-benchmark dataset build --suite data/suites/grounded_compression.yaml
 ```
 
 The command rewrites only JSONL files whose YAML source changed. `run` and
@@ -31,7 +31,7 @@ CI can verify that committed JSONL is current without modifying it:
 
 ```bash
 uv run llm-benchmark dataset build \
-  --suite data/suites/final_six.yaml \
+  --suite data/suites/final_deterministic.yaml \
   --check
 ```
 
@@ -43,28 +43,32 @@ Set `benchmark.workload_path` in a model config to one of the suite manifests:
 - `data/suites/structured.yaml`
 - `data/suites/instruction.yaml`
 - `data/suites/coding.yaml`
-- `data/suites/judged.yaml`
+- `data/suites/grounded_compression.yaml`
 - `data/suites/smoke.yaml`
-- `data/suites/final_five.yaml`
+- `data/suites/final_workloads.yaml`
 - `data/suites/final_retrieval.yaml`
-- `data/suites/final_six.yaml`
+- `data/suites/final_deterministic.yaml`
 
 A suite selects benchmark files and may optionally filter item IDs,
 subcategories, difficulties, splits, or review statuses. The smoke suite shows
 an explicit-ID example.
 
-Run the final deterministic evidence as two independent matrices:
+Run the final evidence as three independent matrices:
 
 ```bash
 uv run llm-benchmark benchmark \
-  --config configs/final_default_matrix.yaml
+  --config configs/final_workloads_matrix.yaml
 uv run llm-benchmark benchmark \
   --config configs/final_retrieval_matrix.yaml
+uv run llm-benchmark benchmark \
+  --config configs/final_grounded_compression_matrix.yaml
 ```
 
-The five-workload matrix contains 272 questions; retrieval contains 48. Both
-use the same 20 model/quantization configurations. `grounded_compression` stays
-separate under `data/suites/judged.yaml` and is not run until its Stage 2 audit.
+The main workload matrix contains 312 questions across six benchmarks,
+including email-to-action inbox routing. Retrieval contains 48 questions and
+grounded compression contains 30. All three use the same 20 model/quantization
+configurations; grounded compression additionally uses the configured Cerebras
+judge.
 
 ## Applied Reasoning sources
 

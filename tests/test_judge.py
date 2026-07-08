@@ -20,8 +20,10 @@ from llm_workload_benchmark.judge import (
     JudgeError,
     SummaryJudgeDecision,
     SemanticJudgeDecision,
+    _JudgeRequestLimiter,
     _blind_extraction_instructions,
     _is_rate_limit_error,
+    _parse_rate_limit_wait,
     _rate_limit_retry_after_seconds,
     evaluate_summary,
     evaluate_summary_panel,
@@ -34,7 +36,7 @@ from llm_workload_benchmark.runner import (
     run_benchmark,
 )
 
-JUDGED_SUITE_PATH = Path("data/suites/judged.yaml").resolve()
+JUDGED_SUITE_PATH = Path("data/suites/grounded_compression.yaml").resolve()
 
 
 def _decision(*, critical_error: bool = False) -> SummaryJudgeDecision:
@@ -99,9 +101,12 @@ def test_judge_defaults_leave_room_for_reasoning_and_structured_output() -> None
     assert config.reasoning_effort == "medium"
     assert config.max_completion_tokens == 4096
     assert config.cache_path is None
-    assert config.rate_limit_cooldown_retries == 1
+    assert config.rate_limit_cooldown_retries == 3
     assert config.rate_limit_fallback_wait_seconds == 60
     assert config.rate_limit_max_wait_seconds == 3600
+    assert config.requests_per_minute == 5
+    assert config.requests_per_hour == 150
+    assert config.rate_limit_safety_seconds == 0.25
 
 
 def test_cerebras_judge_uses_provider_specific_defaults() -> None:
@@ -210,8 +215,60 @@ def test_rate_limit_detection_accepts_cerebras_rpm_message_without_status() -> N
     assert _rate_limit_retry_after_seconds(error) is None
 
 
+def test_judge_request_limiter_uses_stricter_hourly_quota() -> None:
+    clock = SimpleNamespace(value=100.0)
+    sleeps: list[float] = []
+
+    def sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        clock.value += seconds
+
+    limiter = _JudgeRequestLimiter(
+        JudgeConfig(rate_limit_safety_seconds=0),
+        sleep=sleep,
+        monotonic=lambda: clock.value,
+    )
+
+    assert limiter.acquire() == 0
+    assert limiter.acquire() == pytest.approx(24.0)
+    assert sleeps == [24.0]
+
+
+def test_rate_limit_reset_headers_accept_provider_duration_format() -> None:
+    assert _parse_rate_limit_wait("2m59.56s") == pytest.approx(179.56)
+
+    error = FakeRateLimitError("rate limited")
+    error.response.headers = {"x-ratelimit-reset-requests": "1m2.5s"}
+    assert _rate_limit_retry_after_seconds(error) == pytest.approx(62.5)
+
+
+def test_judge_request_limiter_honors_exhausted_response_headers() -> None:
+    clock = SimpleNamespace(value=100.0)
+    sleeps: list[float] = []
+
+    def sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        clock.value += seconds
+
+    limiter = _JudgeRequestLimiter(
+        JudgeConfig(rate_limit_safety_seconds=0),
+        sleep=sleep,
+        monotonic=lambda: clock.value,
+    )
+    assert limiter.acquire() == 0
+    limiter.observe_headers(
+        {
+            "x-ratelimit-remaining-requests": "0",
+            "x-ratelimit-reset-requests": "30s",
+        }
+    )
+
+    assert limiter.acquire() == pytest.approx(30.0)
+    assert sleeps == [30.0]
+
+
 def test_blind_extraction_instructions_are_type_specific() -> None:
-    suite = load_suite(Path("data/suites/final_six.yaml"))
+    suite = load_suite(Path("data/suites/final_deterministic.yaml"))
     date_item = next(
         item
         for items in suite.items.values()
@@ -426,7 +483,7 @@ def test_semantic_judge_detects_negated_instruction_fact() -> None:
 def test_tool_semantic_judge_receives_only_the_direct_answer_text() -> None:
     item = {
         candidate.id: candidate
-        for candidate in load_suite(Path("data/suites/final_six.yaml")).items["tool_use"]
+        for candidate in load_suite(Path("data/suites/final_deterministic.yaml")).items["tool_use"]
     }["tool_use_027"]
     requirement = semantic_requirements_for_item(item)[0]
     decision = SemanticJudgeDecision.model_validate(

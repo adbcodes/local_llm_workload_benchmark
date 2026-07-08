@@ -79,11 +79,14 @@ models:
 
 def test_retained_matrix_configs_load() -> None:
     smoke = load_config(Path("configs/smoke_matrix.yaml"))
-    five = load_config(Path("configs/final_default_matrix.yaml"))
+    workloads = load_config(Path("configs/final_workloads_matrix.yaml"))
     retrieval = load_config(Path("configs/final_retrieval_matrix.yaml"))
+    compression = load_config(
+        Path("configs/final_grounded_compression_matrix.yaml")
+    )
 
     assert len(smoke.models) == 5
-    assert len(five.models) == len(retrieval.models) == 20
+    assert len(workloads.models) == len(retrieval.models) == len(compression.models) == 20
     assert smoke.benchmark.workload_path == Path("data/suites/smoke.yaml")
     assert {model.quantization for model in smoke.models} == {
         "Q3_K_M",
@@ -91,7 +94,11 @@ def test_retained_matrix_configs_load() -> None:
         "Q6_K",
         "Q8_0",
     }
-    assert five.benchmark.workload_path == Path("data/suites/final_five.yaml")
+    assert workloads.benchmark.workload_path == Path("data/suites/final_workloads.yaml")
     assert retrieval.benchmark.workload_path == Path(
         "data/suites/final_retrieval.yaml"
     )
+    assert compression.benchmark.workload_path == Path(
+        "data/suites/grounded_compression.yaml"
+    )
+    assert compression.judge is not None

@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, replace
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Callable, Literal, Protocol
 
@@ -670,6 +671,7 @@ class _StructuredChatJudgeBackend:
         self._client = client
         self._sleep = sleep
         self._retry_notifier = retry_notifier or _notify_rate_limit_retry
+        self._request_limiter = _JudgeRequestLimiter(config, sleep=sleep)
 
     def evaluate(
         self,
@@ -747,10 +749,16 @@ class _StructuredChatJudgeBackend:
         seed: int,
     ) -> tuple[Any, int, float]:
         retries = 0
-        waited_seconds = 0.0
+        limiter = self._get_request_limiter()
+        waited_seconds = limiter.acquire()
+        if waited_seconds:
+            self._retry_notifier(
+                f"{self._provider_name} judge pacing active; waiting "
+                f"{waited_seconds:.1f}s before the next request."
+            )
         while True:
             try:
-                completion = self._client.chat.completions.create(
+                completion, headers = self._create_completion(
                     model=self._config.model,
                     messages=[
                         {"role": "system", "content": system_prompt},
@@ -772,6 +780,7 @@ class _StructuredChatJudgeBackend:
                     },
                     **self._provider_request_options(),
                 )
+                limiter.observe_headers(headers)
                 return completion, retries, waited_seconds
             except Exception as error:
                 if not _is_rate_limit_error(error):
@@ -802,6 +811,23 @@ class _StructuredChatJudgeBackend:
                     f"{retries}/{self._config.rate_limit_cooldown_retries}."
                 )
                 self._sleep(wait_seconds)
+
+    def _get_request_limiter(self) -> "_JudgeRequestLimiter":
+        limiter = getattr(self, "_request_limiter", None)
+        if limiter is None:
+            limiter = _JudgeRequestLimiter(self._config, sleep=self._sleep)
+            self._request_limiter = limiter
+        return limiter
+
+    def _create_completion(self, **arguments: Any) -> tuple[Any, Any]:
+        completions = self._client.chat.completions
+        raw_api = getattr(completions, "with_raw_response", None)
+        raw_create = getattr(raw_api, "create", None)
+        if callable(raw_create):
+            response = raw_create(**arguments)
+            completion = response.parse()
+            return completion, getattr(response, "headers", None)
+        return completions.create(**arguments), None
 
     def _provider_request_options(self) -> dict[str, Any]:
         return {}
@@ -1148,15 +1174,15 @@ def _rate_limit_retry_after_seconds(error: Exception) -> float | None:
     response = getattr(error, "response", None)
     headers = getattr(response, "headers", None)
     if headers is not None:
-        value = headers.get("retry-after")
-        if value is not None:
-            try:
-                seconds = float(value)
-            except (TypeError, ValueError):
-                pass
-            else:
-                if seconds > 0:
-                    return seconds
+        for name in (
+            "retry-after",
+            "x-ratelimit-reset-requests",
+            "ratelimit-reset",
+            "x-ratelimit-reset",
+        ):
+            seconds = _parse_rate_limit_wait(_header_value(headers, name))
+            if seconds is not None:
+                return seconds
 
     match = re.search(
         r"please try again in\s+"
@@ -1173,3 +1199,114 @@ def _rate_limit_retry_after_seconds(error: Exception) -> float | None:
         + float(match.group("minutes") or 0) * 60
         + float(match.group("seconds") or 0)
     )
+
+
+class _JudgeRequestLimiter:
+    """Serialize judge calls and honor conservative request quotas."""
+
+    def __init__(
+        self,
+        config: JudgeConfig,
+        *,
+        sleep: Callable[[float], None] = time.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
+        intervals = [
+            60.0 / config.requests_per_minute
+            if config.requests_per_minute is not None
+            else 0.0,
+            3600.0 / config.requests_per_hour
+            if config.requests_per_hour is not None
+            else 0.0,
+        ]
+        self._interval_seconds = max(intervals) + config.rate_limit_safety_seconds
+        self._sleep = sleep
+        self._monotonic = monotonic
+        self._next_request_at = 0.0
+        self._lock = threading.Lock()
+
+    def acquire(self) -> float:
+        with self._lock:
+            now = self._monotonic()
+            scheduled = max(now, self._next_request_at)
+            wait_seconds = max(0.0, scheduled - now)
+            if wait_seconds:
+                self._sleep(wait_seconds)
+            self._next_request_at = scheduled + self._interval_seconds
+            return wait_seconds
+
+    def observe_headers(self, headers: Any) -> None:
+        remaining = _parse_nonnegative_int(
+            _header_value(headers, "x-ratelimit-remaining-requests")
+        )
+        if remaining != 0:
+            return
+        for name in (
+            "x-ratelimit-reset-requests",
+            "ratelimit-reset",
+            "x-ratelimit-reset",
+        ):
+            wait_seconds = _parse_rate_limit_wait(_header_value(headers, name))
+            if wait_seconds is None:
+                continue
+            with self._lock:
+                self._next_request_at = max(
+                    self._next_request_at,
+                    self._monotonic() + wait_seconds,
+                )
+            return
+
+
+def _header_value(headers: Any, name: str) -> Any:
+    if headers is None:
+        return None
+    getter = getattr(headers, "get", None)
+    if callable(getter):
+        value = getter(name)
+        if value is not None:
+            return value
+        return getter(name.title())
+    return None
+
+
+def _parse_nonnegative_int(value: Any) -> int | None:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def _parse_rate_limit_wait(value: Any) -> float | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    try:
+        numeric = float(text)
+    except ValueError:
+        numeric = None
+    if numeric is not None:
+        if numeric <= 0:
+            return None
+        if numeric > 1_000_000_000:
+            return max(0.0, numeric - time.time()) or None
+        return numeric
+
+    duration = re.fullmatch(
+        r"\s*(?:(?P<hours>\d+(?:\.\d+)?)h)?"
+        r"(?:(?P<minutes>\d+(?:\.\d+)?)m)?"
+        r"(?:(?P<seconds>\d+(?:\.\d+)?)s)?\s*",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if duration is not None and any(duration.groupdict().values()):
+        return (
+            float(duration.group("hours") or 0) * 3600
+            + float(duration.group("minutes") or 0) * 60
+            + float(duration.group("seconds") or 0)
+        )
+    try:
+        reset_at = parsedate_to_datetime(text).timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return max(0.0, reset_at - time.time()) or None

@@ -243,7 +243,7 @@ def test_routing_uses_unknown_semantics_not_format_failure() -> None:
 
 
 def test_routing_keeps_authoritative_failures_out_of_judging() -> None:
-    suite = load_suite(Path("data/suites/final_six.yaml"))
+    suite = load_suite(Path("data/suites/final_deterministic.yaml"))
     json_item = suite.items["messy_text_to_schema"][0]
     wrong_json = json.dumps({**json_item.expected["value"], "vendor": "Wrong"})
     assert adjudication_route(_finalized_record(json_item, wrong_json), json_item) is None
@@ -292,7 +292,7 @@ def test_routing_records_unfinished_and_oversized_answers_as_unresolved() -> Non
 def test_no_tool_item_with_an_actual_tool_call_bypasses_semantic_judge() -> None:
     item = {
         candidate.id: candidate
-        for candidate in load_suite(Path("data/suites/final_six.yaml")).items[
+        for candidate in load_suite(Path("data/suites/final_deterministic.yaml")).items[
             "tool_use"
         ]
     }["tool_use_023"]
@@ -316,7 +316,7 @@ def test_no_tool_item_with_an_actual_tool_call_bypasses_semantic_judge() -> None
 def test_blind_extraction_is_rescored_without_exposing_task_or_gold(
     tmp_path: Path,
 ) -> None:
-    item = load_suite(Path("data/suites/final_six.yaml")).items[
+    item = load_suite(Path("data/suites/final_deterministic.yaml")).items[
         "long_text_retrieval"
     ][0]
     answer = f"The required path is {item.expected['value']}."
@@ -354,7 +354,7 @@ def test_blind_extraction_is_rescored_without_exposing_task_or_gold(
             "schema_version": 1,
             "benchmark": {
                 "name": "extraction-test",
-                "workload_path": "data/suites/final_six.yaml",
+                "workload_path": "data/suites/final_deterministic.yaml",
                 "output_root": str(tmp_path / "runs"),
                 "seed": 42,
             },

@@ -55,8 +55,8 @@ def test_every_catalog_definition_exists_and_declares_its_contract() -> None:
 
 def test_evaluation_contracts_cover_the_retained_benchmarks() -> None:
     suites = [
-        load_suite(Path("data/suites/final_six.yaml")),
-        load_suite(Path("data/suites/judged.yaml")),
+        load_suite(Path("data/suites/final_deterministic.yaml")),
+        load_suite(Path("data/suites/grounded_compression.yaml")),
     ]
     definitions = {
         benchmark_id: definition
@@ -102,8 +102,8 @@ def test_catalog_validation_counts_only_retained_questions() -> None:
 
 
 def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> None:
-    remaining_generator = runpy.run_path("scripts/generate_remaining_questions.py")
-    structured_generator = runpy.run_path("scripts/generate_structured_work_questions.py")
+    remaining_generator = runpy.run_path("scripts/generate_long_text_retrieval.py")
+    structured_generator = runpy.run_path("scripts/generate_tool_use.py")
 
     retrieval_document = yaml.safe_load(
         Path("data/long_text_retrieval/questions.yaml").read_text(encoding="utf-8")
@@ -115,7 +115,7 @@ def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> 
     assert retrieval_document["items"] == remaining_generator["long_text_items"]()
     assert tool_document["items"] == structured_generator["_tool_items"]()
 
-    retrieval_items = load_suite(Path("data/suites/final_six.yaml")).items[
+    retrieval_items = load_suite(Path("data/suites/final_deterministic.yaml")).items[
         "long_text_retrieval"
     ]
     assert len(retrieval_items) == 48
@@ -229,7 +229,7 @@ def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> 
         for item in retrieval_items
     )
 
-    tool_items = load_suite(Path("data/suites/final_six.yaml")).items["tool_use"]
+    tool_items = load_suite(Path("data/suites/final_deterministic.yaml")).items["tool_use"]
     no_tool_items = [item for item in tool_items if item.expected["value"]["tool_call"] is None]
     assert len(tool_items) == 48
     assert Counter(item.difficulty for item in tool_items) == {
@@ -433,7 +433,7 @@ def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> 
 
 
 def test_retrieval_golds_are_independently_derived_from_source_documents() -> None:
-    items = load_suite(Path("data/suites/final_six.yaml")).items["long_text_retrieval"][::3]
+    items = load_suite(Path("data/suites/final_deterministic.yaml")).items["long_text_retrieval"][::3]
 
     def expected(index: int):
         return items[index].expected["value"]

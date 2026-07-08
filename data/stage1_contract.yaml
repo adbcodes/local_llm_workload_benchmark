@@ -5,7 +5,7 @@ status: calibration_reopened
 model_cohort_status: frozen
 
 suite:
-  path: data/suites/final_six.yaml
+  path: data/suites/final_deterministic.yaml
   sha256: c88f8f81287e62bff6dafdc395b50e8a944a2b2fdeb211c9caec4fa62428165a
   question_count: 360
   datasets:
@@ -67,16 +67,16 @@ execution:
     constrained_decoding: none
   matrices:
     - id: six_workloads
-      config_path: configs/final_default_matrix.yaml
-      config_sha256: fbc722df6f3b25f1cc3bc42e629ac8a74aed72ece5b9711f9d637e8b6aaec0a8
-      suite_path: data/suites/final_five.yaml
-      suite_sha256: 8824000d06f60e14675bde94b9413b8adc6af859ff18d59905d43b0da0a087f3
+      config_path: configs/final_workloads_matrix.yaml
+      config_sha256: e6e7328db3080d615ae1231200ea695a21e2c78a5be9ed3a5b1a310063cbfa49
+      suite_path: data/suites/final_workloads.yaml
+      suite_sha256: c1a5c8679970a950b8533a905997136de815dd2ae28d4453d155d3808edf5573
       question_count: 312
       generation_count: 6240
-      command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_default_matrix.yaml
+      command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_workloads_matrix.yaml
     - id: long_text_retrieval
       config_path: configs/final_retrieval_matrix.yaml
-      config_sha256: a8f33a34fa8a5c4fdf2b19f49a773df7fe6c346bf432b78e8477cbaa1924a957
+      config_sha256: 6cce0b2863300ad0a6a0d784660ff21c5454a7696566396d60798a803b3b5a1b
       suite_path: data/suites/final_retrieval.yaml
       suite_sha256: 45da0192ac240f991ad4e0a4617aa9eb0a22aaa43a1dfeabf30c9ee6d5f66636
       question_count: 48
@@ -108,6 +108,6 @@ models:
 preflight_smoke:
   status: pending
   config_path: configs/smoke_matrix.yaml
-  config_sha256: 383e241450e82bd482eaa58531d9b60db62b47039ab8549dd452d6f2cff27342
+  config_sha256: b18afa131aac8cd08cb0fee9d7992e2e52e087a68c8671f3833867e52fad250d
   command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/smoke_matrix.yaml --skip-human-eval
   quantizations: [Q3_K_M, Q4_K_M, Q6_K, Q8_0]

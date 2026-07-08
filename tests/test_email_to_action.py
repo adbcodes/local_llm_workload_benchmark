@@ -9,7 +9,7 @@ import yaml
 from llm_workload_benchmark.dataset import load_suite, score_answer
 
 
-SUITE = Path("data/suites/final_six.yaml")
+SUITE = Path("data/suites/final_deterministic.yaml")
 QUESTIONS = Path("data/email_to_action/questions.yaml")
 
 

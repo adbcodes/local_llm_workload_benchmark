@@ -1,8 +1,8 @@
 schema_version: 1
 benchmark:
-  name: final-retrieval-quantization-matrix
-  description: Long-text retrieval across five model families and four quantizations.
-  workload_path: data/suites/final_retrieval.yaml
+  name: final-workloads-quantization-matrix
+  description: Six non-retrieval workloads, including email-to-action inbox routing, across five model families and four quantizations.
+  workload_path: data/suites/final_workloads.yaml
   output_root: runs
   repetitions: 1
   seed: 42

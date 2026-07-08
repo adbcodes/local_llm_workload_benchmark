@@ -8,7 +8,7 @@ from llm_workload_benchmark.rejudge import rejudge_experiment
 from llm_workload_benchmark.runner import GenerationOutput, run_matrix
 
 
-JUDGED_SUITE_PATH = Path("data/suites/judged.yaml").resolve()
+JUDGED_SUITE_PATH = Path("data/suites/grounded_compression.yaml").resolve()
 
 
 def _decision() -> SummaryJudgeDecision:

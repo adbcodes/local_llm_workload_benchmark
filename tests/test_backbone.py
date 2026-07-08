@@ -471,7 +471,7 @@ def test_runner_scores_the_next_action_after_a_prefilled_tool_response(
 ) -> None:
     source = next(
         item
-        for item in load_suite(Path("data/suites/final_six.yaml")).items["tool_use"]
+        for item in load_suite(Path("data/suites/final_deterministic.yaml")).items["tool_use"]
         if item.subcategory == "second_tool_required"
         and item.expected["value"]["tool_call"] == "get_weather_coordinates"
     )

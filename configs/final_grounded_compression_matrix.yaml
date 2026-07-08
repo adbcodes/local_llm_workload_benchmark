@@ -1,8 +1,8 @@
 schema_version: 1
 benchmark:
-  name: final-six-workload-quantization-matrix
-  description: Six non-retrieval workloads across five model families and four quantizations.
-  workload_path: data/suites/final_five.yaml
+  name: final-grounded-compression-quantization-matrix
+  description: LLM-judged grounded compression across five model families and four quantizations.
+  workload_path: data/suites/grounded_compression.yaml
   output_root: runs
   repetitions: 1
   seed: 42
@@ -68,3 +68,18 @@ models:
   - {<<: *qwen25coder, id: qwen2.5-coder-7b-q6, model_path: models/qwen2.5-coder-7b-instruct-q6_k.gguf, quantization: Q6_K}
   - {<<: *qwen25coder, id: qwen2.5-coder-7b-q4, model_path: models/qwen2.5-coder-7b-instruct-q4_k_m.gguf, quantization: Q4_K_M}
   - {<<: *qwen25coder, id: qwen2.5-coder-7b-q3, model_path: models/qwen2.5-coder-7b-instruct-q3_k_m.gguf, quantization: Q3_K_M}
+judge:
+  provider: cerebras
+  model: gpt-oss-120b
+  family: openai
+  reasoning_effort: medium
+  max_completion_tokens: 4096
+  timeout_seconds: 60
+  max_retries: 3
+  rate_limit_cooldown_retries: 3
+  rate_limit_fallback_wait_seconds: 60
+  rate_limit_max_wait_seconds: 3600
+  requests_per_minute: 5
+  requests_per_hour: 150
+  max_candidate_characters: 12000
+  cache_path: runs/judge-cache/grounded-compression.jsonl

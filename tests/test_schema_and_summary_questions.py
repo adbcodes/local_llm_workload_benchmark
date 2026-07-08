@@ -10,7 +10,7 @@ from llm_workload_benchmark.dataset import load_suite, score_answer
 
 
 SCHEMA_SUITE = Path("data/suites/structured.yaml")
-SUMMARY_SUITE = Path("data/suites/judged.yaml")
+SUMMARY_SUITE = Path("data/suites/grounded_compression.yaml")
 
 
 def test_schema_set_has_target_size_and_varied_document_shapes() -> None:
