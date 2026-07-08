@@ -84,7 +84,7 @@ def test_judged_summary_suite_loads_complete_first_pass_set() -> None:
     item = _judged_item()
 
     assert suite.manifest.status == "pilot"
-    assert len(suite.items["grounded_compression"]) == 20
+    assert len(suite.items["grounded_compression"]) == 30
     assert item.scoring.method == "llm_judge"
     assert item.scoring.parameters["rubric"] == "grounded_summary_v1"
     assert item.expected["value"]

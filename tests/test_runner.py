@@ -156,7 +156,7 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     assert all(record["evaluation"]["type"] == "deterministic" for record in records)
     revised_versions = {
         "date_value": 2,
-        "json_exact": 2,
+        "json_exact": 3,
         "constraint_rules": 2,
         "tool_call": 2,
     }
@@ -182,9 +182,9 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
         "medium",
         "hard",
     }
-    assert sum(record["dataset_origin"] == "licensed_anchor" for record in records) == 0
+    assert sum(record["dataset_origin"] == "licensed_anchor" for record in records) == 10
     assert sum(record["dataset_origin"] == "fresh_generated" for record in records) == 48
-    assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 48
+    assert sum(record["dataset_origin"] == "hand_authored" for record in records) == 38
 
     summary = json.loads((run_directory / "summary.json").read_text())
     assert summary["status"] == "completed"
@@ -216,8 +216,9 @@ def test_runner_evaluates_all_pilot_items_and_writes_artifacts(
     }
     assert len(summary["model"]["sha256"]) == 64
     assert summary["total_prompt_tokens"] == 20 * item_count
-    assert "licensed_anchor" not in summary["by_origin"]
+    assert summary["by_origin"]["licensed_anchor"]["attempted"] == 10
     assert summary["by_origin"]["fresh_generated"]["attempted"] == 48
+    assert summary["by_origin"]["hand_authored"]["attempted"] == 38
     assert len(summary["dataset"]["sha256"]) == 64
 
 

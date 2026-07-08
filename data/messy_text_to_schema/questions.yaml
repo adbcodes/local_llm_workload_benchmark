@@ -9,38 +9,69 @@ items:
   visibility: public
   prompt: "Normalize the supplied operational record into the declared JSON structure. Return one JSON\
     \ object. The strings in the schema are type annotations, not literal output values. Preserve every\
-    \ key and nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"invoice_number\": \"\
-    string\",\n  \"vendor\": \"string\",\n  \"currency\": \"string\",\n  \"total\": \"number\"\n}\n\n\
-    Output rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
-    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
-    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
-    \ must be { and the last must be }. Do not add an explanation. Text: Invoice INV-204 from Acme Paper.\
-    \ Total due: INR 4,250.00."
+    \ key and nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"\
+    string\",\n  \"document_type\": \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\"\
+    : \"string\",\n  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON\
+    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
+    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
+    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
+    \ last must be }. Do not add an explanation. Normalize document_date to YYYY-MM-DD. Use the final\
+    \ payable or stated document amount, not an earlier estimate, subtotal, deposit, or footer number.\
+    \ Text: KAVERl  OFFICE  SYSTEMS  PVT. LTD.                 Page 1 / 2\n44, Residency Rd., Bengaluru\
+    \ 560 025\nGSTlN 29AAHCK7319Q1Z6       Helpdesk: 080 4127 0938\n\n                 TAX  INV0ICE\n\
+    lnvoice No : KOS/INV/26-27/1847       Date : 14-08-2026\nCustomer copy / scanned at 200 dpi\n\nBill\
+    \ To\nSaffron Analytics LLP, 2nd Floor, C.V. Raman Nagar, Bengaluru\nBuyer GSTIN 29AAXFS4082R1ZP \
+    \    PO ref SA-PO-918 (not our invoice ref)\n\nDescriptlon                         Qty      Rate \
+    \       Amount\nErgonomic keyboard, wired            7     1,485.00     10,395.00\nUSB-C docking stat-\
+    \                   3     2,150.00      6,450.00\nion with 90 W adapter\nFreight / local deliv-  \
+    \              1       380.00        380.00\nery charge\n\nTaxable value                         \
+    \                   17,225.00\nCGST 4.5%                                                    775.13\n\
+    SGST 4.5%                                                    775.12\nround off                   \
+    \                                  -0.05\nLess: advance received 01/08/26                        \
+    \      31.60\n\nAMOUNT PAYABLE                                      Rs. 18,743.60\nAmount in words:\
+    \ Eighteen thousand seven hundred forty-three rupees\nand sixty paise only.\n\nPlease remit to account\
+    \ ending 2081. Earlier pro-forma PF-611 showed\nRs 19,120.00; that was only an estimate and is cancelled.\
+    \ Goods once\nopened are subject to the warranty terms on page 2. Interest at 18%\np.a. may apply\
+    \ after 30 days. This is a computer-generated invoice;\nthe faint blue stamp near the margin is not\
+    \ a payment receipt.\n\nRece1ved by: ____________        for Kaveri Office Systems Pvt Ltd\nScan batch\
+    \ 08-26 / image 0041 / 2                 1"
   response_contract:
     type: json
     format: object
   expected:
     value:
-      invoice_number: INV-204
-      vendor: Acme Paper
+      correspondent: Kaveri Office Systems Pvt Ltd
+      document_type: invoice
+      document_date: '2026-08-14'
+      reference_number: KOS/INV/26-27/1847
+      amount: 18743.6
       currency: INR
-      total: 4250.0
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.vendor
       - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: SROIE (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_invoice_001
+      url: https://github.com/zzzDavid/ICDAR-2019-SROIE
+      license: Research dataset; see source repository terms
+      content_sha256: c572214eb44eb292f7a8710ce8a90ec7c0b8b19e495978f15371ecac9b8ff330
   tags:
   - extraction
   - clean_invoice
   - feature_clean_single_record
+  - realistic_scale
+  - fully_rewritten
+  - scanned_document
+  - ocr_artifacts
+  - paperless_ngx_workload
 - id: schema_contact_001
   subcategory: clean_contact
   difficulty: easy
@@ -48,38 +79,68 @@ items:
   visibility: held_out
   prompt: "Recover the requested fields from the source and emit the specified JSON value. Return one\
     \ JSON object. The strings in the schema are type annotations, not literal output values. Preserve\
-    \ every key and nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"name\": \"string\"\
-    ,\n  \"email\": \"string\",\n  \"phone\": \"string\",\n  \"city\": \"string\"\n}\n\nOutput rules:\
-    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
-    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
-    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
-    \ the last must be }. Do not add an explanation. Text: Account contact: Meera Nair | meera.nair@example.com\
-    \ | +91 98765 43210 | Pune."
+    \ every key and nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\"\
+    : \"string\",\n  \"document_type\": \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n \
+    \ \"reference_number\": \"string\",\n  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\n\
+    Output rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
+    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
+    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
+    \ must be { and the last must be }. Do not add an explanation. Normalize document_date to YYYY-MM-DD.\
+    \ Use the final payable or stated document amount, not an earlier estimate, subtotal, deposit, or\
+    \ footer number. Text: VlDARBHA CO-OPERATIVE BANK LTD.              Nagpur Civil Lines Branch\n(scheduled\
+    \ bank)                              scan copy - customer file\n\nDate: 28 JUL 2026              \
+    \      Our Ref: VCB/KYC/NGP/7719\n\nTo,\nMs Farah Qureshi\n17, New Colony, Sadar, Nagpur 440001\n\n\
+    Subject: account contact and KYC verification acknowledgement\n\nDear Madam,\n\nWe refer to the contact\
+    \ update form handed over at counter 4 on 25 July.\nYour mobile number ending 7318 and email address\
+    \ beginning farah.q have\nbeen recorded against savings account ending 0062. The address proof was\n\
+    readable although the reverse side of the scan was faint. No fresh nominee\ninstruction was included;\
+    \ the nomination already on file remains unchanged.\n\nA service charge of Rs. 100.00 plus GST Rs.\
+    \ 18.00 was debited for the\nattested paper statement requested with this update. TOTAL CHARGE POSTED:\n\
+    INR 118.00. The balance printed by the passbook kiosk, INR 62,911.45, is\ninformational and is not\
+    \ the amount of this letter.\n\nPlease verify the masked details above. If either contact is incorrect,\n\
+    visit the branch with original identification within seven working days.\nWe will never ask for an\
+    \ 0TP, card PIN, or internet-banking password by\ntelephone. Calls from 0712-410-xxxx may be recorded\
+    \ for quality review.\n\nThis acknowledgement does not certify account balance, tax residence, or\n\
+    credit eligibility. A stamped statement, if requested, will be sent separ-\nately. The lower corner\
+    \ contains a scanner routing code only.\n\nYours faithfully,\nBranch Operations Manager\nVidarbha\
+    \ Co-operative Bank Ltd.\nDoc queue KYC-14     0007719     Page l"
   response_contract:
     type: json
     format: object
   expected:
     value:
-      name: Meera Nair
-      email: meera.nair@example.com
-      phone: +91 98765 43210
-      city: Pune
+      correspondent: Vidarbha Co-operative Bank Ltd
+      document_type: KYC verification acknowledgement
+      document_date: '2026-07-28'
+      reference_number: VCB/KYC/NGP/7719
+      amount: 118.0
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.name
-      - $.city
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: FUNSD (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_contact_001
+      url: https://github.com/crcresearch/FUNSD
+      license: Research dataset; see source repository terms
+      content_sha256: 4600e8b8be214d5e4dc002a5918428f9bab74ac1dc63d11342678feea2200717
   tags:
   - extraction
   - clean_contact
   - feature_clean_single_record
+  - realistic_scale
+  - fully_rewritten
+  - scanned_document
+  - ocr_artifacts
+  - paperless_ngx_workload
 - id: schema_shipment_001
   subcategory: clean_shipment
   difficulty: easy
@@ -87,41 +148,70 @@ items:
   visibility: public
   prompt: "Turn the pasted source material into JSON with the schema provided. Return one JSON object.\
     \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
-    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"shipment_id\": \"string\",\n\
-    \  \"carrier\": \"string\",\n  \"origin\": \"string\",\n  \"destination\": \"string\",\n  \"expected_date\"\
-    : \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when a requested source value is missing;\
-    \ use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit labels,\
-    \ thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown\
-    \ fences. The first character must be { and the last must be }. Do not add an explanation. Text: Shipment\
-    \ SH-882 leaves Jaipur on 2026-09-03 and is expected in Kochi on 2026-09-07. Carrier: BlueDart."
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"string\"\
+    ,\n  \"document_type\": \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\"\
+    : \"string\",\n  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON\
+    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
+    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
+    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
+    \ last must be }. Do not add an explanation. Normalize document_date to YYYY-MM-DD. Use the final\
+    \ payable or stated document amount, not an earlier estimate, subtotal, deposit, or footer number.\
+    \ Text: K0NKAN PARCEL NETWORK                         DELIVERY ADVICE\nHub 04, Turbhe MIDC, Navi Mumbai\
+    \             copy: consignee\nGSTIN 27AAGFK5021M1Z8\n\nAdvice no. KPN/DA/2608/5192             Date\
+    \ 11-08-2026\nWaybill KPN88419031                      route BOM - GOI\n\nCONSIGNOR\nMeraki Retail\
+    \ Fixtures, Bhiwandi\nCONSIGNEE\nCaju Corner Foods Pvt Ltd, Verna Industrial Estate, Goa 403722\n\n\
+    6 packages / actual wt. 184.5 kg / charged wt. 192 kg\nContents declared: powder-coated display shelves,\
+    \ knocked down\nVehicle MH 04 LT 7319      seal 09148      dock slot D-17\n\nFreight             \
+    \                        INR 5,760.00\nfuel adjustment                                460.80\nhandling\
+    \ / floor delivery                      320.00\nCGST                                            149.60\n\
+    SGST                                            149.60\nFINAL AMOUNT DUE ON DELlVERY             \
+    \    INR 6,840.00\n\nAn older routing print attached behind this page shows INR 6,512.00 and\ndestination\
+    \ Panaji depot. Ignore it: floor delivery to Verna was added by\namendment at 18:42 on 10 August.\
+    \ Do not collect the COD value INR 41,300;\nthat is the consignee's goods value for insurance, not\
+    \ our charge.\n\nDelivery window requested 12 Aug, 14:00-17:00. Call site contact only after\nreaching\
+    \ the security gate. Forklift not available; tail-lift vehicle was\nconfirmed. Receiver should write\
+    \ package count before signing. Shortage or\nvisible damage must be noted on both copies; remarks\
+    \ sent later by email may\nnot be accepted by the carrier.\n\nPOD upload token 5192-A (not the advice\
+    \ reference). Terms continue on the\nreverse. Generated 11/08/26 07:03; scan desk timestamp 07:19.\n\
+    \nauthorised by: logistics desk       pg l of 2       image 0006"
   response_contract:
     type: json
     format: object
   expected:
     value:
-      shipment_id: SH-882
-      carrier: BlueDart
-      origin: Jaipur
-      destination: Kochi
-      expected_date: '2026-09-07'
+      correspondent: Konkan Parcel Network
+      document_type: delivery advice
+      document_date: '2026-08-11'
+      reference_number: KPN/DA/2608/5192
+      amount: 6840.0
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.carrier
-      - $.origin
-      - $.destination
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: SROIE (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_shipment_001
+      url: https://github.com/zzzDavid/ICDAR-2019-SROIE
+      license: Research dataset; see source repository terms
+      content_sha256: 57e6dcc4cb2e8123b17155fa2ba32f2255133ec8fccf8e9f947e983acc2a2c0e
   tags:
   - extraction
   - clean_shipment
   - feature_clean_single_record
   - feature_date_normalization
+  - realistic_scale
+  - fully_rewritten
+  - scanned_document
+  - ocr_artifacts
+  - paperless_ngx_workload
 - id: schema_booking_001
   subcategory: clean_booking
   difficulty: easy
@@ -129,40 +219,71 @@ items:
   visibility: held_out
   prompt: "Read the messy source and return one JSON value matching this schema. Return one JSON object.\
     \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
-    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"booking_id\": \"string\",\n\
-    \  \"guest\": \"string\",\n  \"rooms\": \"number\",\n  \"check_in\": \"string (YYYY-MM-DD)\",\n  \"\
-    check_out\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON null when a requested source value\
-    \ is missing; use lowercase JSON true/false for booleans; emit numbers without currency symbols, unit\
-    \ labels, thousands separators, or number words. Return raw JSON only. Do not wrap it in ``` or ```json\
-    \ Markdown fences. The first character must be { and the last must be }. Do not add an explanation.\
-    \ Format both dates as YYYY-MM-DD. Text: Booking BK-310: guest Arjun Rao, 2 rooms, check-in 14 October\
-    \ 2026, check-out 17 October 2026."
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"string\"\
+    ,\n  \"document_type\": \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\"\
+    : \"string\",\n  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON\
+    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
+    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
+    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
+    \ last must be }. Do not add an explanation. Normalize document_date to YYYY-MM-DD. Use the final\
+    \ payable or stated document amount, not an earlier estimate, subtotal, deposit, or footer number.\
+    \ Text: NlLGIRI TRAILS RESIDENCY                    RESERVATlON CONFIRMATION\nCoonoor Road, Ooty 643001\
+    \      reception +91 423 244 8016\n\nConfirmation printed: 09/08/2026       Ref NTR/CONF/66281\nSource:\
+    \ telephone booking / desk agent 12\n\nGuest: Dr. Ananya Sethi\nArrival 14 AUG 2026 after 13:00  \
+    \      Departure 17 AUG before 11:00\n1 family room, 3 nights, 2 adults + one child age 7\nMeal plan:\
+    \ breakfast. Airport transfer: not requested.\n\nRoom tariff 3 x INR 4,200.00                    \
+    \     12,600.00\nextra child breakfast 3 x 280.00                       840.00\nheritage levy    \
+    \                                       372.00\ntaxes                                            \
+    \        950.00\nFINAL BOOKlNG AMOUNT                               INR 14,762.00\nAdvance received\
+    \ by UPI on 09/08                    INR 5,000.00\nBALANCE AT CHECK-IN                           \
+    \      INR 9,762.00\n\nFor company reimbursement, the hotel will certify the full booking amount;\n\
+    the balance line only shows what remains to be paid at check-in. A tentative\ngarden-view upgrade\
+    \ at INR 1,800 per night is waitlisted and has not been\nadded. The handwritten number 204 near the\
+    \ fold is the requested room\nlocation, not a charge or confirmation number.\n\nGuest note: late lunch\
+    \ may be needed; travelling from Coimbatore by road.\nProperty note: the upper driveway is closed\
+    \ for repairs, so cars should use\nthe east gate. Government photo identification is required for\
+    \ every adult.\nOutside food can be stored at reception but the room refrigerators are not\nguaranteed.\
+    \ Wi-Fi coverage is weaker in the old wing.\n\nCancellation without charge until 12 Aug 18:00 IST.\
+    \ One night's tariff may\nbe charged after that time. This paper was folded before scanning; letters\n\
+    at the centre line may be incomplete.\n\ndesk sign: LK       terminal 02       page 1/1       006628l"
   response_contract:
     type: json
     format: object
   expected:
     value:
-      booking_id: BK-310
-      guest: Arjun Rao
-      rooms: 2
-      check_in: '2026-10-14'
-      check_out: '2026-10-17'
+      correspondent: Nilgiri Trails Residency
+      document_type: reservation confirmation
+      document_date: '2026-08-09'
+      reference_number: NTR/CONF/66281
+      amount: 14762.0
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.guest
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: CORD (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_booking_001
+      url: https://github.com/clovaai/cord
+      license: CC BY 4.0
+      content_sha256: ec1ea8dff2568a8879669f0f280b642d15a8eca34d84cff36a70f7bbb271a196
   tags:
   - extraction
   - clean_booking
   - feature_clean_single_record
   - feature_date_normalization
+  - realistic_scale
+  - fully_rewritten
+  - scanned_document
+  - ocr_artifacts
+  - paperless_ngx_workload
 - id: schema_product_001
   subcategory: clean_product
   difficulty: easy
@@ -170,40 +291,70 @@ items:
   visibility: public
   prompt: "Turn the pasted source material into JSON with the schema provided. Return one JSON object.\
     \ The strings in the schema are type annotations, not literal output values. Preserve every key and\
-    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"sku\": \"string\",\n  \"name\"\
-    : \"string\",\n  \"category\": \"string\",\n  \"price\": \"number\",\n  \"in_stock\": \"boolean\"\n\
-    }\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase JSON true/false\
-    \ for booleans; emit numbers without currency symbols, unit labels, thousands separators, or number\
-    \ words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character\
-    \ must be { and the last must be }. Do not add an explanation. Text: SKU KB-14, Compact Keyboard,\
-    \ category Accessories, price USD 49.95, in stock: yes."
+    \ nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"string\"\
+    ,\n  \"document_type\": \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\"\
+    : \"string\",\n  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON\
+    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
+    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
+    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
+    \ last must be }. Do not add an explanation. Normalize document_date to YYYY-MM-DD. Use the final\
+    \ payable or stated document amount, not an earlier estimate, subtotal, deposit, or footer number.\
+    \ Text: DECCAN APPLIANCE CARE                           SERVICE FORM\nAuthorised workshop: Camp Road,\
+    \ Pune 411001\nTel 020-6712 8840      GSTlN 27AARFD1198L1ZH\n\nWARRAN- TY CLAlM / PAID REPAIR ESTIMATE\n\
+    Document date 06/08/2026             Ref DAC/SVC/88431\n\nCustomer: Nikhil Batra              mobile\
+    \ ... 5042\nAppliance: countertop mixer         model MX-730\nSerial read from label: MX73O-PN-4418\
+    \   (letter O may look like zero)\nPurchased 17/02/2024. Warranty expired; customer informed at 12:16.\n\
+    \nComplaint as written: \"motor smells after 2 mins, jar is ok, pls check\nbefore replacing anything.\
+    \ machine used mostly for dosa batter\"\n\nTECHNICIAN FINDlNG\ncarbon brush worn; coupler cracked.\
+    \ Armature tested within range. Old job\ncard 87002 mentioned a noisy bearing, but no bearing fault\
+    \ was found today.\n\nParts: brush pair                         Rs   620.00\ndrive coupler       \
+    \                      Rs   480.00\nlabour / cleaning                         Rs 1,100.00\npickup\
+    \ charge                             Rs   160.00\nFINAL ESTIMATED AM0UNT                    Rs 2,360.00\n\
+    \nThe crossed-out figure Rs 2,840.00 included a replacement jar that the\ncustomer declined. Approval\
+    \ received by SMS at 14:07 for the revised amount.\nPayment is due after testing and before delivery;\
+    \ this form is not a tax\ninvoice or proof of payment. Replaced parts will be returned if requested.\n\
+    \nExpected completion: 09 Aug after 5 pm, subject to parts arriving. Storage\nfee of Rs 75/day starts\
+    \ only seven days after the completion call and is\nnot included above. Keep the claim slip; workshop\
+    \ staff cannot retrieve\ngoods using a photo of the barcode alone.\n\ntech: RP       counter: 03 \
+    \      scanner page 01 / 01       88431"
   response_contract:
     type: json
     format: object
   expected:
     value:
-      sku: KB-14
-      name: Compact Keyboard
-      category: Accessories
-      price: 49.95
-      in_stock: true
+      correspondent: Deccan Appliance Care
+      document_type: paid repair estimate
+      document_date: '2026-08-06'
+      reference_number: DAC/SVC/88431
+      amount: 2360.0
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.name
-      - $.category
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: CORD (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_product_001
+      url: https://github.com/clovaai/cord
+      license: CC BY 4.0
+      content_sha256: 359c87c65d230d26d418001210471b35b92617bd2130cbfa3fcaf8695233c59a
   tags:
   - extraction
   - clean_product
   - feature_clean_single_record
   - feature_typed_values
+  - realistic_scale
+  - fully_rewritten
+  - scanned_document
+  - ocr_artifacts
+  - paperless_ngx_workload
 - id: schema_event_002
   subcategory: clean_event
   difficulty: easy
@@ -211,41 +362,68 @@ items:
   visibility: held_out
   prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
     \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
-    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"title\": \"string\",\n  \"event_date\": \"\
-    string (YYYY-MM-DD)\",\n  \"city\": \"string\",\n  \"start_time\": \"string (HH:MM)\",\n  \"capacity\"\
-    : \"number\"\n}\n\nOutput rules: use JSON null when a requested source value is missing; use lowercase\
-    \ JSON true/false for booleans; emit numbers without currency symbols, unit labels, thousands separators,\
-    \ or number words. Return raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first\
-    \ character must be { and the last must be }. Do not add an explanation. Format event_date as YYYY-MM-DD\
-    \ and start_time as HH:MM. Text: Cloud Basics Workshop; 12 November 2026; Chennai; starts 09:30; capacity\
-    \ 80."
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"string\",\n  \"document_type\"\
+    : \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\": \"string\",\n\
+    \  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON null when a requested\
+    \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
+    \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
+    \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
+    \ add an explanation. Normalize document_date to YYYY-MM-DD. Use the final payable or stated document\
+    \ amount, not an earlier estimate, subtotal, deposit, or footer number. Text: SAHYADRl LEARNING F0UNDATION\
+    \                 FORM WS / rev. 4\nCommunity Skills Centre, Baner, Pune - 411045\n\n           W0RKSHOP\
+    \ REGISTRATlON & FEE ACKNOWLEDGEMENT\n\nRef. number: SLF/WS/2026/093          form date 19 AUG 2026\n\
+    (office use only) batch 7B             page  1 of 1\n\nParticipant name: Kavya Krishnan\nProgramme\
+    \ selected: Practical Excel for Small Shops\nSession: Sunday, 23/08/2026, 10.00 am to 4.30 pm\nVenue:\
+    \ Training Hall 2, not the old Aundh classroom printed below.\nContact written by applicant: 98 220\
+    \ 41 908\n\nFEE DETAILS\nStandard programme fee                                 Rs 1,500.00\nneighbourhood\
+    \ association concession                  - Rs 250.00\nAM0UNT T0 BE PAID / received              \
+    \             Rs 1,250.00\npayment mode: UPI      txn suffix: 66319     status: received\n\nThe Rs\
+    \ 300 shown on the tear-off lunch coupon is a refundable crockery\ndeposit and is not part of this\
+    \ form amount. Bring one identity document.\nMaterials will be shared digitally; printed handouts\
+    \ are optional.\n\nApplicant note, faint pencil:\n\"pls send map on whatsapp, first time coming from\
+    \ Pimpri\"\n\nOld venue (STRUCK OUT): 18 ITI Road, Aundh.\nCurrent venue confirmed by coordinator:\
+    \ Baner centre, Hall 2.\n\nCancellation requests received after 21 August may be moved to a later\n\
+    batch but are not automatically refunded. The founda- tion does not ask\nfor card PINs or OTPs. For\
+    \ timetable changes call the number on our site.\n\nChecked by  M. Jadhav              cashier initials:\
+    \ mj\nreceipt printer counter 000093 / scan 1mage 018       -- 4 --"
   response_contract:
     type: json
     format: object
   expected:
     value:
-      title: Cloud Basics Workshop
-      event_date: '2026-11-12'
-      city: Chennai
-      start_time: 09:30
-      capacity: 80
+      correspondent: Sahyadri Learning Foundation
+      document_type: workshop registration form
+      document_date: '2026-08-19'
+      reference_number: SLF/WS/2026/093
+      amount: 1250.0
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.title
-      - $.city
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: FUNSD (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_event_002
+      url: https://github.com/crcresearch/FUNSD
+      license: Research dataset; see source repository terms
+      content_sha256: dcc7214f74b897cd55d98155a7f0e295cefb5795811ab3d1429ef231c51439b2
   tags:
   - extraction
   - clean_event
   - feature_clean_single_record
   - feature_date_normalization
+  - realistic_scale
+  - fully_rewritten
+  - scanned_document
+  - ocr_artifacts
+  - paperless_ngx_workload
 - id: schema_ci_run_001
   subcategory: ci_run
   difficulty: easy
@@ -253,41 +431,67 @@ items:
   visibility: public
   prompt: "Normalize the supplied operational record into the declared JSON structure. Return one JSON\
     \ object. The strings in the schema are type annotations, not literal output values. Preserve every\
-    \ key and nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"run_id\": \"string\"\
-    ,\n  \"service\": \"string\",\n  \"environment\": \"string\",\n  \"commit\": \"string\",\n  \"status\"\
-    : \"string\",\n  \"duration_seconds\": \"number\"\n}\n\nOutput rules: use JSON null when a requested\
-    \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
-    \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
-    \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
-    \ add an explanation. Text: $ deployctl runs show run-184\nservice: payments-api\nenvironment: staging\n\
-    commit: 8f3c1a2\nstatus: succeeded\nduration_seconds: 94"
+    \ key and nesting level exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"\
+    string\",\n  \"document_type\": \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\"\
+    : \"string\",\n  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON\
+    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
+    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
+    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
+    \ last must be }. Do not add an explanation. Normalize document_date to YYYY-MM-DD. Use the final\
+    \ payable or stated document amount, not an earlier estimate, subtotal, deposit, or footer number.\
+    \ Text: From: billing@asterlinelabs.in\nTo: accounts-payable@mirrormesh.io\nCc: lab-ops@mirrormesh.io\n\
+    Date: Sun, 2 Aug 2026 18:47:22 +0530\nMessage-ID: <ALS-60731-20260802@mailer.asterlinelabs.in>\nSubject:\
+    \ invoice ALS-INV-60731 | July cold-chain supplies\n\nhi team,\n\nattaching the final July invoice\
+    \ requested by Rukmini. The signed delivery\nsheets are in the same PDF after page 2; the spreadsheet\
+    \ is only a packing\nreconciliation and should not be booked separately.\n\nASTERLINE LAB SUPPLIES\
+    \ PVT LTD\nTax invoice ALS-INV-60731\nInvoice date 31 July 2026                  INR 32,864.25 due\n\
+    \nThis includes the corrected insulated-container quantity. The draft shared\non Friday showed INR\
+    \ 34,102.25 because two returned gel-pack crates had not\nyet been credited. PO MM-LAB-2098 and delivery\
+    \ note DN-44812 are quoted for\nmatching, but neither is the invoice reference.\n\nCould you queue\
+    \ it in the 10 August payment run? No need to reply-all unless\nsomething is missing. Our bank details\
+    \ have not changed; please call the\nnumber on your vendor master if any message asks you to use another\
+    \ account.\n\nthanks,\nCharu\nReceivables | Asterline Lab Supplies\n+91 80 4019 2286\n\n-- This email\
+    \ and attachments may contain confidential commercial material.\nIf you received it in error, delete\
+    \ it and inform the sender. Virus scanning\nis the recipient's responsibility. Ticket footer: mailgw-18\
+    \ / route 77204.\n\n> On Fri, 31 Jul at 4:12 pm, MirrorMesh AP wrote:\n> Please send one final invoice\
+    \ after the returns credit. The figure in the\n> earlier mail will stay on hold and must not be processed."
   response_contract:
     type: json
     format: object
   expected:
     value:
-      run_id: run-184
-      service: payments-api
-      environment: staging
-      commit: 8f3c1a2
-      status: succeeded
-      duration_seconds: 94
+      correspondent: Asterline Lab Supplies Pvt Ltd
+      document_type: tax invoice
+      document_date: '2026-07-31'
+      reference_number: ALS-INV-60731
+      amount: 32864.25
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.status
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: SROIE (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_ci_run_001
+      url: https://github.com/zzzDavid/ICDAR-2019-SROIE
+      license: Research dataset; see source repository terms
+      content_sha256: f6a9df9967793e7a2dcf6f8c28332ad76342eceb6a17d5a28d932eaee9ee36c4
   tags:
   - extraction
   - ci_run
   - feature_clean_single_record
   - feature_typed_values
+  - realistic_scale
+  - fully_rewritten
+  - email_body
+  - header_footer_distractors
 - id: schema_access_request_001
   subcategory: access_request
   difficulty: easy
@@ -295,43 +499,68 @@ items:
   visibility: held_out
   prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
     \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
-    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"request_id\": \"string\",\n  \"requester\"\
-    : \"string\",\n  \"employee_id\": \"string\",\n  \"system\": \"string\",\n  \"role\": \"string\",\n\
-    \  \"approver\": \"string\",\n  \"expires_on\": \"string (YYYY-MM-DD)\"\n}\n\nOutput rules: use JSON\
-    \ null when a requested source value is missing; use lowercase JSON true/false for booleans; emit\
-    \ numbers without currency symbols, unit labels, thousands separators, or number words. Return raw\
-    \ JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and the\
-    \ last must be }. Do not add an explanation. Format expires_on as YYYY-MM-DD. Text: Subject: Access\
-    \ request AR-73\nRequester: Priya Sen (E-204)\nSystem: analytics-prod\nRole: read_only\nApproved by:\
-    \ Omar Ali\nAccess ends: 30 September 2026"
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"string\",\n  \"document_type\"\
+    : \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\": \"string\",\n\
+    \  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON null when a requested\
+    \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
+    \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
+    \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
+    \ add an explanation. Normalize document_date to YYYY-MM-DD. Use the final payable or stated document\
+    \ amount, not an earlier estimate, subtotal, deposit, or footer number. Text: Return-Path: <reservations@mangotreestays.in>\n\
+    Received: from mx7.mangotreestays.in by mail.kiteworks.test; 6 Aug 2026 09:04 IST\nFrom: Mango Tree\
+    \ Stays <reservations@mangotreestays.in>\nTo: ishita.rao@example.net\nDate: Thu, 06 Aug 2026 09:03:41\
+    \ +0530\nSubject: your Kochi booking is confirmed — MTS-KOC-88419\n\nHello Ishita,\n\nall set for\
+    \ your Fort Kochi stay. Please keep this email or the attached PDF\nhandy at check-in.\n\nMANGO TREE\
+    \ STAYS — BOOKING CONFIRMATION\nMTS-KOC-88419                              confirmed 06 August 2026\n\
+    Fort Kochi courtyard room, 3 nights       total INR 11,946.00\n\nStay: 21 Aug to 24 Aug 2026, three\
+    \ nights, one courtyard room for two guests.\nThe INR 3,500 card authorisation taken today is a part-payment,\
+    \ not the total.\nRemaining INR 8,446 is payable at the property. A boat pickup was discussed\non\
+    \ chat but is not confirmed and has not been charged.\n\nCheck-in starts at 2 pm. If the train is\
+    \ late, just message reception before\n9 pm so the night guard knows. Breakfast is included; lunch\
+    \ isn't. The lane\nis narrow and app cabs usually stop near the pharmacy about 80 metres away.\n\n\
+    We previously sent quote Q-7713 for INR 12,540. That quote expired when the\ncourtyard-room promotion\
+    \ was applied, so please don't use it for expenses.\n\nWarmly,\nFiroz, reservations desk\nMango Tree\
+    \ Stays, Kochi\n\nManage preferences | privacy policy | booking help\nThis transactional message was\
+    \ sent because a reservation was completed.\nEmail tracking id 444901; footer year 2026; do not treat\
+    \ either as a booking ref.\n\n----- Forwarded chat excerpt -----\nguest: can you hold a room till\
+    \ evening?\ndesk: yes, once payment link succeeds we'll send a proper confirmation."
   response_contract:
     type: json
     format: object
   expected:
     value:
-      request_id: AR-73
-      requester: Priya Sen
-      employee_id: E-204
-      system: analytics-prod
-      role: read_only
-      approver: Omar Ali
-      expires_on: '2026-09-30'
+      correspondent: Mango Tree Stays
+      document_type: booking confirmation
+      document_date: '2026-08-06'
+      reference_number: MTS-KOC-88419
+      amount: 11946.0
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.role
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: CORD (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_access_request_001
+      url: https://github.com/clovaai/cord
+      license: CC BY 4.0
+      content_sha256: bc8c19b29d73c347af3205d19b9bdd80971d480ae75f8c11aac2e24f21348980
   tags:
   - extraction
   - access_request
   - feature_clean_single_record
   - feature_date_normalization
+  - realistic_scale
+  - fully_rewritten
+  - email_body
+  - header_footer_distractors
 - id: schema_event_001
   subcategory: missing_fields
   difficulty: medium
@@ -424,39 +653,65 @@ items:
   visibility: public
   prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
     \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
-    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"organization_id\": \"string\",\n  \"plan\"\
-    : \"string\",\n  \"seats\": \"number\",\n  \"renewal_date\": \"string (YYYY-MM-DD)\",\n  \"coupon\"\
-    : \"string or null\",\n  \"auto_renew\": \"boolean\"\n}\n\nOutput rules: use JSON null when a requested\
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"string\",\n  \"document_type\"\
+    : \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\": \"string\",\n\
+    \  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON null when a requested\
     \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
     \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
     \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
-    \ add an explanation. Text: Plan change for org ORG-42: Pro annual, 35 seats, renewal 2027-01-15.\
-    \ Coupon field left blank. Auto-renew is OFF."
+    \ add an explanation. Normalize document_date to YYYY-MM-DD. Use the final payable or stated document\
+    \ amount, not an earlier estimate, subtotal, deposit, or footer number. Text: NARMADA BROADBAND SERVICES\n\
+    From: collections@narmadabroadband.in\nTo: rohit.kulkarni@example.com\nSubject: account NB-77104 —\
+    \ August payment reminder\nSent: 16/08/2026 08:12 IST\n\nnamaste Rohit ji,\n\nye sirf payment reminder\
+    \ hai; aapka connection abhi active hai. July ka\nreceipt already post ho gaya tha, so please usko\
+    \ dobara pay mat kijiye.\nCurrent reminder / भुगतान विवरण\nNarmada Broadband Services\nBill date /\
+    \ दिनांक: 14/08/2026\nBill ref: NBS/BLR/2608/77104              abhi due: INR 2,187.40\n\nBreakdown:\
+    \ home fibre plan INR 1,899, router protection INR 149, tax and\nrounding INR 139.40. The app may\
+    \ also show wallet balance INR 312.60; that\nis credit available for a later cycle and has not been\
+    \ deducted from this\nreminder. A previous SMS mentioned INR 2,336.40 before the loyalty adjustment.\n\
+    \npayment ho chuka hai toh ignore kar dena, update ko 24 ghante lag sakte hain.\nOtherwise use the\
+    \ customer app or the UPI handle printed on your signed bill.\nWe never ask for OTP or screen sharing.\
+    \ Service suspension review starts only\nafter 22 August, not on the date of this email.\n\nRegards,\n\
+    Kavita | customer accounts\nNarmada Broadband Services, Indore\n\nThis message includes automated\
+    \ footer numbers: campaign 208, node 17,\ntemplate v3.4. They are not account or reference identifiers.\
+    \ Please do not\nprint unless required; email delivery status: accepted."
   response_contract:
     type: json
     format: object
   expected:
     value:
-      organization_id: ORG-42
-      plan: Pro annual
-      seats: 35
-      renewal_date: '2027-01-15'
-      coupon: null
-      auto_renew: false
+      correspondent: Narmada Broadband Services
+      document_type: payment reminder
+      document_date: '2026-08-14'
+      reference_number: NBS/BLR/2608/77104
+      amount: 2187.4
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
+      case_insensitive_paths:
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: FUNSD (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_subscription_001
+      url: https://github.com/crcresearch/FUNSD
+      license: Research dataset; see source repository terms
+      content_sha256: 384cbba8d14fac6e6ac99be57c89ccc0c5414aede4bcae090f51187ae155ba7b
   tags:
   - extraction
   - optional_fields
   - feature_missing_value
   - feature_typed_values
+  - realistic_scale
+  - fully_rewritten
+  - mixed_language
+  - indian_date_normalization
 - id: schema_candidate_001
   subcategory: mixed_format
   difficulty: medium
@@ -641,45 +896,66 @@ items:
   visibility: held_out
   prompt: "Extract the source record into the JSON shape shown below. Return one JSON object. The strings\
     \ in the schema are type annotations, not literal output values. Preserve every key and nesting level\
-    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"recipient\": \"string\",\n  \"line1\": \"\
-    string\",\n  \"line2\": \"string\",\n  \"city\": \"string\",\n  \"state\": \"string\",\n  \"postal_code\"\
-    : \"string\",\n  \"country\": \"string\",\n  \"landmark\": \"string or null\"\n}\n\nOutput rules:\
-    \ use JSON null when a requested source value is missing; use lowercase JSON true/false for booleans;\
-    \ emit numbers without currency symbols, unit labels, thousands separators, or number words. Return\
-    \ raw JSON only. Do not wrap it in ``` or ```json Markdown fences. The first character must be { and\
-    \ the last must be }. Do not add an explanation. Text: Ship to: Riya Menon\nFlat 8B, Lake View Towers\n\
-    17 M.G. Road\nErnakulam, Kerala 682016\nCountry: India\nLandmark: —"
+    \ exactly; do not add or omit fields.\n\nSchema:\n{\n  \"correspondent\": \"string\",\n  \"document_type\"\
+    : \"string\",\n  \"document_date\": \"string (YYYY-MM-DD)\",\n  \"reference_number\": \"string\",\n\
+    \  \"amount\": \"number\",\n  \"currency\": \"string\"\n}\n\nOutput rules: use JSON null when a requested\
+    \ source value is missing; use lowercase JSON true/false for booleans; emit numbers without currency\
+    \ symbols, unit labels, thousands separators, or number words. Return raw JSON only. Do not wrap it\
+    \ in ``` or ```json Markdown fences. The first character must be { and the last must be }. Do not\
+    \ add an explanation. Normalize document_date to YYYY-MM-DD. Use the final payable or stated document\
+    \ amount, not an earlier estimate, subtotal, deposit, or footer number. Text: ARAVALI PUBLIC SCHOOL,\
+    \ Jaipur\nParent portal copy / कक्षा शुल्क सूचना\ngenerated 05/08/2026 17:42        page 1\n\nDear\
+    \ Mrs Meenal Soni,\n\nThis is the fee notice for Aarav Soni, admission APS-19-448, Class VII-B.\n\
+    कृपया नीचे दी गई अंतिम राशि 12 अगस्त तक जमा करें। Cash is accepted only at\nthe school counter between\
+    \ 9:30 and 12:30; online payment remains available\nthrough the parent portal.\n\nTERM 2 FEE NOTICE\
+    \ / शुल्क सूचना\nAravali Public School\nNotice date: 03/08/2026       Ref. APS/FEE/T2/26448\nAmount\
+    \ due by 12 August: INR 15,480.00\n\nTuition for term 2 is INR 12,900, activity fee INR 1,350, and\
+    \ transport for\nAugust INR 1,230. Library deposit INR 2,000 appears in the student's profile\nbut\
+    \ was paid at admission and is not due again. The uniform shop balance of\nINR 740 belongs to a separate\
+    \ vendor and is also excluded.\n\nAgar payment already kar diya hai, receipt number portal par check\
+    \ karke is\nnotice ko ignore kar sakte hain. Please use the notice reference above for\nany bank transfer;\
+    \ admission number is only the student identifier. Late fee\nis not included yet and would apply after\
+    \ the due date.\n\nThe first PDF issued on 02 August had the wrong bus stop and an amount of\nINR\
+    \ 16,110. It was withdrawn. This corrected notice uses Vaishali Nagar stop\n4 and the final amount\
+    \ shown above.\n\nAccounts Office\nAravali Public School\nphone queue 6 | print batch 112 | portal\
+    \ session expired after 10 minutes"
   response_contract:
     type: json
     format: object
   expected:
     value:
-      recipient: Riya Menon
-      line1: Flat 8B, Lake View Towers
-      line2: 17 M.G. Road
-      city: Ernakulam
-      state: Kerala
-      postal_code: '682016'
-      country: India
-      landmark: null
+      correspondent: Aravali Public School
+      document_type: term fee notice
+      document_date: '2026-08-03'
+      reference_number: APS/FEE/T2/26448
+      amount: 15480.0
+      currency: INR
   scoring:
     method: json_exact
     parameters:
       allow_diagnostic_normalization: true
       case_insensitive_paths:
-      - $.city
-      - $.state
-      - $.country
+      - $.currency
   provenance:
-    kind: hand_authored
+    kind: adapted
     review_status: human_checked
     generator: messy_text_to_schema_v3
     seed: 20260731
+    source:
+      dataset: CORD (artifact-pattern pointer; fully rewritten)
+      record_id: artifact-patterns-schema_address_001
+      url: https://github.com/clovaai/cord
+      license: CC BY 4.0
+      content_sha256: f7b64ff9eade93650d4e7c4423058f1731f2615ada58a619b6a04c32678fd03b
   tags:
   - extraction
   - multiline_address
   - feature_multiline_layout
   - feature_missing_value
+  - realistic_scale
+  - fully_rewritten
+  - mixed_language
+  - indian_date_normalization
 - id: schema_asset_001
   subcategory: conflicting_values
   difficulty: medium

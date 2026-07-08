@@ -5,15 +5,41 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import sys
 from typing import Any
 
 import yaml
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+from grounded_compression_realistic_sources import NEW_SUMMARY_SPECS
+from messy_text_realistic_sources import REALISTIC_SCHEMA_REPLACEMENTS
 
 
 SCHEMA_OUTPUT = Path("data/messy_text_to_schema/questions.yaml")
 SUMMARY_OUTPUT = Path("data/grounded_compression/questions.yaml")
 SCHEMA_GENERATOR = "messy_text_to_schema_v3"
 SCHEMA_SEED = 20260731
+SUMMARY_GENERATOR = "grounded_compression_v2"
+SUMMARY_SEED = 20260803
+
+DIALOGSUM_POINTER = {
+    "dataset": "DialogSum (style pointer; fully rewritten)",
+    "url": "https://huggingface.co/datasets/knkarthick/dialogsum",
+    "license": "CC BY-NC-SA 4.0",
+}
+QMSUM_POINTER = {
+    "dataset": "QMSum (style pointer; fully rewritten)",
+    "url": "https://github.com/Yale-LILY/QMSum",
+    "license": "MIT",
+}
+MEETINGBANK_POINTER = {
+    "dataset": "MeetingBank (style pointer; fully rewritten)",
+    "url": "https://huggingface.co/datasets/huuuyeah/meetingbank",
+    "license": "CC BY-NC-SA 4.0",
+}
 
 
 SCHEMA_FEATURES: dict[str, tuple[str, ...]] = {
@@ -145,6 +171,7 @@ def _schema_fixture(
     note: str = "",
     tags: list[str] | None = None,
     checked: bool = False,
+    source_pointer: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     del checked  # Phase 4 review covers the complete retained set.
     if isinstance(expected, dict):
@@ -177,6 +204,20 @@ def _schema_fixture(
     }
     if case_insensitive_paths:
         scoring_parameters["case_insensitive_paths"] = case_insensitive_paths
+    provenance: dict[str, Any] = {
+        "kind": "adapted" if source_pointer else "hand_authored",
+        "review_status": "human_checked",
+        "generator": SCHEMA_GENERATOR,
+        "seed": SCHEMA_SEED,
+    }
+    if source_pointer:
+        provenance["source"] = {
+            "dataset": source_pointer["dataset"],
+            "record_id": f"artifact-patterns-{item_id}",
+            "url": source_pointer["url"],
+            "license": source_pointer["license"],
+            "content_sha256": hashlib.sha256(text.strip().encode("utf-8")).hexdigest(),
+        }
     return {
         "id": item_id,
         "subcategory": subcategory,
@@ -190,18 +231,17 @@ def _schema_fixture(
             "method": "json_exact",
             "parameters": scoring_parameters,
         },
-        "provenance": {
-            "kind": "hand_authored",
-            "review_status": "human_checked",
-            "generator": SCHEMA_GENERATOR,
-            "seed": SCHEMA_SEED,
-        },
-        "tags": [
-            "extraction",
-            subcategory,
-            *(f"feature_{feature}" for feature in SCHEMA_FEATURES[subcategory]),
-            *(tags or []),
-        ],
+        "provenance": provenance,
+        "tags": list(
+            dict.fromkeys(
+                [
+                    "extraction",
+                    subcategory,
+                    *(f"feature_{feature}" for feature in SCHEMA_FEATURES[subcategory]),
+                    *(tags or []),
+                ]
+            )
+        ),
     }
 
 
@@ -527,6 +567,42 @@ SCHEMA_ITEMS = [
     ),
 ]
 
+for index, schema_item in enumerate(SCHEMA_ITEMS):
+    replacement = REALISTIC_SCHEMA_REPLACEMENTS.get(schema_item["id"])
+    if replacement is None:
+        continue
+    source_kind = replacement["source_kind"]
+    SCHEMA_ITEMS[index] = _schema_fixture(
+        schema_item["id"],
+        schema_item["subcategory"],
+        schema_item["difficulty"],
+        replacement["source"],
+        replacement["expected"],
+        note=replacement["note"],
+        tags=[
+            "realistic_scale",
+            "fully_rewritten",
+            source_kind,
+            *(
+                ["ocr_artifacts", "paperless_ngx_workload"]
+                if source_kind == "scanned_document"
+                else []
+            ),
+            *(
+                ["header_footer_distractors"]
+                if source_kind == "email_body"
+                else []
+            ),
+            *(
+                ["mixed_language", "indian_date_normalization"]
+                if source_kind == "mixed_language"
+                else []
+            ),
+        ],
+        checked=True,
+        source_pointer=replacement["source_pointer"],
+    )
+
 # Alternate visibility so both public and held-out halves retain each difficulty tier.
 # Public scenarios are development examples; held-out scenarios are the test split.
 for index, schema_item in enumerate(SCHEMA_ITEMS):
@@ -545,15 +621,37 @@ def _summary_fixture(
     max_words: int,
     *,
     checked: bool = False,
+    style_pointer: dict[str, str] | None = None,
 ) -> dict[str, Any]:
+    task = task.strip()
+    source = source.strip()
+    expected = expected.strip()
+    if len(expected.split()) > max_words:
+        raise ValueError(f"{item_id} reference summary exceeds {max_words} words")
+    provenance: dict[str, Any] = {
+        "kind": "adapted" if style_pointer else "hand_authored",
+        "review_status": "human_checked" if checked else "draft",
+        "generator": SUMMARY_GENERATOR,
+        "seed": SUMMARY_SEED,
+    }
+    tags = ["summarization", "groundedness", subcategory, "pointwise_judge"]
+    if style_pointer:
+        provenance["source"] = {
+            "dataset": style_pointer["dataset"],
+            "record_id": f"style-patterns-{item_id}",
+            "url": style_pointer["url"],
+            "license": style_pointer["license"],
+            "content_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        }
+        tags.extend(["fully_rewritten", "public_corpus_style_pointer"])
     return {
         "id": item_id,
         "subcategory": subcategory,
         "difficulty": difficulty,
         "split": "dev",
-        "prompt": f"{task.strip()}\n\nSource: {source.strip()}",
+        "prompt": f"{task}\n\nSource: {source}",
         "response_contract": {"type": "text", "format": "plain_text"},
-        "expected": {"value": expected.strip()},
+        "expected": {"value": expected},
         "scoring": {
             "method": "llm_judge",
             "parameters": {
@@ -563,11 +661,8 @@ def _summary_fixture(
                 "max_words": max_words,
             },
         },
-        "provenance": {
-            "kind": "hand_authored",
-            "review_status": "human_checked" if checked else "draft",
-        },
-        "tags": ["summarization", "groundedness", subcategory, "pointwise_judge"],
+        "provenance": provenance,
+        "tags": tags,
     }
 
 
@@ -694,6 +789,89 @@ SUMMARY_ITEMS = [
     ),
 ]
 
+SUMMARY_STYLE_POINTERS = {
+    "dialogsum": DIALOGSUM_POINTER,
+    "qmsum": QMSUM_POINTER,
+    "meetingbank": MEETINGBANK_POINTER,
+}
+
+for new_spec in NEW_SUMMARY_SPECS:
+    source_kind = new_spec["source_kind"]
+    source_words = len(new_spec["source"].split())
+    expected_ranges = {
+        "chat_history": (200, 2500),
+        "meeting_transcript": (200, 1800),
+        "long_update": (200, 1800),
+    }
+    minimum, maximum = expected_ranges[source_kind]
+    if not minimum <= source_words <= maximum:
+        raise ValueError(
+            f"{new_spec['item_id']} has {source_words} source words; "
+            f"expected {minimum}-{maximum}"
+        )
+    if source_kind == "chat_history":
+        turn_count = sum(
+            line.startswith(("User:", "Assistant:"))
+            for line in new_spec["source"].splitlines()
+        )
+        if not 8 <= turn_count <= 60:
+            raise ValueError(
+                f"{new_spec['item_id']} has {turn_count} chat turns; expected 8-60"
+            )
+    generated = _summary_fixture(
+        new_spec["item_id"],
+        new_spec["subcategory"],
+        new_spec["difficulty"],
+        new_spec["task"],
+        new_spec["source"],
+        new_spec["expected"],
+        new_spec["max_words"],
+        checked=True,
+        style_pointer=(
+            SUMMARY_STYLE_POINTERS[new_spec["style_pointer"]]
+            if new_spec["style_pointer"]
+            else None
+        ),
+    )
+    if source_words <= 350:
+        source_shape = "compact_source"
+    elif source_words <= 900:
+        source_shape = "standard_source"
+    elif source_words <= 1400:
+        source_shape = "long_source"
+    else:
+        source_shape = "very_long_source"
+    generated["tags"].extend(
+        [source_kind, source_shape, "realistic_source", "handoff_grade"]
+    )
+    generated["tags"] = list(dict.fromkeys(generated["tags"]))
+    SUMMARY_ITEMS.append(generated)
+
+new_source_shapes = {
+    tag
+    for item in SUMMARY_ITEMS
+    for tag in item["tags"]
+    if tag in {
+        "compact_source",
+        "standard_source",
+        "long_source",
+        "very_long_source",
+    }
+}
+if new_source_shapes != {
+    "compact_source",
+    "standard_source",
+    "long_source",
+    "very_long_source",
+}:
+    raise ValueError(f"grounded compression source coverage is too narrow: {new_source_shapes}")
+
+# Preserve a balanced public/held-out ratio across the expanded judged family.
+for index, summary_item in enumerate(SUMMARY_ITEMS):
+    is_public = index % 2 == 0
+    summary_item["visibility"] = "public" if is_public else "held_out"
+    summary_item["split"] = "dev" if is_public else "test"
+
 
 def _write(
     path: Path,
@@ -730,7 +908,13 @@ def main() -> None:
         generated_by=SCHEMA_GENERATOR,
         seed=SCHEMA_SEED,
     )
-    _write(args.summary_output, "grounded_compression", SUMMARY_ITEMS)
+    _write(
+        args.summary_output,
+        "grounded_compression",
+        SUMMARY_ITEMS,
+        generated_by=SUMMARY_GENERATOR,
+        seed=SUMMARY_SEED,
+    )
 
 
 if __name__ == "__main__":

@@ -239,17 +239,12 @@ def test_json_verifier_reports_partial_leaf_accuracy() -> None:
     correct = json.dumps(invoice.expected["value"])
     assert score_answer(invoice, correct).passed
 
-    partial = json.dumps(
-        {
-            "invoice_number": "INV-204",
-            "vendor": "Wrong Vendor",
-            "currency": "INR",
-            "total": 4250.0,
-        }
-    )
+    partial_value = dict(invoice.expected["value"])
+    partial_value["correspondent"] = "Wrong Correspondent"
+    partial = json.dumps(partial_value)
     result = score_answer(invoice, partial)
     assert not result.passed
-    assert result.details["leaf_accuracy"] == pytest.approx(0.75)
+    assert result.details["leaf_accuracy"] == pytest.approx(5 / 6)
     assert score_answer(invoice, "not json").details["reason"] == "invalid_json"
 
     fenced = score_answer(invoice, f"```json\n{correct}\n```")
@@ -261,22 +256,29 @@ def test_json_verifier_reports_partial_leaf_accuracy() -> None:
     assert fenced.details["protocol_score"] == 0.0
     assert fenced.details["diagnostic_wrapper"] == "markdown_fence"
 
-    wrong_type = json.dumps({**invoice.expected["value"], "total": True})
+    wrong_type = json.dumps({**invoice.expected["value"], "amount": True})
     wrong_type_result = score_answer(invoice, wrong_type)
     assert not wrong_type_result.passed
     assert wrong_type_result.details["content_exact"] is False
 
-    case_only = json.dumps({**invoice.expected["value"], "vendor": "acme paper"})
-    case_result = score_answer(invoice, case_only)
+    normalizer_item = next(
+        item
+        for item in suite.items["messy_text_to_schema"]
+        if item.id == "schema_invoice_002"
+    )
+    case_only = json.dumps(
+        {**normalizer_item.expected["value"], "vendor": "north star office"}
+    )
+    case_result = score_answer(normalizer_item, case_only)
     assert not case_result.passed
-    assert case_result.details["leaf_accuracy"] == pytest.approx(0.75)
+    assert case_result.details["leaf_accuracy"] == pytest.approx(5 / 6)
     assert case_result.details["normalized_leaf_accuracy"] == 1.0
 
     identifier_case = json.dumps(
-        {**invoice.expected["value"], "invoice_number": "inv-204"}
+        {**normalizer_item.expected["value"], "invoice_number": "b-778"}
     )
-    identifier_result = score_answer(invoice, identifier_case)
-    assert identifier_result.details["normalized_leaf_accuracy"] == pytest.approx(0.75)
+    identifier_result = score_answer(normalizer_item, identifier_case)
+    assert identifier_result.details["normalized_leaf_accuracy"] == pytest.approx(5 / 6)
 
 
 def test_noisy_order_gold_total_matches_its_line_items_and_tax() -> None:

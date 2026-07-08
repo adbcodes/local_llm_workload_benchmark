@@ -118,6 +118,66 @@ def test_schema_set_covers_realistic_messy_sources_and_untrusted_text() -> None:
     assert items["schema_device_match_001"].expected["value"]["rack_location"] is None
 
 
+def test_schema_realism_replacements_have_scale_artifacts_and_source_pointers() -> None:
+    items = {
+        item.id: item for item in load_suite(SCHEMA_SUITE).items["messy_text_to_schema"]
+    }
+    scanned_ids = {
+        "schema_invoice_001",
+        "schema_event_002",
+        "schema_contact_001",
+        "schema_product_001",
+        "schema_shipment_001",
+        "schema_booking_001",
+    }
+    email_ids = {"schema_ci_run_001", "schema_access_request_001"}
+    mixed_language_ids = {"schema_subscription_001", "schema_address_001"}
+    replaced_ids = scanned_ids | email_ids | mixed_language_ids
+    common_gold_keys = {
+        "correspondent",
+        "document_type",
+        "document_date",
+        "reference_number",
+        "amount",
+        "currency",
+    }
+
+    assert sum("realistic_scale" in item.tags for item in items.values()) == 10
+    for item_id in replaced_ids:
+        item = items[item_id]
+        assert set(item.expected["value"]) == common_gold_keys
+        assert item.provenance.kind == "adapted"
+        assert item.provenance.source is not None
+        assert "fully rewritten" in item.provenance.source.dataset
+        assert len(item.provenance.source.content_sha256) == 64
+        assert score_answer(item, json.dumps(item.expected["value"])).passed
+
+    for item_id in scanned_ids:
+        item = items[item_id]
+        source = item.prompt.rsplit("Text: ", 1)[1]
+        assert 150 <= len(source.split()) <= 400
+        assert "scanned_document" in item.tags
+        assert "ocr_artifacts" in item.tags
+        assert "paperless_ngx_workload" in item.tags
+        assert any(artifact in source for artifact in ("0", "l", "-\n"))
+
+    assert all("header_footer_distractors" in items[item_id].tags for item_id in email_ids)
+    assert all("mixed_language" in items[item_id].tags for item_id in mixed_language_ids)
+    realistic_source_text = {
+        item_id: items[item_id].prompt.rsplit("Text: ", 1)[1]
+        for item_id in replaced_ids
+    }
+    assert all(
+        "Correspondent:" not in realistic_source_text[item_id]
+        for item_id in email_ids | mixed_language_ids
+    )
+    assert "Extract the full booking amount" not in realistic_source_text["schema_booking_001"]
+    assert all(
+        "indian_date_normalization" in items[item_id].tags
+        for item_id in mixed_language_ids
+    )
+
+
 def test_schema_prompts_state_values_that_must_not_be_inferred() -> None:
     items = {
         item.id: item for item in load_suite(SCHEMA_SUITE).items["messy_text_to_schema"]
@@ -148,16 +208,80 @@ def test_json_scoring_ignores_object_key_order_but_rejects_extra_fields() -> Non
 def test_summary_set_has_target_size_and_distinct_tasks() -> None:
     items = load_suite(SUMMARY_SUITE).items["grounded_compression"]
 
-    assert len(items) == 20
+    assert len(items) == 30
     assert Counter(item.difficulty for item in items) == {
-        "easy": 5,
-        "medium": 10,
-        "hard": 5,
+        "easy": 7,
+        "medium": 15,
+        "hard": 8,
     }
-    assert len({item.subcategory for item in items}) == 20
+    assert len({item.subcategory for item in items}) == 25
+    assert len({item.prompt for item in items}) == 30
+    assert len({item.expected["value"] for item in items}) == 30
     assert len({item.scoring.parameters["max_words"] for item in items}) >= 5
     assert all("Source:" in item.prompt for item in items)
     assert all(len(item.prompt.split()) >= 50 for item in items)
+
+
+def test_summary_realistic_sources_cover_compact_through_very_long_shapes() -> None:
+    items = load_suite(SUMMARY_SUITE).items["grounded_compression"]
+    realistic = [item for item in items if "realistic_source" in item.tags]
+
+    assert len(realistic) == 10
+    assert Counter(
+        next(
+            tag
+            for tag in item.tags
+            if tag
+            in {
+                "compact_source",
+                "standard_source",
+                "long_source",
+                "very_long_source",
+            }
+        )
+        for item in realistic
+    ) == {
+        "compact_source": 3,
+        "standard_source": 3,
+        "long_source": 3,
+        "very_long_source": 1,
+    }
+    assert Counter(
+        next(
+            tag
+            for tag in item.tags
+            if tag in {"chat_history", "meeting_transcript", "long_update"}
+        )
+        for item in realistic
+    ) == {"chat_history": 4, "meeting_transcript": 3, "long_update": 3}
+
+    chats = sorted(
+        (item for item in realistic if "chat_history" in item.tags),
+        key=lambda item: item.id,
+    )
+    chat_turns = []
+    chat_words = []
+    for item in chats:
+        source = item.prompt.split("\n\nSource: ", 1)[1]
+        chat_turns.append(
+            sum(line.startswith(("User:", "Assistant:")) for line in source.splitlines())
+        )
+        chat_words.append(len(source.split()))
+    assert chat_turns == [10, 22, 42, 50]
+    assert chat_words == [258, 762, 1295, 1630]
+
+    for item in realistic:
+        source = item.prompt.split("\n\nSource: ", 1)[1]
+        expected_words = len(item.expected["value"].split())
+        assert expected_words <= item.scoring.parameters["max_words"]
+        assert item.provenance.review_status == "human_checked"
+        if "meeting_transcript" in item.tags:
+            speaker_turns = sum(
+                bool(line) and line.split(":", 1)[0].replace(" ", "").isalpha()
+                and ":" in line
+                for line in source.splitlines()
+            )
+            assert speaker_turns >= 10
 
 
 def test_materialized_schema_and_summary_questions_match_generator(
