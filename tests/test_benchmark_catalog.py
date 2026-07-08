@@ -242,10 +242,65 @@ def test_retrieval_and_tool_questions_match_generators_and_have_hard_cases() -> 
     }
     assert len(no_tool_items) == 16
     assert all(item.conversation and item.conversation[0].role == "system" for item in tool_items)
-    assert all("web_search(query: string" in item.conversation[0].content for item in tool_items)
+    assert all(
+        "web_search(query: string" in item.conversation[0].content
+        or "light.turn_off(entity_id: string)" in item.conversation[0].content
+        for item in tool_items
+    )
     assert all(item.scoring.method == "tool_call" for item in tool_items)
     assert all(item.provenance.generator == "single_turn_tool_call_v2" for item in tool_items)
     assert all(item.provenance.seed == 20260731 for item in tool_items)
+    home_items = [item for item in tool_items if "home_assistant" in item.tags]
+    assert len(home_items) == 6
+    assert {item.expected["value"]["tool_call"] for item in home_items} == {
+        "light.turn_off",
+        "light.turn_on",
+        "climate.set_temperature",
+        "lock.lock",
+        "media_player.play",
+        "cover.close",
+    }
+    assert all(item.provenance.kind == "adapted" for item in home_items)
+    assert all(item.provenance.source is not None for item in home_items)
+    assert all(
+        len(
+            re.findall(
+                r"^- (?:light|climate|lock|media_player|cover)\.[a-z0-9_]+$",
+                item.conversation[0].content,
+                re.MULTILINE,
+            )
+        )
+        >= 30
+        for item in home_items
+    )
+    context_pressure_items = [
+        item for item in tool_items if "context_pressure" in item.tags
+    ]
+    assert len(context_pressure_items) == 4
+    expected_final_openers = {
+        "tool_use_011": "anyway, the actual thing I need now:",
+        "tool_use_012": "sorry, unrelated to all that",
+        "tool_use_015": "need the quarterly-summary PDFs",
+        "tool_use_016": "ok final ask:",
+    }
+    observed_prior_calls = set()
+    observed_context_words = []
+    for item in context_pressure_items:
+        prior_history = item.conversation[1:-1]
+        context_words = sum(len(message.content.split()) for message in prior_history)
+        prior_calls = sum(
+            message.role == "assistant" and message.content.startswith('{"tool_call"')
+            for message in prior_history
+        )
+        assert 1500 <= context_words <= 3000
+        observed_context_words.append(context_words)
+        observed_prior_calls.add(prior_calls)
+        assert f"{prior_calls}_prior_tool_calls" in item.tags
+        assert item.conversation[-1].role == "user"
+        assert item.conversation[-1].content == item.prompt
+        assert item.prompt.startswith(expected_final_openers[item.id])
+    assert observed_prior_calls == {6, 7, 8, 9}
+    assert max(observed_context_words) - min(observed_context_words) >= 300
     second_decisions = [
         item for item in tool_items if "second_tool_decision" in item.tags
     ]

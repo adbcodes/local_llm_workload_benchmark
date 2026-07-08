@@ -1,10 +1,24 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
 import yaml
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+from tool_use_realistic_sources import (
+    CONTEXT_PRESSURE_FINAL_REQUESTS,
+    CONTEXT_PRESSURE_HISTORIES,
+    HOME_ASSISTANT_POINTERS,
+    HOME_AUTOMATION_SPECS,
+    HOME_SYSTEM_PROMPT,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,6 +135,90 @@ def _tool_response_message(response: dict[str, Any]) -> str:
     if isinstance(user_update, str):
         content += "\nUser update: " + user_update
     return content
+
+
+def _apply_realism_replacements(
+    items: list[dict[str, Any]], system_prompt: str
+) -> list[dict[str, Any]]:
+    by_id = {item["id"]: item for item in items}
+    for item_id, spec in HOME_AUTOMATION_SPECS.items():
+        base = by_id[item_id]
+        expected = {
+            "tool_call": spec["tool_name"],
+            "arguments": dict(spec["arguments"]),
+        }
+        number = int(item_id.rsplit("_", 1)[1])
+        replacement = _base_item(
+            "tool_use",
+            number,
+            "home_automation",
+            base["difficulty"],
+            spec["request"],
+            "json",
+            expected,
+            "tool_call",
+        )
+        replacement["response_contract"]["format"] = "single_tool_call_or_answer"
+        replacement["conversation"] = [
+            {"role": "system", "content": HOME_SYSTEM_PROMPT},
+            {"role": "user", "content": spec["request"]},
+        ]
+        pointer = HOME_ASSISTANT_POINTERS[spec["pointer"]]
+        replacement["provenance"].update(
+            {
+                "kind": "adapted",
+                "review_status": "human_checked",
+                "generator": TOOL_GENERATOR,
+                "seed": TOOL_SEED,
+                "source": {
+                    "dataset": pointer["dataset"],
+                    "record_id": f"request-patterns-{item_id}",
+                    "url": pointer["url"],
+                    "license": pointer["license"],
+                    "content_sha256": hashlib.sha256(
+                        spec["request"].encode("utf-8")
+                    ).hexdigest(),
+                },
+            }
+        )
+        replacement["tags"].extend(
+            [
+                "home_assistant",
+                "entity_id_selection",
+                "near_duplicate_distractors",
+                "fully_rewritten",
+                "single_turn_tool_call",
+                "tool_required",
+            ]
+        )
+        by_id[item_id] = replacement
+
+    for item_id, history in CONTEXT_PRESSURE_HISTORIES.items():
+        item = by_id[item_id]
+        prior_call_count = sum(
+            message["role"] == "assistant"
+            and message["content"].startswith('{"tool_call"')
+            for message in history
+        )
+        item["prompt"] = CONTEXT_PRESSURE_FINAL_REQUESTS[item_id]
+        item["conversation"] = [
+            {"role": "system", "content": system_prompt},
+            *history,
+            {"role": "user", "content": item["prompt"]},
+        ]
+        item["provenance"].update(
+            {"review_status": "human_checked", "generator": TOOL_GENERATOR, "seed": TOOL_SEED}
+        )
+        item["tags"].extend(
+            [
+                "context_pressure",
+                "irrelevant_prior_conversation",
+                f"{prior_call_count}_prior_tool_calls",
+                "solved_scenario_variant",
+            ]
+        )
+
+    return list(by_id.values())
 
 
 def _tool_items() -> list[dict[str, Any]]:
@@ -262,7 +360,6 @@ Do not add Markdown fences, commentary, or any other keys."""
         generated["tags"].extend(
             [
                 "second_tool_decision",
-                "second_tool_required" if tool_name is not None else "second_tool_not_required",
                 *tool_response.get("__tags", []),
             ]
         )
@@ -330,7 +427,6 @@ Do not add Markdown fences, commentary, or any other keys."""
         generated["tags"].extend(
             [
                 "deep_tool_decision",
-                subcategory,
                 "tool_required" if tool_name is not None else "no_tool",
                 *(
                     tag
@@ -340,6 +436,7 @@ Do not add Markdown fences, commentary, or any other keys."""
             ]
         )
         items.append(generated)
+    items = _apply_realism_replacements(items, system_prompt)
     items.sort(key=lambda item: {"easy": 0, "medium": 1, "hard": 2}[item["difficulty"]])
     return items
 
