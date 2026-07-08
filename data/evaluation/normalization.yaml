@@ -72,8 +72,9 @@ accepted_answer_contracts:
       - strip_one_markdown_fence_when_permitted
       - parse_json
       - compare_typed_values
+      - sort_only_arrays_whose_paths_are_explicitly_declared_unordered
       - casefold_only_generator_declared_human_label_paths_for_the_normalized_leaf_diagnostic
-    rejection_rule: Reject invalid JSON and multiple candidate JSON values.
+    rejection_rule: Reject invalid JSON, multiple candidate JSON values, and duplicate members in declared set-like arrays unless the expected value contains the same duplicates.
   code:
     accepted_forms:
       - raw code

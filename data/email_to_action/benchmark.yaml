@@ -1,0 +1,37 @@
+id: email_to_action
+title: Email to Action
+description: Privacy-preserving inbox triage over complete realistic emails with deterministic routing and field extraction.
+suite: B
+status: complete
+task_types:
+  - clear single-label inbox routing
+  - multi-label action and notification routing
+  - urgency hidden by polite tone
+  - subject and body disagreement
+  - newsletters and no-reply notifications
+  - phishing and lookalike detection
+  - vague requests with missing fields
+metrics: [exact_match_rate, leaf_accuracy, parse_failure_rate]
+score_formula: mean_score
+evaluation_policy:
+  primary_outcome: semantic
+  primary_metric: semantic_pass_rate
+  protocol_requirement: required
+  partial_credit_metric: mean_semantic_score
+items_path: items.jsonl
+authoring_paths:
+  - questions.yaml
+current_question_count: 40
+target_question_count: 40
+current_difficulty_distribution:
+  easy: 5
+  medium: 15
+  hard: 20
+difficulty_distribution:
+  easy: 5
+  medium: 15
+  hard: 20
+target_visibility_distribution: {public: 20, held_out: 20}
+order_rule: easy_to_hard
+scoring_methods:
+  - json_exact

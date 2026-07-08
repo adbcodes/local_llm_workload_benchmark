@@ -24,6 +24,9 @@ methods:
     use_for: structured extraction and raw JSON
     expected_value: object or array
     accepted_answer_contracts: [json]
+    parameters:
+      unordered_array_paths: optional exact JSON paths whose array order is semantic-free
+    exactness_rule: Object keys are order-insensitive; arrays remain ordered unless their exact path is declared unordered. Extra keys and duplicate set-like labels remain failures.
     reports: [protocol_compliance, leaf_accuracy, normalized_leaf_accuracy, missing_paths, extra_paths]
   set_match:
     use_for: unordered row IDs or multiple labels

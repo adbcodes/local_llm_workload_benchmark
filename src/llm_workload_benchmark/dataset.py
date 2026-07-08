@@ -37,7 +37,7 @@ ScoringMethod = Literal[
 ]
 EVALUATOR_VERSIONS: dict[ScoringMethod, int] = {
     "date_value": 2,
-    "json_exact": 2,
+    "json_exact": 3,
     "constraint_rules": 2,
     "tool_call": 2,
 }
@@ -502,7 +502,11 @@ def _validate_scoring_parameters(
             "allow_surrounding_text",
             "answer_format",
         },
-        "json_exact": {"allow_diagnostic_normalization", "case_insensitive_paths"},
+        "json_exact": {
+            "allow_diagnostic_normalization",
+            "case_insensitive_paths",
+            "unordered_array_paths",
+        },
         "constraint_rules": {"rules", "content_requirements", "semantic_requirements"},
         "executable_python": {
             "timeout_seconds",
@@ -568,6 +572,12 @@ def _validate_scoring_parameters(
             not isinstance(path, str) or not path.startswith("$") for path in paths
         ):
             raise ValueError("case_insensitive_paths must be a list of JSON paths")
+        unordered_paths = parameters.get("unordered_array_paths", [])
+        if not isinstance(unordered_paths, list) or any(
+            not isinstance(path, str) or not path.startswith("$")
+            for path in unordered_paths
+        ):
+            raise ValueError("unordered_array_paths must be a list of JSON paths")
         return
     if method == "set_match":
         separator = parameters.get("separator", ",")
@@ -1633,8 +1643,15 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
     actual = parsed.value
 
     expected = item.expected["value"]
-    expected_leaves = _flatten_json(expected)
-    actual_leaves = _flatten_json(actual)
+    unordered_array_paths = set(
+        item.scoring.parameters.get("unordered_array_paths", [])
+    )
+    comparable_expected = _canonicalize_unordered_arrays(
+        expected, unordered_array_paths
+    )
+    comparable_actual = _canonicalize_unordered_arrays(actual, unordered_array_paths)
+    expected_leaves = _flatten_json(comparable_expected)
+    actual_leaves = _flatten_json(comparable_actual)
     all_paths = set(expected_leaves) | set(actual_leaves)
     matched_paths = {
         path
@@ -1664,7 +1681,7 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
     content_score = leaf_accuracy
     protocol_score = float(protocol_compliant)
     score = content_score
-    content_exact = _json_values_equal(actual, expected)
+    content_exact = _json_values_equal(comparable_actual, comparable_expected)
     # Commit 5 will derive the headline verdict from each benchmark policy.
     passed = protocol_compliant and content_exact
     return ScoreResult(
@@ -1679,6 +1696,7 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
             "leaf_accuracy": leaf_accuracy,
             "normalized_leaf_accuracy": normalized_leaf_accuracy,
             "case_insensitive_paths": sorted(case_insensitive_paths),
+            "unordered_array_paths": sorted(unordered_array_paths),
             "content_score": content_score,
             "protocol_score": protocol_score,
             **_answer_parse_details(parsed),
@@ -1686,6 +1704,45 @@ def _score_json(item: DatasetItem, answer: str) -> ScoreResult:
             "extra_paths": sorted(set(actual_leaves) - set(expected_leaves)),
         },
     )
+
+
+def _canonicalize_unordered_arrays(
+    value: Any,
+    unordered_paths: set[str],
+    path: str = "$",
+) -> Any:
+    """Sort arrays only where an item explicitly declares set semantics."""
+
+    if isinstance(value, dict):
+        return {
+            key: _canonicalize_unordered_arrays(
+                nested,
+                unordered_paths,
+                f"{path}.{key}",
+            )
+            for key, nested in value.items()
+        }
+    if isinstance(value, list):
+        normalized = [
+            _canonicalize_unordered_arrays(
+                nested,
+                unordered_paths,
+                f"{path}[{index}]",
+            )
+            for index, nested in enumerate(value)
+        ]
+        if path in unordered_paths:
+            return sorted(
+                normalized,
+                key=lambda nested: json.dumps(
+                    nested,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+            )
+        return normalized
+    return value
 
 
 def _score_set(item: DatasetItem, answer: str) -> ScoreResult:
