@@ -26,8 +26,8 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
     )
     source_path.write_text(
         source_path.read_text(encoding="utf-8").replace(
-            "A community kitchen has a 640 kg monthly rice allocation",
-            "A relief kitchen has a 640 kg monthly rice allocation",
+            "we get 640 kg of rice for the community kitchen each month",
+            "we get 640 kg of rice for the relief kitchen each month",
         ),
         encoding="utf-8",
     )
@@ -38,7 +38,7 @@ def test_authoring_build_is_reusable_and_only_rewrites_changed_output(
     rebuilt = build_authoring_suite(suite_path)
     assert rebuilt.written == (data_root / "applied_reasoning" / "items.jsonl",)
     assert len(rebuilt.unchanged) == 5
-    assert "A relief kitchen" in rebuilt.written[0].read_text(encoding="utf-8")
+    assert "relief kitchen" in rebuilt.written[0].read_text(encoding="utf-8")
 
 
 def test_suite_filters_select_smoke_items_across_benchmarks() -> None:

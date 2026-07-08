@@ -49,6 +49,11 @@ def test_coding_dataset_has_agreed_task_mix_and_fresh_implementation_contract() 
     assert all(item.expected["value"].get("reference_solution") for item in implementations)
     assert all(
         any(test.get("preserve_args") for test in item.expected["value"]["tests"])
+        or all(
+            not isinstance(arg, (list, dict))
+            for test in item.expected["value"]["tests"]
+            for arg in test["args"]
+        )
         for item in implementations
     )
     assert Counter(item.visibility for item in items) == {
@@ -56,6 +61,56 @@ def test_coding_dataset_has_agreed_task_mix_and_fresh_implementation_contract() 
         "held_out": 40,
     }
     assert Counter(item.split for item in items) == {"dev": 20, "test": 60}
+
+
+def test_realism_replacements_cover_regex_scripts_logs_and_traceback() -> None:
+    items = {
+        item.id: item for item in load_suite(CODING_SUITE_PATH).items["code_debug_repair"]
+    }
+    regex_ids = {
+        "code_validate_invoice_filename_001",
+        "code_extract_ticket_mentions_001",
+        "code_validate_release_tag_001",
+    }
+    script_ids = {
+        "code_rename_phone_photos_001",
+        "code_transform_expense_csv_001",
+    }
+    log_ids = {
+        "code_extract_log_timestamps_001",
+        "code_extract_error_codes_001",
+    }
+    traceback_id = "test_traceback_missing_region_001"
+
+    assert regex_ids | script_ids | log_ids | {traceback_id} <= set(items)
+    assert all("regex" in items[item_id].tags for item_id in regex_ids)
+    for item_id in regex_ids:
+        expected_values = [
+            test["expected"] for test in items[item_id].expected["value"]["tests"]
+        ]
+        assert any(bool(value) for value in expected_values)
+        assert any(not value for value in expected_values)
+        assert evaluate_python(
+            items[item_id], items[item_id].expected["value"]["reference_solution"]
+        ).passed
+    assert all("one_off_script" in items[item_id].tags for item_id in script_ids)
+    assert all("log_parsing" in items[item_id].tags for item_id in log_ids)
+    implementation_ids = regex_ids | script_ids | log_ids
+    assert all(
+        "repository configuration loader" not in items[item_id].prompt
+        for item_id in implementation_ids
+    )
+    assert len({items[item_id].prompt for item_id in implementation_ids}) == 7
+    for item_id in script_ids | log_ids:
+        assert evaluate_python(
+            items[item_id], items[item_id].expected["value"]["reference_solution"]
+        ).passed
+    traceback = items[traceback_id]
+    assert traceback.subcategory == "regression_test_selection"
+    assert traceback.response_contract.format == "diagnostic_label"
+    assert "Traceback (most recent call last)" in traceback.prompt
+    assert "empty_config" not in traceback.prompt
+    assert score_answer(traceback, "missing_region").passed
 
 
 def test_bug_diagnosis_items_use_deterministic_labels() -> None:
@@ -204,6 +259,7 @@ def normalize_event_codes(codes):
 
     assert result.type == "executable"
     assert result.evaluator == "restricted_python_tests"
+    assert result.version == 4
     assert result.passed
     assert result.score == 1
     assert result.details["tests_passed"] == 4

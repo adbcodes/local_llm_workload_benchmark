@@ -21,7 +21,7 @@ class ExecutableEvaluationError(RuntimeError):
     """Raised when an executable task or its restricted runner is invalid."""
 
 
-EXECUTABLE_EVALUATOR_VERSION = 3
+EXECUTABLE_EVALUATOR_VERSION = 4
 _BLOCKED_NODES = (
     ast.AsyncFunctionDef,
     ast.Await,
@@ -54,6 +54,7 @@ _BLOCKED_CALLS = {
 _WORKER = r"""
 import copy
 import json
+import re
 import sys
 
 payload = json.loads(sys.stdin.read())
@@ -66,7 +67,8 @@ allowed_builtins = {
     "ArithmeticError": ArithmeticError, "IndexError": IndexError,
     "KeyError": KeyError, "TypeError": TypeError, "ValueError": ValueError,
 }
-namespace = {"__builtins__": allowed_builtins}
+# Approved module-level fixture for regex tasks. Candidate imports remain blocked.
+namespace = {"__builtins__": allowed_builtins, "re": re}
 try:
     exec(compile(payload["source"], "<candidate>", "exec"), namespace, namespace)
     function = namespace[payload["entry_point"]]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,38 @@ IMPLEMENTATION_CONTEXT_BY_TAG = (
 )
 
 
+REALISM_IMPLEMENTATION_PROMPTS = {
+    "code_validate_invoice_filename_001": (
+        "quick helper from our accounts download job: people keep dropping renamed or backup files into the invoice folder.",
+        "The file already imports re above this helper. Reply with exactly the is_invoice_filename function and don't repeat the import.",
+    ),
+    "code_extract_ticket_mentions_001": (
+        "we paste incident notes from Slack into a triage script and need to pull the ticket references back out.",
+        "re is already imported in this module. Output only the extract_ticket_mentions function definition, without another import.",
+    ),
+    "code_rename_phone_photos_001": (
+        "one-off cleanup script: a site visit left me with a list of phone-photo filenames that need predictable names before upload.",
+        "Don't change the input list. Send back only the rename_phone_photos function, with no imports or example calls.",
+    ),
+    "code_validate_release_tag_001": (
+        "our CI job is accepting a few malformed release tags, so I need the check isolated in a tiny helper.",
+        "This file already has import re above the helper. Return just the is_release_tag function, with no Markdown or explanation.",
+    ),
+    "code_transform_expense_csv_001": (
+        "got a small expense CSV export, already parsed into rows, and I need to turn it into the shape our reimbursement upload accepts.",
+        "Leave rows untouched and return only the transform_expense_rows function definition. No imports or surrounding prose.",
+    ),
+    "code_extract_log_timestamps_001": (
+        "pulled a mixed bag of worker log lines during an incident; can you write the little parser I can paste into our cleanup script?",
+        "Preserve lines exactly and provide only the extract_log_timestamps function. The answer must contain no imports or usage example.",
+    ),
+    "code_extract_error_codes_001": (
+        "need a quick helper for an incident summary: the raw lines have repeated error codes mixed with punctuation and other text.",
+        "Do not mutate lines. Reply solely with the extract_error_codes function definition and do not import anything.",
+    ),
+}
+
+
 @dataclass(frozen=True)
 class Task:
     id: str
@@ -87,7 +120,7 @@ def _source(task: Task) -> str:
 
 
 def _expected(source: str, name: str, args: list[Any]) -> Any:
-    namespace: dict[str, Any] = {}
+    namespace: dict[str, Any] = {"re": re}
     exec(source, namespace, namespace)
     return namespace[name](*json.loads(json.dumps(args)))
 
@@ -110,9 +143,85 @@ def _implementation_context(task: Task) -> str:
     return "a small internal Python service"
 
 
+def _implementation_prompt(task: Task, index: int) -> str:
+    realism_parts = REALISM_IMPLEMENTATION_PROMPTS.get(task.id)
+    if realism_parts is not None:
+        opener, output_rule = realism_parts
+        return (
+            f"{opener}\n\n"
+            f"Function: {task.name}({task.params})\n"
+            f"Behavior: {task.specification}\n\n"
+            f"{output_rule}"
+        )
+
+    context = _implementation_context(task)
+    introductions = (
+        f"A maintenance ticket for {context} needs this missing helper.",
+        f"Complete a small utility used by {context}.",
+        f"A regression-safe change in {context} requires this helper.",
+        f"Implement the repository helper below for {context}.",
+    )
+    return (
+        f"{introductions[index % len(introductions)]}\n\n"
+        f"Function: {task.name}({task.params})\n"
+        f"Contract: {task.specification}\n\n"
+        "Keep the public signature unchanged and do not mutate inputs. "
+        "Return only the function definition and use no imports."
+    )
+
+
 def _additional_implementation_tasks() -> list[Task]:
     """Fresh practical tasks added for broader local-assistant coverage."""
     return [
+        Task(
+            "code_validate_invoice_filename_001", "easy", "is_invoice_filename", "name",
+            "Return whether name exactly matches INV-YYYY-NNNNN.pdf, with uppercase INV, a four-digit year, five-digit sequence, and lowercase .pdf.",
+            "return re.fullmatch(r'INV-[0-9]{4}-[0-9]{5}\\.pdf', name) is not None",
+            [["INV-2026-00817.pdf"], ["inv-2026-00817.pdf"], ["INV-26-00817.pdf"], ["INV-2026-00817.pdf.bak"]],
+            ["regex", "parsing", "filename_validation"],
+        ),
+        Task(
+            "code_extract_ticket_mentions_001", "easy", "extract_ticket_mentions", "text",
+            "Use a regex to return every standalone INC- or REQ- ticket ID with 4 to 6 digits, in occurrence order. Keep duplicates. Do not match IDs embedded inside letters or digits.",
+            "return re.findall(r'(?<![A-Za-z0-9])(?:INC|REQ)-[0-9]{4,6}(?![A-Za-z0-9])', text)",
+            [["retry INC-4821, then REQ-770044"], ["INC-123 REQ-1234567 xINC-9999"], [""], ["INC-4821 / INC-4821"]],
+            ["regex", "parsing", "ticket_ids"],
+        ),
+        Task(
+            "code_rename_phone_photos_001", "easy", "rename_phone_photos", "names, prefix",
+            "Return new filenames in input order. Rename only IMG_YYYYMMDD_NNNN.JPG files to prefix-YYYY-MM-DD-NNNN.jpg; leave every nonmatching filename unchanged. Do not mutate names.",
+            "result = []\nfor name in names:\n    if len(name) == 21 and name.startswith('IMG_') and name.endswith('.JPG'):\n        date = name[4:12]\n        sequence = name[13:17]\n        if name[12] == '_' and date.isdigit() and sequence.isdigit():\n            name = prefix + '-' + date[:4] + '-' + date[4:6] + '-' + date[6:] + '-' + sequence + '.jpg'\n    result.append(name)\nreturn result",
+            [[["IMG_20260803_0042.JPG", "notes.txt"], "site-a"], [[], "trip"], [["IMG_2026083_0001.JPG"], "field"], [["img_20260803_0042.jpg"], "trip"]],
+            ["one_off_script", "files", "immutable_input"],
+        ),
+        Task(
+            "code_validate_release_tag_001", "medium", "is_release_tag", "tag",
+            "Return whether tag exactly matches service-name-vMAJOR.MINOR.PATCH. service-name is lowercase alphanumeric words joined by single hyphens and starts with a letter. Version components are 0 or a nonzero digit followed by digits, so leading zeroes are invalid.",
+            "pattern = r'[a-z][a-z0-9]*(?:-[a-z0-9]+)*-v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)'\nreturn re.fullmatch(pattern, tag) is not None",
+            [["billing-api-v2.14.3"], ["billing-api-v02.14.3"], ["Billing-api-v2.14.3"], ["a-v0.0.0"], ["billing--api-v1.2.3"]],
+            ["regex", "parsing", "release_automation"],
+        ),
+        Task(
+            "code_transform_expense_csv_001", "medium", "transform_expense_rows", "rows",
+            "rows is CSV data represented as lists. The first row is a header containing date, category, amount, and optional extra columns. Return a new table with header [date,category,amount_paise]. For later rows with the same width, trim date/category, accept non-negative amounts written as a whole number or with one or two decimal places, and convert them to integer paise. Skip blank, malformed, or negative amounts. Preserve valid row order and do not mutate rows.",
+            "if not rows:\n    return [['date', 'category', 'amount_paise']]\nheader = [value.strip().lower() for value in rows[0]]\ntry:\n    date_i = header.index('date')\n    category_i = header.index('category')\n    amount_i = header.index('amount')\nexcept ValueError:\n    return [['date', 'category', 'amount_paise']]\nresult = [['date', 'category', 'amount_paise']]\nfor row in rows[1:]:\n    if len(row) != len(rows[0]):\n        continue\n    raw = row[amount_i].strip()\n    parts = raw.split('.')\n    if len(parts) > 2 or not parts[0].isdigit() or (len(parts) == 2 and (not parts[1].isdigit() or len(parts[1]) > 2)):\n        continue\n    paise = int(parts[0]) * 100 + (int(parts[1].ljust(2, '0')) if len(parts) == 2 else 0)\n    result.append([row[date_i].strip(), row[category_i].strip(), paise])\nreturn result",
+            [[[["date", "category", "amount", "note"], [" 2026-08-01 ", " Taxi ", "418.5", "airport"], ["2026-08-02", "Meals", "-20", "refund"], ["2026-08-03", "Stay", "2400.00", ""]]], [[]], [[["amount", "date", "category"], ["7", "2026-01-01", "Tea"]]], [[["date", "category", "amount"], ["2026-01-01", "Tea", "7.123"], ["2026-01-02", "Bus", "0"]]]],
+            ["one_off_script", "csv", "parsing", "immutable_input"],
+        ),
+        Task(
+            "code_extract_log_timestamps_001", "medium", "extract_log_timestamps", "lines",
+            "Return [timestamp, message] for each line that starts with a bracketed UTC timestamp in exactly [YYYY-MM-DDTHH:MM:SS.mmmZ] form followed by one space. Preserve order and the message text after that space; ignore all other lines.",
+            "result = []\nfor line in lines:\n    if len(line) < 26 or line[0] != '[' or line[25:27] != '] ':\n        continue\n    stamp = line[1:25]\n    if stamp[4] != '-' or stamp[7] != '-' or stamp[10] != 'T' or stamp[13] != ':' or stamp[16] != ':' or stamp[19] != '.' or stamp[23] != 'Z':\n        continue\n    digits = stamp[:4] + stamp[5:7] + stamp[8:10] + stamp[11:13] + stamp[14:16] + stamp[17:19] + stamp[20:23]\n    if digits.isdigit():\n        result.append([stamp, line[27:]])\nreturn result",
+            [[["[2026-08-03T09:14:07.118Z] worker started", "noise", "[2026-08-03T09:14:08.002Z] retry 1"]], [[]], [["[2026-8-03T09:14:07.118Z] bad"]], [["[2026-08-03T09:14:07.118Z] "]]],
+            ["log_parsing", "timestamps", "raw_logs"],
+        ),
+        Task(
+            "code_extract_error_codes_001", "medium", "extract_error_codes", "lines",
+            "From raw log lines, return first occurrences of standalone error codes shaped E- followed by exactly five digits, in encounter order. A line may contain several codes. Do not match a code touching a letter or digit.",
+            "result = []\nfor line in lines:\n    for index in range(max(0, len(line) - 6)):\n        token = line[index:index + 7]\n        left_ok = index == 0 or not line[index - 1].isalnum()\n        right_ok = index + 7 == len(line) or not line[index + 7].isalnum()\n        if token.startswith('E-') and token[2:].isdigit() and left_ok and right_ok and token not in result:\n            result.append(token)\nreturn result",
+            [[["WARN retry after E-10422; upstream E-88201", "E-10422 repeated"]], [[]], [["xE-12345 E-1234 E-123456"]], [["codes=E-00001/E-00002", "tail E-00003."]]],
+            ["log_parsing", "error_codes", "raw_logs"],
+        ),
         Task(
             "code_normalize_phonebook_001", "easy", "normalize_phonebook", "records, country_code",
             "Trim names and phone numbers, remove spaces and hyphens from numbers, prefix local 10-digit numbers with country_code, ignore blank names or numbers, and let later names win. Return a name-sorted dictionary.",
@@ -266,6 +375,22 @@ def _additional_implementation_tasks() -> list[Task]:
     ]
 
 
+def _realism_implementation_replacements() -> dict[str, Task]:
+    replacement_ids = (
+        "code_parse_feature_flags_001",
+        "code_bucket_response_times_001",
+        "code_coalesce_notes_001",
+        "code_has_config_cycle_001",
+        "code_tiered_charge_001",
+        "code_retry_times_001",
+        "code_partition_batches_001",
+    )
+    replacement_tasks = _additional_implementation_tasks()[:7]
+    if len(replacement_tasks) != len(replacement_ids):
+        raise ValueError("realism replacement task count drifted")
+    return dict(zip(replacement_ids, replacement_tasks, strict=True))
+
+
 def _implementation_items() -> list[dict[str, Any]]:
     tasks = [
         Task("code_normalize_event_codes_001", "easy", "normalize_event_codes", "codes", "Trim each code, uppercase it, discard blank codes, and return first occurrences in input order.", "result = []\nfor code in codes:\n    value = code.strip().upper()\n    if value and value not in result:\n        result.append(value)\nreturn result", [[" auth ", "AUTH", "", "pay"], [], ["a", " b ", "A"], [" x "]], ["sanity", "normalization"]),
@@ -326,7 +451,9 @@ def _implementation_items() -> list[dict[str, Any]]:
             ["records", "conflict_resolution", "tie_breaking"],
         ),
     ]
-    tasks.extend(_additional_implementation_tasks())
+    replacements = _realism_implementation_replacements()
+    tasks.extend(_additional_implementation_tasks()[7:])
+    tasks = [replacements.get(task.id, task) for task in tasks]
     tasks = [task for task in tasks if task.id not in RETIRED_ITEM_IDS]
     unwrapped_single_argument_cases = {
         "code_normalize_event_codes_001",
@@ -375,26 +502,13 @@ def _implementation_items() -> list[dict[str, Any]]:
             if preserved:
                 test["preserve_args"] = preserved
             tests.append(test)
-        context = _implementation_context(task)
-        introductions = (
-            f"A maintenance ticket for {context} needs this missing helper.",
-            f"Complete a small utility used by {context}.",
-            f"A regression-safe change in {context} requires this helper.",
-            f"Implement the repository helper below for {context}.",
-        )
         items.append({
             "id": task.id,
             "subcategory": "function_implementation",
             "difficulty": task.difficulty,
             "split": "dev" if index % 4 == 0 else "test",
             "visibility": "public" if index % 2 == 0 else "held_out",
-            "prompt": (
-                f"{introductions[index % len(introductions)]}\n\n"
-                f"Function: {task.name}({task.params})\n"
-                f"Contract: {task.specification}\n\n"
-                "Keep the public signature unchanged and do not mutate inputs. "
-                "Return only the function definition and use no imports."
-            ),
+            "prompt": _implementation_prompt(task, index),
             "response_contract": {"type": "code", "format": "python_function"},
             "expected": {"value": {"entry_point": task.name, "tests": tests, "reference_solution": source}},
             "scoring": {"method": "executable_python", "parameters": {"timeout_seconds": 1.0, "memory_limit_mb": 128, "max_output_characters": 10000}},
@@ -596,7 +710,7 @@ def _repair_items() -> list[dict[str, Any]]:
 def _regression_test_items() -> list[dict[str, Any]]:
     """Select the one regression test that exposes a stated implementation risk."""
     cases = [
-        ("test_average_empty_001", "easy", "def average(values):\n    return sum(values) / len(values)", "Return 0 for an empty list; otherwise return the arithmetic mean.", {"empty_input": "average([]) == 0", "single_value": "average([4]) == 4", "mixed_values": "average([2, 4]) == 3"}, "empty_input", ["empty_input", "numeric_semantics"]),
+        ("test_traceback_missing_region_001", "easy", "def region_name(config):\n    return config['deployment']['region'].strip().lower()\n\nTraceback (most recent call last):\n  File \"deploy_report.py\", line 41, in <module>\n    region_name({'deployment': {}})\n  File \"deploy_report.py\", line 2, in region_name\n    return config['deployment']['region'].strip().lower()\nKeyError: 'region'", "config always contains a deployment object. Return 'unknown' when deployment.region is missing; otherwise return its trimmed lowercase value.", {"missing_region": "region_name({'deployment': {}}) == 'unknown'", "present_region": "region_name({'deployment': {'region': ' West '}}) == 'west'", "whitespace_region": "region_name({'deployment': {'region': '   '}}) == ''"}, "missing_region", ["traceback", "missing_nested_key", "diagnostic_label"]),
         ("test_expiry_boundary_001", "easy", "def is_expired(expires_at, now):\n    return now > expires_at", "An item is expired when now is at or after expires_at.", {"before_boundary": "is_expired(10, 9) is False", "exact_boundary": "is_expired(10, 10) is True", "after_boundary": "is_expired(10, 11) is True"}, "exact_boundary", ["boundaries", "time"]),
         ("test_latest_duplicate_001", "easy", "def latest(rows):\n    return {key: value for key, value in rows}", "Later rows for the same key must win.", {"empty_rows": "latest([]) == {}", "distinct_keys": "latest([['a',1],['b',2]]) == {'a':1,'b':2}", "duplicate_key": "latest([['a',1],['a',2]]) == {'a':2}"}, "duplicate_key", ["records", "deduplication"]),
         ("test_lookup_negative_index_001", "medium", "def lookup(values, index, default):\n    try:\n        return values[index]\n    except IndexError:\n        return default", "Only non-negative indices are valid; invalid indices return default.", {"in_range": "lookup([4,5], 1, 0) == 5", "past_end": "lookup([4,5], 2, 0) == 0", "negative_index": "lookup([4,5], -1, 0) == 0", "empty_values": "lookup([], 0, 0) == 0"}, "negative_index", ["boundaries", "python_semantics"]),
@@ -611,13 +725,22 @@ def _regression_test_items() -> list[dict[str, Any]]:
     items = []
     for index, (item_id, difficulty, source, contract, options, answer, tags) in enumerate(cases):
         option_text = "\n".join(f"- {label}: {test}" for label, test in options.items())
+        prompt = f"Review this function:\n\n{source}\n\nContract: {contract}\n\nWhich single regression test most directly exposes the defect?\n{option_text}\n\nReturn only the option label."
+        if item_id == "test_traceback_missing_region_001":
+            prompt = (
+                "this crashed while I was generating a deploy report. which one test "
+                "should I add for the exact bug in this traceback?\n\n"
+                f"{source}\n\nExpected behavior: {contract}\n\n"
+                "Pick the single regression test that fails because of this defect:\n"
+                f"{option_text}\n\nReturn only the option label."
+            )
         items.append({
             "id": item_id,
             "subcategory": "regression_test_selection",
             "difficulty": difficulty,
             "split": "dev" if index % 4 == 0 else "test",
             "visibility": "public" if index % 2 == 0 else "held_out",
-            "prompt": f"Review this function:\n\n{source}\n\nContract: {contract}\n\nWhich single regression test most directly exposes the defect?\n{option_text}\n\nReturn only the option label.",
+            "prompt": prompt,
             "response_contract": {"type": "text", "format": "diagnostic_label"},
             "expected": {"value": answer},
             "scoring": {"method": "exact_match", "parameters": {"strip": True, "case_sensitive": False}},

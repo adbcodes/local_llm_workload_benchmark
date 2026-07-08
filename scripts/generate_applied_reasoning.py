@@ -126,8 +126,8 @@ def _arithmetic() -> list[Scenario]:
         Scenario(
             "direct_percent",
             "easy",
-            "A community kitchen has a 640 kg monthly rice allocation and donates "
-            "17.5% to a nearby shelter. How many kilograms are donated?",
+            "we get 640 kg of rice for the community kitchen each month and send "
+            "17.5% of it to the shelter nearby. how many kg are we donating?",
             112,
             answer_unit="kg",
             unit_aliases=("kilogram", "kilograms"),
@@ -136,10 +136,9 @@ def _arithmetic() -> list[Scenario]:
         Scenario(
             "discount_fee_tax",
             "medium",
-            "A device costs ₹1850. It receives a 12% discount, then a ₹90 shipping "
-            "charge is added. A 5% tax is applied to the discounted price plus "
-            "shipping. Do not round intermediate values. What is the amount charged "
-            "in rupees?",
+            "I'm buying a device listed at ₹1850 with a 12% discount, then ₹90 "
+            "shipping. Tax is 5% on the discounted price plus shipping. What do I "
+            "actually get charged in rupees? don't round in the middle.",
             1803.9,
             answer_unit="rupees",
             unit_aliases=RUPEE_ALIASES,
@@ -148,10 +147,9 @@ def _arithmetic() -> list[Scenario]:
         Scenario(
             "seat_invoice",
             "medium",
-            "A monthly SaaS invoice has 18 editor seats at ₹450 each and 32 viewer "
-            "seats at ₹120 each. The contract discounts editor seats by 10% but does "
-            "not discount viewer seats. A ₹600 credit memo is then applied. There is "
-            "no tax. What amount is due in rupees?",
+            "can you sanity-check this SaaS bill: 18 editor seats at ₹450, 32 viewer "
+            "seats at ₹120, 10% off editors only, then a ₹600 credit memo. no tax. "
+            "what should the amount due be in rupees?",
             invoice_due.numerator,
             answer_unit="rupees",
             unit_aliases=RUPEE_ALIASES,
@@ -160,10 +158,9 @@ def _arithmetic() -> list[Scenario]:
         Scenario(
             "memory_headroom",
             "medium",
-            "A cluster has 12 workers with 64 GB of memory each. Operations reserves "
-            "12.5% of total memory, and existing workloads use 510 GB. Each new "
-            "replica needs 27 GB. What is the maximum number of whole replicas that "
-            "can be added without exceeding usable memory?",
+            "We've got 12 workers with 64 GB each. Ops keeps 12.5% of all memory "
+            "reserved, current workloads use 510 GB, and another replica takes 27 "
+            "GB. how many whole replicas can I still add without going over?",
             int((usable_memory - 510) // 27),
             answer_unit="replicas",
             unit_aliases=("replica",),
@@ -172,12 +169,11 @@ def _arithmetic() -> list[Scenario]:
         Scenario(
             "tiered_cloud_bill",
             "hard",
-            "A cloud account used 6.5 TB in a month, using decimal units "
-            "(1 TB = 1000 GB). The first 2000 GB cost $0.08/GB, the next 3000 GB "
-            "cost $0.06/GB, and remaining usage costs $0.04/GB. A 7.5% service "
-            "credit applies only to usage charges. Then a $35 monitoring fee is "
-            "added, and 18% tax applies to the credited usage plus the fee. What is "
-            "the final bill in dollars? Do not round intermediate values.",
+            "Trying to reconcile our cloud bill. Usage was 6.5 TB, decimal units "
+            "(1 TB = 1000 GB): first 2000 GB at $0.08/GB, next 3000 at $0.06, rest "
+            "at $0.04. Then there's a 7.5% credit on usage only, a $35 monitoring "
+            "fee, and 18% tax on the credited usage plus that fee. final total in "
+            "dollars? Please don't round intermediate values.",
             _fraction_text(taxed_bill),
             scoring="rational_value",
             tags=("billing_reconciliation", "tiered_pricing", "scope_rules"),
@@ -185,11 +181,10 @@ def _arithmetic() -> list[Scenario]:
         Scenario(
             "erasure_coded_capacity",
             "hard",
-            "A storage pool has 24 drives of 8 TB each. A 10+2 erasure-coding layout "
-            "uses 10 of every 12 raw terabytes for logical data. Operations then "
-            "reserves 15% of that logical capacity. Existing data occupies 116 TB, "
-            "and each new tenant needs 3.4 TB. What is the maximum number of whole "
-            "new tenants the pool can accept?",
+            "quick capacity check: 24 x 8 TB drives, with 10+2 erasure coding so "
+            "only 10 of every 12 raw TB is logical. keep 15% of that free. We're "
+            "already using 116 TB and each new tenant needs 3.4 TB. max whole new "
+            "tenants we can take?",
             int((usable_storage - 116) // Fraction(34, 10)),
             answer_unit="tenants",
             unit_aliases=("tenant",),
@@ -216,8 +211,8 @@ def _ratios() -> list[Scenario]:
         Scenario(
             "ratio_share",
             "easy",
-            "Two food banks split 143 supply boxes in the ratio 5:8. How many boxes "
-            "does the bank receiving the smaller share get?",
+            "we have 143 boxes of pantry supplies to split between two food banks "
+            "in a 5:8 ratio. how many boxes does the smaller share get?",
             55,
             answer_unit="boxes",
             unit_aliases=("box",),
@@ -226,9 +221,9 @@ def _ratios() -> list[Scenario]:
         Scenario(
             "combined_work",
             "medium",
-            "Worker A alone needs 12 days for a job and worker B alone needs 18 days. "
-            "At constant rates, how many days do they need together? Give an exact "
-            "fraction or decimal.",
+            "One contractor says she'd finish this job alone in 12 days; the other "
+            "would take 18. If their rates stay constant and they work together, "
+            "how many days will it take? exact fraction or decimal is fine.",
             _fraction_text(1 / combined_rate),
             scoring="rational_value",
             tags=("work_rate", "parallel_work"),
@@ -244,6 +239,8 @@ def _ratios() -> list[Scenario]:
             answer_unit="requests per minute",
             unit_aliases=(
                 "request per minute",
+                "requests/min",
+                "request/min",
                 "requests/minute",
                 "request/minute",
                 "rpm",
@@ -305,8 +302,8 @@ def _algebra() -> list[Scenario]:
         Scenario(
             "ticket_mix",
             "medium",
-            "A venue sold 18 tickets. Adult tickets cost ₹320, child tickets ₹180, "
-            "and total sales were ₹4360. How many adult tickets were sold?",
+            "we sold 18 tickets total. Adults were ₹320, kids ₹180, and the cash "
+            "total is ₹4360. how many adult tickets does that mean?",
             8,
             answer_unit="tickets",
             unit_aliases=("ticket",),
@@ -474,8 +471,8 @@ def _calendar() -> list[Scenario]:
         Scenario(
             "duration",
             "easy",
-            "A session starts at 14:35 and lasts 105 minutes. What time does it end? "
-            "Return HH:MM in 24-hour time.",
+            "session starts 14:35 and runs for 105 minutes — what time are we done? "
+            "give me HH:MM in 24-hour time.",
             "16:20",
             scoring="exact_match",
             response_type="text",
