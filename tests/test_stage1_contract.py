@@ -43,8 +43,8 @@ def test_stage1_dataset_and_evaluator_contract_is_frozen() -> None:
     assert contract["evaluators"]["versions"] == {
         "numeric_tolerance": 2,
         "date_value": 2,
-        "restricted_python_tests": 3,
-        "json_exact": 2,
+        "restricted_python_tests": 4,
+        "json_exact": 3,
         "exact_match": 1,
         "constraint_rules": 2,
         "tool_call": 2,
@@ -57,9 +57,9 @@ def test_stage1_model_inventory_matches_both_execution_configs() -> None:
     frozen_models = {entry["id"]: entry for entry in contract["models"]}
 
     assert execution["repetitions"] == 1
-    assert execution["total_generations"] == 6_400
+    assert execution["total_generations"] == 7_200
     assert {entry["id"] for entry in execution["matrices"]} == {
-        "five_workloads",
+        "six_workloads",
         "long_text_retrieval",
     }
 

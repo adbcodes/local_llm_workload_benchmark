@@ -17,6 +17,7 @@ QUESTION_SET_IDS = {
     "code_debug_repair",
     "messy_text_to_schema",
     "tool_use",
+    "email_to_action",
     "constraint_load_curve",
     "grounded_compression",
     "long_text_retrieval",
@@ -29,7 +30,7 @@ def test_catalog_contains_only_planned_evidence_tracks() -> None:
     assert catalog["schema_version"] == 2
     assert [suite["id"] for suite in catalog["suites"]] == list("ABCDE")
     entries = catalog["benchmarks"]
-    assert len(entries) == len(QUESTION_SET_IDS) == 7
+    assert len(entries) == len(QUESTION_SET_IDS) == 8
     assert {entry["id"] for entry in entries} == QUESTION_SET_IDS
     assert all(entry["kind"] == "question_set" for entry in entries)
     assert catalog["probe_sets"] == []
@@ -94,9 +95,9 @@ def test_evaluation_contracts_cover_the_retained_benchmarks() -> None:
 def test_catalog_validation_counts_only_retained_questions() -> None:
     result = validate_catalog(CATALOG_PATH)
 
-    assert result.benchmark_count == 7
-    assert result.question_set_count == 7
-    assert result.current_question_count == 340
+    assert result.benchmark_count == 8
+    assert result.question_set_count == 8
+    assert result.current_question_count == 390
     assert result.planned_question_set_count == 0
 
 

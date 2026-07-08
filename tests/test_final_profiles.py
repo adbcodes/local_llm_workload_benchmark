@@ -59,7 +59,7 @@ def test_final_profiles_match_pinned_model_sources() -> None:
     } == pinned
 
 
-def test_split_suites_partition_the_frozen_six() -> None:
+def test_split_suites_partition_the_frozen_seven() -> None:
     frozen = load_suite(ROOT / "data" / "suites" / "final_six.yaml")
     five = load_suite(ROOT / "data" / "suites" / "final_five.yaml")
     retrieval = load_suite(ROOT / "data" / "suites" / "final_retrieval.yaml")
@@ -70,16 +70,17 @@ def test_split_suites_partition_the_frozen_six() -> None:
         "messy_text_to_schema",
         "constraint_load_curve",
         "tool_use",
+        "email_to_action",
     }
     assert set(retrieval.items) == {"long_text_retrieval"}
     assert set(five.items).isdisjoint(retrieval.items)
     assert set(frozen.items) == set(five.items) | set(retrieval.items)
-    assert sum(map(len, five.items.values())) == 272
+    assert sum(map(len, five.items.values())) == 312
     assert sum(map(len, retrieval.items.values())) == 48
-    assert sum(map(len, frozen.items.values())) == 320
+    assert sum(map(len, frozen.items.values())) == 360
 
 
-def test_split_profiles_keep_the_6400_generation_budget() -> None:
+def test_split_profiles_keep_the_7200_generation_budget() -> None:
     attempts = 0
     for config_name, suite_name in (
         ("final_default_matrix.yaml", "final_five.yaml"),
@@ -89,4 +90,4 @@ def test_split_profiles_keep_the_6400_generation_budget() -> None:
         suite = load_suite(ROOT / "data" / "suites" / suite_name)
         attempts += len(config.models) * sum(map(len, suite.items.values()))
 
-    assert attempts == 6_400
+    assert attempts == 7_200

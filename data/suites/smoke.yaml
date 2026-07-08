@@ -9,6 +9,7 @@ benchmark_files:
   - ../code_debug_repair/benchmark.yaml
   - ../long_text_retrieval/benchmark.yaml
   - ../tool_use/benchmark.yaml
+  - ../email_to_action/benchmark.yaml
 filters:
   ids:
     - reason_arithmeticperc_001
@@ -17,3 +18,4 @@ filters:
     - code_normalize_event_codes_001
     - long_text_retrieval_001
     - tool_use_001
+    - email_to_action_001

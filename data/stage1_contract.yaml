@@ -1,26 +1,26 @@
 schema_version: 1
 stage: stage1_deterministic_matrix
-frozen_on: 2026-08-01
+frozen_on: 2026-08-03
 status: calibration_reopened
-model_cohort_status: replacement_pending
+model_cohort_status: frozen
 
 suite:
   path: data/suites/final_six.yaml
-  sha256: 9df4c71066ebe6839728a13e3f3c97eac44ee8da0de44475e79ec8ee3c55a4b5
-  question_count: 320
+  sha256: c88f8f81287e62bff6dafdc395b50e8a944a2b2fdeb211c9caec4fa62428165a
+  question_count: 360
   datasets:
     - id: applied_reasoning
       path: data/applied_reasoning/items.jsonl
       questions: 48
-      sha256: fae237de20a4af57f7bf9c0cc3b657f33a5c4c75946ebdb84c4a00609cd19be5
+      sha256: 3580d45a17c5fad89476b76ad758b758157d24eb9d6c5f1848c9b3fc7e2fe450
     - id: code_debug_repair
       path: data/code_debug_repair/items.jsonl
       questions: 80
-      sha256: 7794aeb80ad878a8d194edb810c7903c70fe09f4d2638306917eb5c124745ee0
+      sha256: f175ada21dc1e41af9d751e49cffca1138b0da450338022a8ce25356e505593f
     - id: messy_text_to_schema
       path: data/messy_text_to_schema/items.jsonl
       questions: 48
-      sha256: 41326fa22a3e3a11e48c9345a5bae49a122c973b94d3874adf9a2dd0768cc757
+      sha256: 1f4c6bc21d8acf87a4794e822c6a16387e8768cac82832cbf46c029cb27707e9
     - id: long_text_retrieval
       path: data/long_text_retrieval/items.jsonl
       questions: 48
@@ -32,27 +32,31 @@ suite:
     - id: tool_use
       path: data/tool_use/items.jsonl
       questions: 48
-      sha256: 45276dac4a8bc5299ba4762c9211d44df3297ef8656239d18e9950bd10ac7b14
+      sha256: 65dad2fb0bef8dda37d4aaad95cd2f36025859323ab01dc2c2fe44dd551214a7
+    - id: email_to_action
+      path: data/email_to_action/items.jsonl
+      questions: 40
+      sha256: f9da3a6aa1efc54226ca12d59505bd6a419f2bd55efd5d7970ff5b4e9bbbad40
 
 evaluators:
   implementation_files:
     - path: src/llm_workload_benchmark/dataset.py
-      sha256: 028e6f412bf3136800378d4126f59888995d095e93e35abee77d4102b72780f1
+      sha256: 870485b7643596ca6e71fdf16e34ca5a70d5ca58602b1ed991cd0b07b58c7c11
     - path: src/llm_workload_benchmark/executable.py
-      sha256: 75935b055ab1376321ef76897431ca5fb8804ea3ea69f8601422577e3e6a4ef6
+      sha256: fcec26b00aa99916942bc5a49d94396a2632d26c8d757a7a2b74aa73c59fe8c9
     - path: src/llm_workload_benchmark/answer_parser.py
       sha256: db25f351d560c9e1bbe00c46b725a87e82a972a55704e5ef9d2f4062ac81f264
   versions:
     numeric_tolerance: 2
     date_value: 2
-    restricted_python_tests: 3
-    json_exact: 2
+    restricted_python_tests: 4
+    json_exact: 3
     exact_match: 1
     constraint_rules: 2
     tool_call: 2
 
 execution:
-  total_generations: 6400
+  total_generations: 7200
   repetitions: 1
   generation:
     max_output_tokens: 4096
@@ -62,13 +66,13 @@ execution:
     repeat_penalty: 1.0
     constrained_decoding: none
   matrices:
-    - id: five_workloads
+    - id: six_workloads
       config_path: configs/final_default_matrix.yaml
-      config_sha256: 1bc3c2a2fc18f9996cf484fab7a7c8fa5f5fc94a10fea118bc6db27b484ecbeb
+      config_sha256: fbc722df6f3b25f1cc3bc42e629ac8a74aed72ece5b9711f9d637e8b6aaec0a8
       suite_path: data/suites/final_five.yaml
-      suite_sha256: eb234d52309b16444496c01af344be74ff6c0fbd70b480f0bdcf7425ac4c3782
-      question_count: 272
-      generation_count: 5440
+      suite_sha256: 8824000d06f60e14675bde94b9413b8adc6af859ff18d59905d43b0da0a087f3
+      question_count: 312
+      generation_count: 6240
       command: UV_CACHE_DIR=/tmp/uv-cache uv run --offline llm-benchmark benchmark --config configs/final_default_matrix.yaml
     - id: long_text_retrieval
       config_path: configs/final_retrieval_matrix.yaml

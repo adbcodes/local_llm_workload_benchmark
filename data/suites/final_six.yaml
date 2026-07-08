@@ -1,5 +1,5 @@
 schema_version: 1
-name: final-six-benchmarks
+name: final-seven-deterministic-benchmarks
 version: 1
 status: frozen
 benchmark_files:
@@ -9,3 +9,4 @@ benchmark_files:
   - ../long_text_retrieval/benchmark.yaml
   - ../constraint_load_curve/benchmark.yaml
   - ../tool_use/benchmark.yaml
+  - ../email_to_action/benchmark.yaml

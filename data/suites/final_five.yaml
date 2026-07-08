@@ -1,5 +1,5 @@
 schema_version: 1
-name: final-five-workloads
+name: final-six-non-retrieval-workloads
 version: 1
 status: frozen
 benchmark_files:
@@ -8,3 +8,4 @@ benchmark_files:
   - ../messy_text_to_schema/benchmark.yaml
   - ../constraint_load_curve/benchmark.yaml
   - ../tool_use/benchmark.yaml
+  - ../email_to_action/benchmark.yaml

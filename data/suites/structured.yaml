@@ -4,3 +4,4 @@ version: 1
 status: frozen
 benchmark_files:
   - ../messy_text_to_schema/benchmark.yaml
+  - ../email_to_action/benchmark.yaml
