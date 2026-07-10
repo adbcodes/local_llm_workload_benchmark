@@ -373,6 +373,55 @@ def test_cerebras_judge_sends_supported_structured_output_parameters() -> None:
     assert "include_reasoning" not in completions.arguments
 
 
+def test_routine_judge_pacing_does_not_print_per_item_notice() -> None:
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=_decision().model_dump_json()),
+                finish_reason="stop",
+            )
+        ],
+        usage=SimpleNamespace(
+            prompt_tokens=100,
+            completion_tokens=50,
+            prompt_tokens_details=None,
+            completion_tokens_details=None,
+        ),
+        id="paced-judge",
+        model="gpt-oss-120b",
+        system_fingerprint=None,
+    )
+
+    class Limiter:
+        def acquire(self) -> float:
+            return 24.25
+
+        def observe_headers(self, headers) -> None:
+            return None
+
+    backend = CerebrasJudgeBackend.__new__(CerebrasJudgeBackend)
+    backend._config = JudgeConfig(provider="cerebras")
+    backend._client = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(create=lambda **arguments: completion)
+        )
+    )
+    backend._request_limiter = Limiter()
+    backend._sleep = lambda seconds: None
+    notices: list[str] = []
+    backend._retry_notifier = notices.append
+
+    result = backend.evaluate(
+        system_prompt="judge policy",
+        user_prompt="candidate answer",
+        response_schema=SummaryJudgeDecision.model_json_schema(),
+        seed=42,
+    )
+
+    assert result.rate_limit_wait_seconds == 24.25
+    assert notices == []
+
+
 def test_judge_cache_reuses_exact_decisions_without_request_cost(tmp_path: Path) -> None:
     config = JudgeConfig(cache_path=tmp_path / "judge-cache.jsonl")
     delegate = FakeJudgeBackend()

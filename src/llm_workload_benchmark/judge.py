@@ -751,11 +751,6 @@ class _StructuredChatJudgeBackend:
         retries = 0
         limiter = self._get_request_limiter()
         waited_seconds = limiter.acquire()
-        if waited_seconds:
-            self._retry_notifier(
-                f"{self._provider_name} judge pacing active; waiting "
-                f"{waited_seconds:.1f}s before the next request."
-            )
         while True:
             try:
                 completion, headers = self._create_completion(

@@ -3,10 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
-from uuid import uuid4
 
 from llm_workload_benchmark.config import (
     BenchmarkConfig,
@@ -17,6 +15,7 @@ from llm_workload_benchmark.config import (
 from llm_workload_benchmark.dataset import DatasetItem, load_suite
 from llm_workload_benchmark.judge import (
     JudgeBackend,
+    JudgeError,
     create_judge_backend,
     evaluate_summary,
 )
@@ -66,9 +65,11 @@ def rejudge_experiment(
 
     output_root = _resolve(root, config.benchmark.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
-    experiment_id = _new_rejudged_experiment_id()
+    contract_hash = _rejudge_contract_hash(source, config_path)
+    experiment_id = _rejudged_experiment_id(source, contract_hash)
     target = output_root / experiment_id
-    (target / "models").mkdir(parents=True)
+    target_existed = target.exists()
+    (target / "models").mkdir(parents=True, exist_ok=True)
 
     completed = [
         entry
@@ -76,9 +77,48 @@ def rejudge_experiment(
         if isinstance(entry, dict) and entry.get("status") == "completed"
     ]
     total_judgments = sum(_judged_record_count(source, entry) for entry in completed)
-    completed_judgments = 0
-    copied_entries: list[dict[str, object]] = []
+    completed_judgments = _completed_rejudgment_count(target, contract_hash)
     models_by_id = {model.id: model for model in config.models if model.enabled}
+    prior_index = _read_optional_json(target / "experiment.json")
+    copied_entries = {
+        str(entry["model_id"]): entry
+        for entry in prior_index.get("models", [])
+        if isinstance(entry, dict)
+        and entry.get("status") == "completed"
+        and isinstance(entry.get("model_id"), str)
+    }
+    resume_count = int(prior_index.get("resume_count", 0)) + int(target_existed)
+
+    def checkpoint_index(status: str, *, error: str | None = None) -> None:
+        target_index = {
+            "schema_version": 2,
+            "experiment_id": experiment_id,
+            "status": status,
+            "config_source": {
+                "path": str(config_path.resolve()),
+                "sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
+            },
+            "dataset": str(suite_path),
+            "elapsed_seconds": 0.0,
+            "resume_count": resume_count,
+            "models_total": len(models_by_id),
+            "models_completed": len(copied_entries),
+            "models_failed": 0,
+            "models": list(copied_entries.values()),
+            "rejudged_from": str(source),
+            "rejudge_contract_sha256": contract_hash,
+            "judgments_total": total_judgments,
+            "judgments_completed": completed_judgments,
+            "judgments_remaining": max(0, total_judgments - completed_judgments),
+            "last_error": error,
+            "judge": {
+                "provider": config.judge.provider,
+                "model": config.judge.model,
+            },
+        }
+        _write_json(target / "experiment.json", target_index)
+
+    checkpoint_index("running")
 
     try:
         for entry in completed:
@@ -87,11 +127,19 @@ def rejudge_experiment(
                 raise RejudgeError(f"source model {model_id!r} is absent from target config")
             source_run = source / str(entry["run_directory"])
             target_run = target / "models" / model_id
-            shutil.copytree(source_run, target_run)
+            if not target_run.exists():
+                shutil.copytree(source_run, target_run)
             records_path = target_run / "results.jsonl"
             records = _read_jsonl(records_path)
             for record in records:
                 if record.get("scoring_method") != "llm_judge":
+                    continue
+                rejudge = record.get("rejudge")
+                if (
+                    isinstance(rejudge, dict)
+                    and rejudge.get("contract_sha256") == contract_hash
+                    and rejudge.get("status") == "completed"
+                ):
                     continue
                 item = _find_item(items, record)
                 answer = record.get("evaluated_response")
@@ -99,13 +147,22 @@ def rejudge_experiment(
                     raise RejudgeError(
                         f"saved answer for {record.get('item_id')!r} is not text"
                     )
-                result = evaluate_summary(
-                    item,
-                    answer,
-                    backend=backend,
-                    config=config.judge,
-                    seed=int(record["seed"]),
-                )
+                try:
+                    result = evaluate_summary(
+                        item,
+                        answer,
+                        backend=backend,
+                        config=config.judge,
+                        seed=int(record["seed"]),
+                    )
+                except JudgeError as error:
+                    if _is_rate_limit_error(error):
+                        checkpoint_index("paused_rate_limit", error=str(error))
+                        return target
+                    checkpoint_index("interrupted", error=str(error))
+                    raise RejudgeError(
+                        f"judge failed for {model_id}/{record.get('item_id')}: {error}"
+                    ) from error
                 result = finalize_evaluation(
                     result,
                     primary_outcome=suite.definitions[
@@ -117,58 +174,76 @@ def rejudge_experiment(
                 )
                 record["evaluation"] = result.model_dump(mode="json")
                 record["integration_outcome"] = result.integration_outcome
+                record["status"] = "completed"
+                record["error"] = None
                 record["schema_version"] = 3
+                record["rejudge"] = {
+                    "status": "completed",
+                    "contract_sha256": contract_hash,
+                    "source_experiment": str(source),
+                }
                 completed_judgments += 1
+                _write_jsonl(records_path, records)
+                checkpoint_index("running")
                 if progress_callback is not None:
                     progress_callback(model_id, completed_judgments, total_judgments)
-            _write_jsonl(records_path, records)
             summary_path = rebuild_run_summary(
                 target_run,
                 model=models_by_id[model_id],
                 suite_path=suite_path,
                 definitions=suite.definitions,
             )
-            copied_entries.append(
-                {
-                    "model_id": model_id,
-                    "status": "completed",
-                    "run_directory": str(target_run.relative_to(target)),
-                    "summary": str(summary_path.relative_to(target)),
-                    "error": None,
-                }
-            )
+            copied_entries[model_id] = {
+                "model_id": model_id,
+                "status": "completed",
+                "run_directory": str(target_run.relative_to(target)),
+                "summary": str(summary_path.relative_to(target)),
+                "error": None,
+            }
+            checkpoint_index("running")
 
-        status = (
-            "completed"
-            if len(copied_entries) == len(models_by_id)
-            else "interrupted"
-        )
-        target_index = {
-            "schema_version": 1,
-            "experiment_id": experiment_id,
-            "status": status,
-            "config_source": {
-                "path": str(config_path.resolve()),
-                "sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
-            },
-            "dataset": str(suite_path),
-            "elapsed_seconds": 0.0,
-            "resume_count": 0,
-            "models_total": len(models_by_id),
-            "models_completed": len(copied_entries),
-            "models_failed": 0,
-            "models": copied_entries,
-            "rejudged_from": str(source),
-            "judge": {
-                "provider": config.judge.provider,
-                "model": config.judge.model,
-            },
-        }
-        _write_json(target / "experiment.json", target_index)
-    except Exception:
-        shutil.rmtree(target, ignore_errors=True)
+        status = "completed" if len(copied_entries) == len(models_by_id) else "interrupted"
+        checkpoint_index(status)
+    except Exception as error:
+        checkpoint_index("interrupted", error=str(error))
         raise
     return target
+
+
+def _completed_rejudgment_count(target: Path, contract_hash: str) -> int:
+    completed = 0
+    models = target / "models"
+    if not models.exists():
+        return 0
+    for results_path in models.glob("*/results.jsonl"):
+        for record in _read_jsonl(results_path):
+            marker = record.get("rejudge")
+            if (
+                isinstance(marker, dict)
+                and marker.get("status") == "completed"
+                and marker.get("contract_sha256") == contract_hash
+            ):
+                completed += 1
+    return completed
+
+
+def _is_rate_limit_error(error: Exception) -> bool:
+    normalized = str(error).casefold()
+    return "rate limit" in normalized or "429" in normalized
+
+
+def _rejudge_contract_hash(source: Path, config_path: Path) -> str:
+    payload = {
+        "source_experiment": str(source.resolve()),
+        "config_path": str(config_path.resolve()),
+        "config_sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _rejudged_experiment_id(source: Path, contract_hash: str) -> str:
+    return f"{source.name}-rejudged-{contract_hash[:8]}"
 
 
 def _validate_reusable_runs(
@@ -280,6 +355,18 @@ def _read_jsonl(path: Path) -> list[dict[str, object]]:
         raise RejudgeError(f"cannot read saved results {path}: {error}") from error
 
 
+def _read_optional_json(path: Path) -> dict[str, object]:
+    if not path.exists():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RejudgeError(f"cannot read rejudge checkpoint {path}: {error}") from error
+    if not isinstance(value, dict):
+        raise RejudgeError(f"rejudge checkpoint {path} is not a JSON object")
+    return value
+
+
 def _write_jsonl(path: Path, records: list[dict[str, object]]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(
@@ -298,8 +385,3 @@ def _write_json(path: Path, value: dict[str, object]) -> None:
 
 def _resolve(root: Path, path: Path) -> Path:
     return path if path.is_absolute() else root / path
-
-
-def _new_rejudged_experiment_id() -> str:
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
-    return f"{timestamp}-rejudged-{uuid4().hex[:8]}"

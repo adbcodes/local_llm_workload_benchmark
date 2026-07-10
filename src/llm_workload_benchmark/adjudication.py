@@ -173,6 +173,8 @@ def adjudicate_experiment(
             return _sidecar_record(record, item, route, None, error=str(error))
 
     total = len(queue)
+    processed = 0
+    halted_on_rate_limit = False
     if workers == 1:
         judged = map(judge_one, queue)
     else:
@@ -180,13 +182,17 @@ def adjudicate_experiment(
         judged = executor.map(judge_one, queue)
     try:
         for completed, sidecar in enumerate(judged, start=1):
+            processed = completed
             records_by_key[str(sidecar["adjudication_key"])] = sidecar
             _write_jsonl(results_path, list(records_by_key.values()))
             if progress_callback is not None:
                 progress_callback(completed, total, str(sidecar["model_id"]))
+            if _is_rate_limit_failure(sidecar):
+                halted_on_rate_limit = True
+                break
     finally:
         if workers != 1:
-            executor.shutdown(wait=True)
+            executor.shutdown(wait=True, cancel_futures=halted_on_rate_limit)
 
     all_records = _read_jsonl(results_path) if results_path.exists() else []
     manifest = {
@@ -199,6 +205,12 @@ def adjudicate_experiment(
         "completed": sum(record.get("status") == "completed" for record in all_records),
         "unresolved": sum(record.get("status") == "unresolved" for record in all_records),
         "judge_errors": sum(record.get("status") == "judge_error" for record in all_records),
+        "run_status": (
+            "paused_rate_limit" if halted_on_rate_limit else "completed"
+        ),
+        "queued_this_invocation": total,
+        "processed_this_invocation": processed,
+        "remaining_this_invocation": max(0, total - processed),
         "routes": {
             route: sum(record.get("judge_route") == route for record in all_records)
             for route in ("semantic_requirements", "blind_extraction", "unresolved")
@@ -206,6 +218,16 @@ def adjudicate_experiment(
     }
     _write_json(output / "manifest.json", manifest)
     return output
+
+
+def _is_rate_limit_failure(record: dict[str, Any]) -> bool:
+    if record.get("status") != "judge_error":
+        return False
+    error = record.get("error")
+    if not isinstance(error, str):
+        return False
+    normalized = error.casefold()
+    return "rate limit" in normalized or "429" in normalized
 
 
 def adjudication_route(

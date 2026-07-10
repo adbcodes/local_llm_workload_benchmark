@@ -13,6 +13,7 @@ from llm_workload_benchmark.evaluation import finalize_evaluation
 from llm_workload_benchmark.judge import (
     BlindExtractionDecision,
     JudgeCallResult,
+    JudgeError,
     SemanticJudgeDecision,
 )
 
@@ -78,6 +79,16 @@ class FakeExtractionBackend:
             latency_seconds=0.1,
             finish_reason="stop",
         )
+
+
+class RateLimitedBackend:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def evaluate(self, **arguments) -> JudgeCallResult:
+        del arguments
+        self.calls += 1
+        raise JudgeError("Cerebras judge rate limit: 429 token quota exceeded")
 
 
 def _finalized_record(item, answer: str) -> dict[str, object]:
@@ -183,6 +194,102 @@ def test_adjudication_writes_resumable_sidecars_without_mutating_inference(
         judge_backend_factory=lambda _: backend,
     )
     assert len(backend.calls) == 1
+
+
+def test_adjudication_pauses_on_rate_limit_and_resumes_remaining_records(
+    tmp_path: Path,
+) -> None:
+    item = {
+        candidate.id: candidate
+        for candidate in load_suite(Path("data/suites/instruction.yaml")).items[
+            "constraint_load_curve"
+        ]
+    }["constraint_api_rate_limiting_001"]
+    answer = str(item.expected["value"])
+    experiment = tmp_path / "experiment"
+    run = experiment / "models" / "fake-model"
+    run.mkdir(parents=True)
+    records = [
+        {
+            "schema_version": 4,
+            "status": "completed",
+            "model_id": "fake-model",
+            "benchmark": item.benchmark,
+            "item_id": item.id,
+            "repetition": repetition,
+            "seed": 42,
+            "scoring_method": item.scoring.method,
+            "evaluated_response": answer,
+            "evaluation": score_answer(item, answer).model_dump(mode="json"),
+        }
+        for repetition in (0, 1)
+    ]
+    (run / "results.jsonl").write_text(
+        "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    (experiment / "experiment.json").write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "model_id": "fake-model",
+                        "status": "completed",
+                        "run_directory": "models/fake-model",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    config = BenchmarkConfig.model_validate(
+        {
+            "schema_version": 1,
+            "benchmark": {
+                "name": "adjudication-test",
+                "workload_path": "data/suites/instruction.yaml",
+                "output_root": str(tmp_path / "runs"),
+                "seed": 42,
+            },
+            "judge": {"provider": "cerebras"},
+            "models": [
+                {
+                    "id": "fake-model",
+                    "backend": "llama_cpp",
+                    "model_path": str(tmp_path / "fake.gguf"),
+                }
+            ],
+        }
+    )
+    limited = RateLimitedBackend()
+
+    output = adjudicate_experiment(
+        experiment,
+        config,
+        project_root=Path.cwd(),
+        judge_backend_factory=lambda _: limited,
+    )
+
+    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    assert limited.calls == 1
+    assert manifest["run_status"] == "paused_rate_limit"
+    assert manifest["processed_this_invocation"] == 1
+    assert manifest["remaining_this_invocation"] == 1
+
+    healthy = FakeSemanticBackend()
+    adjudicate_experiment(
+        experiment,
+        config,
+        project_root=Path.cwd(),
+        judge_backend_factory=lambda _: healthy,
+    )
+    resumed = [
+        json.loads(line)
+        for line in (output / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(healthy.calls) == 2
+    assert len(resumed) == 2
+    assert all(record["status"] == "completed" for record in resumed)
 
 
 def test_constraint_derivation_separates_core_tone_and_mechanical_rules() -> None:

@@ -320,6 +320,14 @@ def rejudge_command(
     except (ConfigError, DatasetError, RejudgeError, OSError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
+    index = json.loads((target / "experiment.json").read_text(encoding="utf-8"))
+    if index.get("status") == "paused_rate_limit":
+        typer.echo(
+            "Rejudging paused after a rate-limit response. Completed judgments "
+            f"are saved in {target}; rerun the same command to resume.",
+            err=True,
+        )
+        raise typer.Exit(code=75)
     typer.echo(f"Rejudged experiment saved to {target}")
 
 
@@ -370,6 +378,14 @@ def adjudicate_command(
     except (ConfigError, DatasetError, AdjudicationError, OSError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
+    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("run_status") == "paused_rate_limit":
+        typer.echo(
+            "Adjudication paused after a rate-limit response. Completed sidecars "
+            f"are saved in {output}; rerun the same command to resume.",
+            err=True,
+        )
+        raise typer.Exit(code=75)
     typer.echo(f"Adjudication sidecars saved to {output}")
 
 
