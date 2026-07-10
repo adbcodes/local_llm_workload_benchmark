@@ -431,12 +431,23 @@ def figures_command(
                                          file_okay=False, resolve_path=True),
     retrieval_experiment: Path = typer.Option(..., "--retrieval-experiment", exists=True,
                                               file_okay=False, resolve_path=True),
+    grounded_experiment: Path = typer.Option(..., "--grounded-experiment", exists=True,
+                                             file_okay=False, resolve_path=True),
+    output_directory: Path = typer.Option(
+        Path("final_figures"),
+        "--output",
+        file_okay=False,
+        resolve_path=True,
+        help="Repository-level destination for the combined final figure bundle.",
+    ),
 ) -> None:
-    """Generate figures from the independent five-workload and retrieval runs."""
+    """Generate final adjudication-aware figures from all three result runs."""
     try:
         root = generate_final_figure_bundle(
             five_experiment,
             retrieval_experiment,
+            grounded_experiment,
+            output_directory,
         )
     except (ArtifactError, OSError, ValueError) as error:
         typer.echo(f"Error: {error}", err=True)

@@ -413,12 +413,48 @@ def test_figures_cli_writes_compact_manifest(tmp_path: Path) -> None:
             "figures",
             "--five-experiment", str(experiment),
             "--retrieval-experiment", str(experiment),
+            "--grounded-experiment", str(experiment),
+            "--output", str(tmp_path / "final_figures"),
         ],
     )
 
     assert result.exit_code == 0, result.output
     assert "Final figure manifest:" in result.output
-    manifest_path = experiment / "artifacts" / "final_figures" / "manifest.json"
+    manifest_path = tmp_path / "final_figures" / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
-    assert len(manifest["plots"]) == 8
-    assert set(manifest["sources"]) == {"five_workloads", "retrieval"}
+    assert len(manifest["plots"]) == 11
+    assert set(manifest["plots"]) == {
+        "quality_memory_pareto",
+        "quantization_quality",
+        "quantization_memory",
+        "quantization_decode_speed",
+        "workload_fit_heatmap",
+        "format_tax",
+        "constraint_load_overall",
+        "constraint_load_by_family",
+        "retrieval_ttft_scaling",
+        "grounded_compression_success",
+        "grounded_compression_critical_errors",
+    }
+    assert set(manifest["sources"]) == {
+        "workloads",
+        "retrieval",
+        "grounded_compression",
+    }
+    assert set(manifest["data_exports"]) == {
+        "adjudicated_items",
+        "local_evaluation_items",
+        "grounded_judged_items",
+    }
+    data_root = manifest_path.parent / "data"
+    with (data_root / "adjudicated_items.csv").open(newline="") as source:
+        adjudicated = next(csv.DictReader(source))
+    with (data_root / "local_evaluation_items.csv").open(newline="") as source:
+        local = next(csv.DictReader(source))
+    with (data_root / "grounded_judged_items.csv").open(newline="") as source:
+        grounded = next(csv.DictReader(source))
+    assert {"strict_pass", "semantic_pass", "format_tax", "judge_route"} <= set(
+        adjudicated
+    )
+    assert "strict_pass" not in local
+    assert {"judge_pass", "within_word_limit", "critical_error"} <= set(grounded)
