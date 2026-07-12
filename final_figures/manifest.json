@@ -1,0 +1,129 @@
+{
+  "data_exports": {
+    "adjudicated_items": {
+      "description": "Canonical final main and retrieval labels after adjudication",
+      "path": "data/adjudicated_items.csv",
+      "rows": 7200
+    },
+    "grounded_judged_items": {
+      "description": "Grounded compression direct pointwise-judge outcomes",
+      "path": "data/grounded_judged_items.csv",
+      "rows": 600
+    },
+    "local_evaluation_items": {
+      "description": "Original local evaluator outcomes before external adjudication",
+      "path": "data/local_evaluation_items.csv",
+      "rows": 7200
+    }
+  },
+  "design": {
+    "adjudication_aware": true,
+    "confidence_interval": "Wilson 95% for proportions",
+    "family_color_palette": "Okabe-Ito derived",
+    "quantization": [
+      "Q3",
+      "Q4",
+      "Q6",
+      "Q8"
+    ],
+    "visible_labels": [
+      "Strict pass",
+      "Semantic pass",
+      "Format tax"
+    ]
+  },
+  "family_colors": {
+    "granite": "#D55E00",
+    "llama3.1": "#E69F00",
+    "mistral": "#CC79A7",
+    "qwen2.5-coder": "#0072B2",
+    "qwen3": "#009E73"
+  },
+  "plots": {
+    "constraint_load_by_family": {
+      "data": "data/constraint_load_by_family.csv",
+      "png": "plots/constraint_load_by_family.png",
+      "row_count": 20,
+      "status": "generated",
+      "svg": "plots/constraint_load_by_family.svg"
+    },
+    "constraint_load_overall": {
+      "data": "data/constraint_load_overall.csv",
+      "png": "plots/constraint_load_overall.png",
+      "row_count": 4,
+      "status": "generated",
+      "svg": "plots/constraint_load_overall.svg"
+    },
+    "format_tax": {
+      "data": "data/format_tax.csv",
+      "png": "plots/format_tax.png",
+      "row_count": 12,
+      "status": "generated",
+      "svg": "plots/format_tax.svg"
+    },
+    "grounded_compression_critical_errors": {
+      "data": "data/grounded_compression_critical_errors.csv",
+      "png": "plots/grounded_compression_critical_errors.png",
+      "row_count": 5,
+      "status": "generated",
+      "svg": "plots/grounded_compression_critical_errors.svg"
+    },
+    "grounded_compression_success": {
+      "data": "data/grounded_compression_success.csv",
+      "png": "plots/grounded_compression_success.png",
+      "row_count": 5,
+      "status": "generated",
+      "svg": "plots/grounded_compression_success.svg"
+    },
+    "quality_memory_pareto": {
+      "data": "data/quality_memory_pareto.csv",
+      "n_per_configuration": 360,
+      "png": "plots/quality_memory_pareto.png",
+      "row_count": 10,
+      "status": "generated",
+      "svg": "plots/quality_memory_pareto.svg"
+    },
+    "quantization_decode_speed": {
+      "data": "data/quantization_decode_speed.csv",
+      "png": "plots/quantization_decode_speed.png",
+      "row_count": 20,
+      "status": "generated",
+      "svg": "plots/quantization_decode_speed.svg"
+    },
+    "quantization_memory": {
+      "data": "data/quantization_memory.csv",
+      "png": "plots/quantization_memory.png",
+      "row_count": 20,
+      "status": "generated",
+      "svg": "plots/quantization_memory.svg"
+    },
+    "quantization_quality": {
+      "data": "data/quantization_quality.csv",
+      "png": "plots/quantization_quality.png",
+      "row_count": 20,
+      "status": "generated",
+      "svg": "plots/quantization_quality.svg"
+    },
+    "retrieval_ttft_scaling": {
+      "data": "data/retrieval_ttft_scaling.csv",
+      "png": "plots/retrieval_ttft_scaling.png",
+      "quantization": "Q4",
+      "row_count": 255,
+      "status": "generated",
+      "svg": "plots/retrieval_ttft_scaling.svg"
+    },
+    "workload_fit_heatmap": {
+      "data": "data/workload_fit_heatmap.csv",
+      "png": "plots/workload_fit_heatmap.png",
+      "row_count": 35,
+      "status": "generated",
+      "svg": "plots/workload_fit_heatmap.svg"
+    }
+  },
+  "schema_version": 4,
+  "sources": {
+    "grounded_compression": "runs/2026-08-04_13-08-50-matrix-8a46fff1-rejudged-0e429015",
+    "retrieval": "runs/2026-08-04_17-12-52-matrix-f40ac86d",
+    "workloads": "runs/2026-08-03_19-04-17-matrix-2cfb5897"
+  }
+}
